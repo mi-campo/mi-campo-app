@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MI CAMPO — Productor</title>
+<style>
+  body { font-family: -apple-system, sans-serif; background: #faf9f6; margin: 0; color: #2c2c2a; }
+  .header { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 1px solid #e3e1d8; background: #fff; }
+  .header h1 { font-size: 17px; margin: 0; }
+  .logout { background: none; border: 1px solid #d3d1c7; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 13px; }
+  main { max-width: 800px; margin: 0 auto; padding: 20px; }
+  .card { background: #fff; border: 1px solid #e3e1d8; border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+  .card h2 { font-size: 15px; margin: 0 0 12px; }
+  .row { display: flex; justify-content: space-between; padding: 6px 0; border-top: 1px solid #f1efe8; font-size: 14px; }
+  .row:first-child { border-top: none; }
+  .muted { color: #888780; font-size: 13px; }
+  .liq { background: #EAF3DE; border-radius: 8px; padding: 12px; margin-top: 10px; }
+  .liq .num { font-size: 22px; font-weight: 500; color: #27500A; }
+  textarea { width: 100%; min-height: 60px; border-radius: 6px; border: 1px solid #d3d1c7; padding: 8px; font-family: inherit; font-size: 14px; box-sizing: border-box; }
+  button.enviar { background: #3B6D11; color: #EAF3DE; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; margin-top: 8px; }
+  .consulta { border-top: 1px solid #f1efe8; padding: 8px 0; font-size: 13px; }
+  .consulta .respuesta { background: #f1efe8; border-radius: 6px; padding: 8px; margin-top: 6px; }
+  .badge { font-size: 11px; padding: 2px 8px; border-radius: 10px; background: #FDF3E7; color: #854F0B; }
+</style>
+</head>
+<body>
+  <div class="header">
+    <h1>MI CAMPO</h1>
+    <button class="logout" onclick="salir()">Salir</button>
+  </div>
+  <main id="app">Cargando…</main>
+
+  <script>
+    async function salir() {
+      await fetch('/api/logout', { method: 'POST' });
+      window.location.href = '/login.html';
+    }
+
+    function fmtMoney(n) { return 'USD ' + (n || 0).toLocaleString('es-AR', { maximumFractionDigits: 0 }); }
+
+    async function cargar() {
+      const res = await fetch('/api/data');
+      if (res.status === 401) { window.location.href = '/login.html'; return; }
+      const data = await res.json();
+      render(data);
+    }
+
+    function render(data) {
+      const app = document.getElementById('app');
+      if (data.campos.length === 0) {
+        app.innerHTML = '<div class="card muted">Todavía no tenés campos asignados. Consultá con el administrador.</div>';
+        return;
+      }
+
+      let html = '';
+      data.campos.forEach(campo => {
+        const lotes = data.lotes.filter(l => l.campoId === campo.id);
+        const loteIds = lotes.map(l => l.id);
+        const actividades = data.actividades.filter(a => loteIds.includes(a.loteId));
+        const gastoTotal = actividades.reduce((s, a) => s + (a.costoTotal || 0), 0);
+        const porcentaje = Number(campo.porcentajeProductor) || 0;
+        const liquidacion = gastoTotal * (porcentaje / 100);
+
+        html += `<div class="card"><h2>${campo.nombre}</h2>`;
+        lotes.forEach(l => {
+          const actsLote = actividades.filter(a => a.loteId === l.id);
+          const gastoLote = actsLote.reduce((s, a) => s + (a.costoTotal || 0), 0);
+          html += `<div class="row"><span>${l.nombre} — ${l.hectareas} ha</span><span>${fmtMoney(gastoLote)}</span></div>`;
+        });
+
+        html += `<div style="margin-top:10px; font-size:13px; font-weight:500;">Insumos utilizados</div>`;
+        const insumoIds = new Set();
+        actividades.forEach(a => (a.items || []).forEach(it => insumoIds.add(it.insumoId)));
+        if (insumoIds.size === 0) {
+          html += `<div class="muted">Sin insumos cargados todavía.</div>`;
+        }
+        [...insumoIds].forEach(id => {
+          const insumo = data.insumos.find(i => i.id === id);
+          if (!insumo) return;
+          const cantidadTotal = actividades.reduce((s, a) => s + (a.items || []).filter(it => it.insumoId === id).reduce((s2, it) => s2 + Number(it.cantidad), 0), 0);
+          html += `<div class="row"><span>${insumo.nombre} — ${cantidadTotal}${insumo.unidad}</span><span>${fmtMoney(insumo.costoUnitario)}/${insumo.unidad}</span></div>`;
+        });
+
+        if (porcentaje > 0) {
+          html += `<div class="liq"><div class="num">${fmtMoney(liquidacion)}</div><div class="muted">Tu ${porcentaje}% sobre ${fmtMoney(gastoTotal)} de gasto total</div></div>`;
+        }
+        html += `</div>`;
+      });
+
+      html += `<div class="card">
+        <h2>Consultas</h2>
+        <div id="listaConsultas"></div>
+        <textarea id="nuevaConsulta" placeholder="Escribí tu duda o consulta acá…"></textarea>
+        <button class="enviar" onclick="enviarConsulta()">Enviar</button>
+      </div>`;
+
+      document.getElementById('app').innerHTML = html;
+
+      const listaEl = document.getElementById('listaConsultas');
+      if (data.consultas.length === 0) {
+        listaEl.innerHTML = '<div class="muted">Sin consultas todavía.</div>';
+      } else {
+        listaEl.innerHTML = [...data.consultas].reverse().map(c => `
+          <div class="consulta">
+            <div>${c.fecha} — ${c.texto}</div>
+            ${c.respondida
+              ? `<div class="respuesta">${c.respuesta}</div>`
+              : `<span class="badge">Esperando respuesta</span>`}
+          </div>
+        `).join('');
+      }
+    }
+
+    async function enviarConsulta() {
+      const texto = document.getElementById('nuevaConsulta').value.trim();
+      if (!texto) return;
+      await fetch('/api/consultas', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ texto }),
+      });
+      cargar();
+    }
+
+    cargar();
+  </script>
+</body>
+</html>

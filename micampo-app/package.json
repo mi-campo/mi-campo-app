@@ -1,0 +1,17 @@
+{
+  "name": "micampo-app",
+  "version": "2.0.0",
+  "description": "MI CAMPO - bot de WhatsApp + panel web con accesos por rol",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "seed": "node src/seed.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "express-session": "^1.18.0",
+    "bcryptjs": "^2.4.3",
+    "dotenv": "^16.4.5",
+    "node-fetch": "^2.7.0"
+  }
+}

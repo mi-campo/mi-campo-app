@@ -1,0 +1,114 @@
+const fs = require('fs');
+const path = require('path');
+
+const DATA_PATH = path.join(__dirname, '..', 'data', 'data.json');
+const USERS_PATH = path.join(__dirname, '..', 'data', 'users.json');
+const PEND_PATH = path.join(__dirname, '..', 'data', 'pendientes.json');
+
+const emptyData = {
+  clientes: [],
+  campos: [],
+  lotes: [],
+  insumos: [],
+  actividades: [],
+  analisis: [],
+  notas: [],
+  proveedores: [],
+  compras: [],
+  cargas: [],
+  consultas: [],
+  ciclos: [],
+};
+
+function uid() {
+  return Math.random().toString(36).slice(2, 10);
+}
+
+function ensureDir() {
+  const dir = path.join(__dirname, '..', 'data');
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+}
+
+function load() {
+  ensureDir();
+  if (!fs.existsSync(DATA_PATH)) {
+    fs.writeFileSync(DATA_PATH, JSON.stringify(emptyData, null, 2));
+  }
+  const data = JSON.parse(fs.readFileSync(DATA_PATH, 'utf-8'));
+  // Por si el archivo viene de una versión vieja sin alguno de estos campos
+  for (const key of Object.keys(emptyData)) {
+    if (!data[key]) data[key] = [];
+  }
+  return data;
+}
+
+function save(data) {
+  ensureDir();
+  fs.writeFileSync(DATA_PATH, JSON.stringify(data, null, 2));
+}
+
+function loadUsers() {
+  ensureDir();
+  if (!fs.existsSync(USERS_PATH)) fs.writeFileSync(USERS_PATH, '[]');
+  return JSON.parse(fs.readFileSync(USERS_PATH, 'utf-8'));
+}
+
+function saveUsers(users) {
+  ensureDir();
+  fs.writeFileSync(USERS_PATH, JSON.stringify(users, null, 2));
+}
+
+function buscarLotes(data, nombreBuscado) {
+  if (!nombreBuscado) return [];
+  const normalizar = (s) => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+  const buscado = normalizar(nombreBuscado);
+  const exacto = data.lotes.filter(l => normalizar(l.nombre) === buscado);
+  if (exacto.length > 0) return exacto;
+  return data.lotes.filter(l => normalizar(l.nombre).includes(buscado) || buscado.includes(normalizar(l.nombre)));
+}
+
+// Precio promedio ponderado de un insumo, calculado en base a TODAS sus compras históricas.
+// Ej: 120tn a 500 + 60tn a 550 → (120*500 + 60*550) / 180 = 516.67
+// Si no hay compras cargadas todavía, usa el costoUnitario manual del insumo como respaldo.
+function precioPromedio(data, insumoId) {
+  const comprasInsumo = (data.compras || []).filter(c => c.insumoId === insumoId && Number(c.cantidad) > 0);
+  if (comprasInsumo.length === 0) {
+    const insumo = data.insumos.find(i => i.id === insumoId);
+    return insumo ? Number(insumo.costoUnitario) || 0 : 0;
+  }
+  const totalCantidad = comprasInsumo.reduce((s, c) => s + Number(c.cantidad), 0);
+  const totalGastado = comprasInsumo.reduce((s, c) => s + Number(c.cantidad) * Number(c.precioUnitario), 0);
+  return totalCantidad > 0 ? totalGastado / totalCantidad : 0;
+}
+
+function cargarPendientes() {
+  ensureDir();
+  if (!fs.existsSync(PEND_PATH)) fs.writeFileSync(PEND_PATH, '{}');
+  return JSON.parse(fs.readFileSync(PEND_PATH, 'utf-8'));
+}
+
+function guardarPendiente(numero, pendiente) {
+  const pend = cargarPendientes();
+  pend[numero] = { ...pendiente, fecha: Date.now() };
+  fs.writeFileSync(PEND_PATH, JSON.stringify(pend, null, 2));
+}
+
+function sacarPendiente(numero) {
+  const pend = cargarPendientes();
+  const valor = pend[numero];
+  delete pend[numero];
+  fs.writeFileSync(PEND_PATH, JSON.stringify(pend, null, 2));
+  return valor || null;
+}
+
+// El ciclo "abierto" de un lote es el que todavía no tiene fecha de fin.
+// Como los ciclos son secuenciales, nunca hay más de uno abierto por lote.
+function cicloActivo(data, loteId) {
+  return (data.ciclos || []).find(c => c.loteId === loteId && !c.fechaFin) || null;
+}
+
+module.exports = {
+  load, save, uid, buscarLotes, precioPromedio, cicloActivo, emptyData,
+  cargarPendientes, guardarPendiente, sacarPendiente,
+  loadUsers, saveUsers,
+};

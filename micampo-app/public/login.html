@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MI CAMPO — Ingresar</title>
+<style>
+  body { font-family: -apple-system, sans-serif; background: #faf9f6; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+  .card { background: #fff; border: 1px solid #e3e1d8; border-radius: 12px; padding: 32px; width: 320px; }
+  .logo { display: flex; align-items: center; gap: 10px; margin-bottom: 24px; }
+  .logo-icon { width: 34px; height: 34px; border-radius: 8px; background: #3B6D11; display: flex; align-items: center; justify-content: center; color: #EAF3DE; font-weight: bold; }
+  h1 { font-size: 17px; margin: 0; }
+  label { display: block; font-size: 12px; color: #5f5e5a; margin-bottom: 4px; margin-top: 14px; }
+  input { width: 100%; padding: 9px 10px; border-radius: 6px; border: 1px solid #d3d1c7; font-size: 14px; box-sizing: border-box; }
+  button { width: 100%; margin-top: 20px; background: #3B6D11; color: #EAF3DE; border: none; padding: 10px; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; }
+  .error { color: #A32D2D; font-size: 13px; margin-top: 10px; display: none; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo"><div class="logo-icon">M</div><h1>MI CAMPO</h1></div>
+    <form id="loginForm">
+      <label>Usuario</label>
+      <input type="text" id="usuario" required autofocus>
+      <label>Contraseña</label>
+      <input type="password" id="password" required>
+      <div class="error" id="error"></div>
+      <button type="submit">Ingresar</button>
+    </form>
+  </div>
+  <script>
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const usuario = document.getElementById('usuario').value;
+      const password = document.getElementById('password').value;
+      const errorEl = document.getElementById('error');
+      errorEl.style.display = 'none';
+      try {
+        const res = await fetch('/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ usuario, password }),
+        });
+        if (!res.ok) {
+          const data = await res.json();
+          errorEl.textContent = data.error || 'Error al ingresar';
+          errorEl.style.display = 'block';
+          return;
+        }
+        const user = await res.json();
+        window.location.href = user.rol === 'admin' ? '/admin' : '/productor';
+      } catch (err) {
+        errorEl.textContent = 'No se pudo conectar con el servidor';
+        errorEl.style.display = 'block';
+      }
+    });
+  </script>
+</body>
+</html>
