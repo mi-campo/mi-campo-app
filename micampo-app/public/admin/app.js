@@ -1,4 +1,3 @@
-import { jsxDEV as _jsxDEV, Fragment as _Fragment } from "react/jsx-dev-runtime";
 const {
   useState,
   useEffect,
@@ -64,35 +63,32 @@ function Card({
   children,
   style
 }) {
-  return /*#__PURE__*/_jsxDEV("div", {
+  return /*#__PURE__*/React.createElement("div", {
     style: {
       background: '#fff',
       border: '1px solid #e3e1d8',
       borderRadius: 12,
       padding: 16,
       ...style
-    },
-    children: children
-  }, void 0, false);
+    }
+  }, children);
 }
 function Field({
   label,
   children
 }) {
-  return /*#__PURE__*/_jsxDEV("div", {
+  return /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       flexDirection: 'column',
       gap: 4
-    },
-    children: [/*#__PURE__*/_jsxDEV("label", {
-      style: {
-        fontSize: 12,
-        color: '#5f5e5a'
-      },
-      children: label
-    }, void 0, false), children]
-  }, void 0, true);
+    }
+  }, /*#__PURE__*/React.createElement("label", {
+    style: {
+      fontSize: 12,
+      color: '#5f5e5a'
+    }
+  }, label), children);
 }
 function App() {
   const [data, setData] = useState(null);
@@ -127,121 +123,109 @@ function App() {
     });
     window.location.href = '/login.html';
   };
-  if (!data || !me) return /*#__PURE__*/_jsxDEV("div", {
+  if (!data || !me) return /*#__PURE__*/React.createElement("div", {
     style: {
       padding: 40,
       color: '#888780'
-    },
-    children: "Cargando MI CAMPO…"
-  }, void 0, false);
+    }
+  }, "Cargando MI CAMPO…");
   const tabs = [['resumen', 'Resumen'], ['campos', 'Campos y lotes'], ['riego', 'Riego'], ['insumos', 'Insumos'], ['proveedores', 'Proveedores'], ['actividades', 'Actividades'], ['clientes', 'Clientes'], ['usuarios', 'Usuarios'], ['consultas', 'Consultas']];
-  return /*#__PURE__*/_jsxDEV("div", {
+  return /*#__PURE__*/React.createElement("div", {
     style: {
       maxWidth: 1000,
       margin: '0 auto'
-    },
-    children: [/*#__PURE__*/_jsxDEV("div", {
-      style: {
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        padding: '18px 4px',
-        borderBottom: '1px solid #e3e1d8'
-      },
-      children: [/*#__PURE__*/_jsxDEV("div", {
-        style: {
-          display: 'flex',
-          alignItems: 'center',
-          gap: 10
-        },
-        children: [/*#__PURE__*/_jsxDEV("div", {
-          style: {
-            width: 34,
-            height: 34,
-            borderRadius: 8,
-            background: '#3B6D11',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: '#EAF3DE',
-            fontWeight: 'bold'
-          },
-          children: "M"
-        }, void 0, false), /*#__PURE__*/_jsxDEV("div", {
-          children: [/*#__PURE__*/_jsxDEV("div", {
-            style: {
-              fontSize: 17,
-              fontWeight: 500
-            },
-            children: "MI CAMPO"
-          }, void 0, false), /*#__PURE__*/_jsxDEV("div", {
-            style: {
-              fontSize: 12,
-              color: '#888780'
-            },
-            children: [me.nombre || me.usuario, " · ", saving ? 'Guardando…' : 'Guardado']
-          }, void 0, true)]
-        }, void 0, true)]
-      }, void 0, true), /*#__PURE__*/_jsxDEV("button", {
-        onClick: salir,
-        style: {
-          ...btnSecondary
-        },
-        children: "Salir"
-      }, void 0, false)]
-    }, void 0, true), /*#__PURE__*/_jsxDEV("div", {
-      style: {
-        display: 'flex',
-        gap: 4,
-        padding: '10px 4px 0',
-        flexWrap: 'wrap'
-      },
-      children: tabs.map(([id, label]) => /*#__PURE__*/_jsxDEV("button", {
-        onClick: () => setTab(id),
-        style: {
-          padding: '8px 14px',
-          borderRadius: '8px 8px 0 0',
-          border: 'none',
-          cursor: 'pointer',
-          background: tab === id ? '#EAF3DE' : 'transparent',
-          color: tab === id ? '#27500A' : '#5f5e5a',
-          fontWeight: tab === id ? 500 : 400,
-          fontSize: 14
-        },
-        children: label
-      }, id, false))
-    }, void 0, false), /*#__PURE__*/_jsxDEV("div", {
-      style: {
-        padding: '20px 4px'
-      },
-      children: [tab === 'resumen' && /*#__PURE__*/_jsxDEV(Resumen, {
-        data: data
-      }, void 0, false), tab === 'campos' && /*#__PURE__*/_jsxDEV(Campos, {
-        data: data,
-        update: update
-      }, void 0, false), tab === 'riego' && /*#__PURE__*/_jsxDEV(Riego, {
-        data: data,
-        update: update
-      }, void 0, false), tab === 'insumos' && /*#__PURE__*/_jsxDEV(Insumos, {
-        data: data,
-        update: update
-      }, void 0, false), tab === 'proveedores' && /*#__PURE__*/_jsxDEV(Proveedores, {
-        data: data,
-        update: update
-      }, void 0, false), tab === 'actividades' && /*#__PURE__*/_jsxDEV(Actividades, {
-        data: data,
-        update: update
-      }, void 0, false), tab === 'clientes' && /*#__PURE__*/_jsxDEV(Clientes, {
-        data: data,
-        update: update
-      }, void 0, false), tab === 'usuarios' && /*#__PURE__*/_jsxDEV(Usuarios, {
-        data: data
-      }, void 0, false), tab === 'consultas' && /*#__PURE__*/_jsxDEV(Consultas, {
-        data: data,
-        update: update
-      }, void 0, false)]
-    }, void 0, true)]
-  }, void 0, true);
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      padding: '18px 4px',
+      borderBottom: '1px solid #e3e1d8'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: 10
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      width: 34,
+      height: 34,
+      borderRadius: 8,
+      background: '#3B6D11',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      color: '#EAF3DE',
+      fontWeight: 'bold'
+    }
+  }, "M"), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 17,
+      fontWeight: 500
+    }
+  }, "MI CAMPO"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: '#888780'
+    }
+  }, me.nombre || me.usuario, " · ", saving ? 'Guardando…' : 'Guardado'))), /*#__PURE__*/React.createElement("button", {
+    onClick: salir,
+    style: {
+      ...btnSecondary
+    }
+  }, "Salir")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      gap: 4,
+      padding: '10px 4px 0',
+      flexWrap: 'wrap'
+    }
+  }, tabs.map(([id, label]) => /*#__PURE__*/React.createElement("button", {
+    key: id,
+    onClick: () => setTab(id),
+    style: {
+      padding: '8px 14px',
+      borderRadius: '8px 8px 0 0',
+      border: 'none',
+      cursor: 'pointer',
+      background: tab === id ? '#EAF3DE' : 'transparent',
+      color: tab === id ? '#27500A' : '#5f5e5a',
+      fontWeight: tab === id ? 500 : 400,
+      fontSize: 14
+    }
+  }, label))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: '20px 4px'
+    }
+  }, tab === 'resumen' && /*#__PURE__*/React.createElement(Resumen, {
+    data: data
+  }), tab === 'campos' && /*#__PURE__*/React.createElement(Campos, {
+    data: data,
+    update: update
+  }), tab === 'riego' && /*#__PURE__*/React.createElement(Riego, {
+    data: data,
+    update: update
+  }), tab === 'insumos' && /*#__PURE__*/React.createElement(Insumos, {
+    data: data,
+    update: update
+  }), tab === 'proveedores' && /*#__PURE__*/React.createElement(Proveedores, {
+    data: data,
+    update: update
+  }), tab === 'actividades' && /*#__PURE__*/React.createElement(Actividades, {
+    data: data,
+    update: update
+  }), tab === 'clientes' && /*#__PURE__*/React.createElement(Clientes, {
+    data: data,
+    update: update
+  }), tab === 'usuarios' && /*#__PURE__*/React.createElement(Usuarios, {
+    data: data
+  }), tab === 'consultas' && /*#__PURE__*/React.createElement(Consultas, {
+    data: data,
+    update: update
+  })));
 }
 
 /* ---------- RESUMEN ---------- */
@@ -286,180 +270,141 @@ function Resumen({
       consultasPendientes
     };
   }, [data]);
-  return /*#__PURE__*/_jsxDEV("div", {
+  return /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       flexDirection: 'column',
       gap: 16
-    },
-    children: [/*#__PURE__*/_jsxDEV("div", {
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'grid',
+      gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+      gap: 12
+    }
+  }, /*#__PURE__*/React.createElement(Card, null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: '#888780'
+    }
+  }, "Campos"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 22,
+      fontWeight: 500
+    }
+  }, data.campos.length)), /*#__PURE__*/React.createElement(Card, null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: '#888780'
+    }
+  }, "Hectáreas totales"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 22,
+      fontWeight: 500
+    }
+  }, stats.haTotal.toLocaleString('es-AR'))), /*#__PURE__*/React.createElement(Card, null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: '#888780'
+    }
+  }, "Gasto acumulado"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 22,
+      fontWeight: 500
+    }
+  }, fmtMoney(stats.gastoTotal))), /*#__PURE__*/React.createElement(Card, null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: '#888780'
+    }
+  }, "Consultas pendientes"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 22,
+      fontWeight: 500,
+      color: stats.consultasPendientes > 0 ? '#854F0B' : undefined
+    }
+  }, stats.consultasPendientes))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'grid',
+      gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+      gap: 12
+    }
+  }, /*#__PURE__*/React.createElement(Card, null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: 500,
+      marginBottom: 8
+    }
+  }, "Presupuesto"), stats.camposPasados.length === 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 13,
+      color: '#888780'
+    }
+  }, "Ningún campo se pasó del presupuesto."), stats.camposPasados.map(c => /*#__PURE__*/React.createElement("div", {
+    key: c.id,
+    style: {
+      fontSize: 13,
+      color: '#A32D2D',
+      padding: '4px 0'
+    }
+  }, c.nombre, ": ", fmtMoney(stats.gastoPorCampo[c.nombre]?.gasto), " de ", fmtMoney(c.presupuesto)))), /*#__PURE__*/React.createElement(Card, null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: 500,
+      marginBottom: 8
+    }
+  }, "Stock crítico"), stats.stockBajo.length === 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 13,
+      color: '#888780'
+    }
+  }, "Todo dentro del mínimo."), stats.stockBajo.map(i => /*#__PURE__*/React.createElement("div", {
+    key: i.id,
+    style: {
+      fontSize: 13,
+      color: '#A32D2D',
+      padding: '4px 0'
+    }
+  }, i.nombre, ": quedan ", i.stock, " ", i.unidad))), /*#__PURE__*/React.createElement(Card, null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: 500,
+      marginBottom: 8
+    }
+  }, "Actividad reciente"), data.actividades.length === 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 13,
+      color: '#888780'
+    }
+  }, "Sin actividades todavía."), [...data.actividades].sort((a, b) => (b.fecha || '').localeCompare(a.fecha || '')).slice(0, 5).map(act => {
+    const lote = data.lotes.find(l => l.id === act.loteId);
+    const campo = data.campos.find(c => c.id === lote?.campoId);
+    return /*#__PURE__*/React.createElement("div", {
+      key: act.id,
       style: {
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
-        gap: 12
-      },
-      children: [/*#__PURE__*/_jsxDEV(Card, {
-        children: [/*#__PURE__*/_jsxDEV("div", {
-          style: {
-            fontSize: 12,
-            color: '#888780'
-          },
-          children: "Campos"
-        }, void 0, false), /*#__PURE__*/_jsxDEV("div", {
-          style: {
-            fontSize: 22,
-            fontWeight: 500
-          },
-          children: data.campos.length
-        }, void 0, false)]
-      }, void 0, true), /*#__PURE__*/_jsxDEV(Card, {
-        children: [/*#__PURE__*/_jsxDEV("div", {
-          style: {
-            fontSize: 12,
-            color: '#888780'
-          },
-          children: "Hectáreas totales"
-        }, void 0, false), /*#__PURE__*/_jsxDEV("div", {
-          style: {
-            fontSize: 22,
-            fontWeight: 500
-          },
-          children: stats.haTotal.toLocaleString('es-AR')
-        }, void 0, false)]
-      }, void 0, true), /*#__PURE__*/_jsxDEV(Card, {
-        children: [/*#__PURE__*/_jsxDEV("div", {
-          style: {
-            fontSize: 12,
-            color: '#888780'
-          },
-          children: "Gasto acumulado"
-        }, void 0, false), /*#__PURE__*/_jsxDEV("div", {
-          style: {
-            fontSize: 22,
-            fontWeight: 500
-          },
-          children: fmtMoney(stats.gastoTotal)
-        }, void 0, false)]
-      }, void 0, true), /*#__PURE__*/_jsxDEV(Card, {
-        children: [/*#__PURE__*/_jsxDEV("div", {
-          style: {
-            fontSize: 12,
-            color: '#888780'
-          },
-          children: "Consultas pendientes"
-        }, void 0, false), /*#__PURE__*/_jsxDEV("div", {
-          style: {
-            fontSize: 22,
-            fontWeight: 500,
-            color: stats.consultasPendientes > 0 ? '#854F0B' : undefined
-          },
-          children: stats.consultasPendientes
-        }, void 0, false)]
-      }, void 0, true)]
-    }, void 0, true), /*#__PURE__*/_jsxDEV("div", {
+        fontSize: 13,
+        padding: '4px 0'
+      }
+    }, /*#__PURE__*/React.createElement("strong", null, act.tipo), " — ", campo?.nombre, "/", lote?.nombre, " — ", act.fecha);
+  }))), /*#__PURE__*/React.createElement(Card, null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: 500,
+      marginBottom: 10
+    }
+  }, "Gasto por campo"), Object.entries(stats.gastoPorCampo).map(([nombre, v]) => {
+    const pasado = v.presupuesto > 0 && v.gasto > v.presupuesto;
+    return /*#__PURE__*/React.createElement("div", {
+      key: nombre,
       style: {
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
-        gap: 12
-      },
-      children: [/*#__PURE__*/_jsxDEV(Card, {
-        children: [/*#__PURE__*/_jsxDEV("div", {
-          style: {
-            fontWeight: 500,
-            marginBottom: 8
-          },
-          children: "Presupuesto"
-        }, void 0, false), stats.camposPasados.length === 0 && /*#__PURE__*/_jsxDEV("div", {
-          style: {
-            fontSize: 13,
-            color: '#888780'
-          },
-          children: "Ningún campo se pasó del presupuesto."
-        }, void 0, false), stats.camposPasados.map(c => /*#__PURE__*/_jsxDEV("div", {
-          style: {
-            fontSize: 13,
-            color: '#A32D2D',
-            padding: '4px 0'
-          },
-          children: [c.nombre, ": ", fmtMoney(stats.gastoPorCampo[c.nombre]?.gasto), " de ", fmtMoney(c.presupuesto)]
-        }, c.id, true))]
-      }, void 0, true), /*#__PURE__*/_jsxDEV(Card, {
-        children: [/*#__PURE__*/_jsxDEV("div", {
-          style: {
-            fontWeight: 500,
-            marginBottom: 8
-          },
-          children: "Stock crítico"
-        }, void 0, false), stats.stockBajo.length === 0 && /*#__PURE__*/_jsxDEV("div", {
-          style: {
-            fontSize: 13,
-            color: '#888780'
-          },
-          children: "Todo dentro del mínimo."
-        }, void 0, false), stats.stockBajo.map(i => /*#__PURE__*/_jsxDEV("div", {
-          style: {
-            fontSize: 13,
-            color: '#A32D2D',
-            padding: '4px 0'
-          },
-          children: [i.nombre, ": quedan ", i.stock, " ", i.unidad]
-        }, i.id, true))]
-      }, void 0, true), /*#__PURE__*/_jsxDEV(Card, {
-        children: [/*#__PURE__*/_jsxDEV("div", {
-          style: {
-            fontWeight: 500,
-            marginBottom: 8
-          },
-          children: "Actividad reciente"
-        }, void 0, false), data.actividades.length === 0 && /*#__PURE__*/_jsxDEV("div", {
-          style: {
-            fontSize: 13,
-            color: '#888780'
-          },
-          children: "Sin actividades todavía."
-        }, void 0, false), [...data.actividades].sort((a, b) => (b.fecha || '').localeCompare(a.fecha || '')).slice(0, 5).map(act => {
-          const lote = data.lotes.find(l => l.id === act.loteId);
-          const campo = data.campos.find(c => c.id === lote?.campoId);
-          return /*#__PURE__*/_jsxDEV("div", {
-            style: {
-              fontSize: 13,
-              padding: '4px 0'
-            },
-            children: [/*#__PURE__*/_jsxDEV("strong", {
-              children: act.tipo
-            }, void 0, false), " — ", campo?.nombre, "/", lote?.nombre, " — ", act.fecha]
-          }, act.id, true);
-        })]
-      }, void 0, true)]
-    }, void 0, true), /*#__PURE__*/_jsxDEV(Card, {
-      children: [/*#__PURE__*/_jsxDEV("div", {
-        style: {
-          fontWeight: 500,
-          marginBottom: 10
-        },
-        children: "Gasto por campo"
-      }, void 0, false), Object.entries(stats.gastoPorCampo).map(([nombre, v]) => {
-        const pasado = v.presupuesto > 0 && v.gasto > v.presupuesto;
-        return /*#__PURE__*/_jsxDEV("div", {
-          style: {
-            display: 'flex',
-            justifyContent: 'space-between',
-            padding: '8px 0',
-            borderBottom: '1px solid #f1efe8',
-            fontSize: 14
-          },
-          children: [/*#__PURE__*/_jsxDEV("span", {
-            children: nombre
-          }, void 0, false), /*#__PURE__*/_jsxDEV("span", {
-            style: {
-              color: pasado ? '#A32D2D' : '#5f5e5a'
-            },
-            children: [fmtMoney(v.gasto), v.presupuesto > 0 ? ` / ${fmtMoney(v.presupuesto)}` : '', v.ha > 0 ? ` · ${(v.gasto / v.ha).toFixed(1)} USD/ha` : '']
-          }, void 0, true)]
-        }, nombre, true);
-      })]
-    }, void 0, true)]
-  }, void 0, true);
+        display: 'flex',
+        justifyContent: 'space-between',
+        padding: '8px 0',
+        borderBottom: '1px solid #f1efe8',
+        fontSize: 14
+      }
+    }, /*#__PURE__*/React.createElement("span", null, nombre), /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: pasado ? '#A32D2D' : '#5f5e5a'
+      }
+    }, fmtMoney(v.gasto), v.presupuesto > 0 ? ` / ${fmtMoney(v.presupuesto)}` : '', v.ha > 0 ? ` · ${(v.gasto / v.ha).toFixed(1)} USD/ha` : ''));
+  })));
 }
 
 /* ---------- CAMPOS Y LOTES ---------- */
@@ -512,219 +457,190 @@ function Campos({
     }));
   };
   const delLote = id => update('lotes', l => l.filter(x => x.id !== id));
-  return /*#__PURE__*/_jsxDEV("div", {
+  return /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       flexDirection: 'column',
       gap: 14
+    }
+  }, /*#__PURE__*/React.createElement(Card, null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: 500,
+      marginBottom: 10
+    }
+  }, "Nuevo campo"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      gap: 10,
+      flexWrap: 'wrap'
+    }
+  }, /*#__PURE__*/React.createElement("input", {
+    style: {
+      ...inputStyle,
+      flex: 1,
+      minWidth: 140
     },
-    children: [/*#__PURE__*/_jsxDEV(Card, {
-      children: [/*#__PURE__*/_jsxDEV("div", {
+    placeholder: "Nombre del campo",
+    value: nuevoCampo,
+    onChange: e => setNuevoCampo(e.target.value)
+  }), /*#__PURE__*/React.createElement("select", {
+    style: inputStyle,
+    value: clienteCampo,
+    onChange: e => setClienteCampo(e.target.value)
+  }, /*#__PURE__*/React.createElement("option", {
+    value: ""
+  }, "Propio"), data.clientes.map(c => /*#__PURE__*/React.createElement("option", {
+    key: c.id,
+    value: c.id
+  }, c.nombre))), /*#__PURE__*/React.createElement("input", {
+    style: {
+      ...inputStyle,
+      width: 150
+    },
+    type: "number",
+    placeholder: "Presupuesto USD",
+    value: presupuestoCampo,
+    onChange: e => setPresupuestoCampo(e.target.value)
+  }), /*#__PURE__*/React.createElement("input", {
+    style: {
+      ...inputStyle,
+      width: 110
+    },
+    type: "number",
+    placeholder: "% productor",
+    value: porcentajeCampo,
+    onChange: e => setPorcentajeCampo(e.target.value)
+  }), /*#__PURE__*/React.createElement("button", {
+    onClick: addCampo,
+    style: btnPrimary
+  }, "+ Agregar"))), data.campos.map(campo => {
+    const lotes = data.lotes.filter(l => l.campoId === campo.id);
+    const cliente = data.clientes.find(c => c.id === campo.clienteId);
+    const f = nuevoLote[campo.id] || {
+      nombre: '',
+      hectareas: '',
+      modo: 'Riego'
+    };
+    return /*#__PURE__*/React.createElement(Card, {
+      key: campo.id
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center'
+      }
+    }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontWeight: 500
+      }
+    }, campo.nombre), cliente && /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 12,
+        color: '#993C1D',
+        marginLeft: 8
+      }
+    }, "Cliente: ", cliente.nombre, " (", campo.porcentajeProductor || 0, "%)")), /*#__PURE__*/React.createElement("button", {
+      onClick: () => delCampo(campo.id),
+      style: btnGhost
+    }, "🗑")), /*#__PURE__*/React.createElement("div", {
+      style: {
+        marginTop: 10,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 6
+      }
+    }, lotes.map(l => {
+      const actsLote = data.actividades.filter(a => a.loteId === l.id);
+      const gastoLote = actsLote.reduce((s, a) => s + (a.costoTotal || 0), 0);
+      const ultima = [...actsLote].sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''))[0];
+      const mmAcumulados = actsLote.filter(a => a.tipo === 'Riego' && a.mm).reduce((s, a) => s + Number(a.mm), 0);
+      return /*#__PURE__*/React.createElement("div", {
+        key: l.id,
         style: {
-          fontWeight: 500,
-          marginBottom: 10
-        },
-        children: "Nuevo campo"
-      }, void 0, false), /*#__PURE__*/_jsxDEV("div", {
+          padding: '6px 0',
+          borderTop: '1px solid #f1efe8'
+        }
+      }, /*#__PURE__*/React.createElement("div", {
         style: {
           display: 'flex',
-          gap: 10,
-          flexWrap: 'wrap'
-        },
-        children: [/*#__PURE__*/_jsxDEV("input", {
-          style: {
-            ...inputStyle,
-            flex: 1,
-            minWidth: 140
-          },
-          placeholder: "Nombre del campo",
-          value: nuevoCampo,
-          onChange: e => setNuevoCampo(e.target.value)
-        }, void 0, false), /*#__PURE__*/_jsxDEV("select", {
-          style: inputStyle,
-          value: clienteCampo,
-          onChange: e => setClienteCampo(e.target.value),
-          children: [/*#__PURE__*/_jsxDEV("option", {
-            value: "",
-            children: "Propio"
-          }, void 0, false), data.clientes.map(c => /*#__PURE__*/_jsxDEV("option", {
-            value: c.id,
-            children: c.nombre
-          }, c.id, false))]
-        }, void 0, true), /*#__PURE__*/_jsxDEV("input", {
-          style: {
-            ...inputStyle,
-            width: 150
-          },
-          type: "number",
-          placeholder: "Presupuesto USD",
-          value: presupuestoCampo,
-          onChange: e => setPresupuestoCampo(e.target.value)
-        }, void 0, false), /*#__PURE__*/_jsxDEV("input", {
-          style: {
-            ...inputStyle,
-            width: 110
-          },
-          type: "number",
-          placeholder: "% productor",
-          value: porcentajeCampo,
-          onChange: e => setPorcentajeCampo(e.target.value)
-        }, void 0, false), /*#__PURE__*/_jsxDEV("button", {
-          onClick: addCampo,
-          style: btnPrimary,
-          children: "+ Agregar"
-        }, void 0, false)]
-      }, void 0, true)]
-    }, void 0, true), data.campos.map(campo => {
-      const lotes = data.lotes.filter(l => l.campoId === campo.id);
-      const cliente = data.clientes.find(c => c.id === campo.clienteId);
-      const f = nuevoLote[campo.id] || {
-        nombre: '',
-        hectareas: '',
-        modo: 'Riego'
-      };
-      return /*#__PURE__*/_jsxDEV(Card, {
-        children: [/*#__PURE__*/_jsxDEV("div", {
-          style: {
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center'
-          },
-          children: [/*#__PURE__*/_jsxDEV("div", {
-            children: [/*#__PURE__*/_jsxDEV("span", {
-              style: {
-                fontWeight: 500
-              },
-              children: campo.nombre
-            }, void 0, false), cliente && /*#__PURE__*/_jsxDEV("span", {
-              style: {
-                fontSize: 12,
-                color: '#993C1D',
-                marginLeft: 8
-              },
-              children: ["Cliente: ", cliente.nombre, " (", campo.porcentajeProductor || 0, "%)"]
-            }, void 0, true)]
-          }, void 0, true), /*#__PURE__*/_jsxDEV("button", {
-            onClick: () => delCampo(campo.id),
-            style: btnGhost,
-            children: "🗑"
-          }, void 0, false)]
-        }, void 0, true), /*#__PURE__*/_jsxDEV("div", {
-          style: {
-            marginTop: 10,
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 6
-          },
-          children: [lotes.map(l => {
-            const actsLote = data.actividades.filter(a => a.loteId === l.id);
-            const gastoLote = actsLote.reduce((s, a) => s + (a.costoTotal || 0), 0);
-            const ultima = [...actsLote].sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''))[0];
-            const mmAcumulados = actsLote.filter(a => a.tipo === 'Riego' && a.mm).reduce((s, a) => s + Number(a.mm), 0);
-            return /*#__PURE__*/_jsxDEV("div", {
-              style: {
-                padding: '6px 0',
-                borderTop: '1px solid #f1efe8'
-              },
-              children: [/*#__PURE__*/_jsxDEV("div", {
-                style: {
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  fontSize: 14
-                },
-                children: [/*#__PURE__*/_jsxDEV("span", {
-                  children: [l.nombre, " — ", l.hectareas, " ha (", l.modo || 'Riego', ")"]
-                }, void 0, true), /*#__PURE__*/_jsxDEV("div", {
-                  style: {
-                    display: 'flex',
-                    gap: 10
-                  },
-                  children: [/*#__PURE__*/_jsxDEV("button", {
-                    onClick: () => setLoteAbierto(loteAbierto === l.id ? null : l.id),
-                    style: {
-                      ...btnSecondary,
-                      padding: '4px 10px'
-                    },
-                    children: loteAbierto === l.id ? 'Cerrar' : 'Análisis'
-                  }, void 0, false), /*#__PURE__*/_jsxDEV("button", {
-                    onClick: () => delLote(l.id),
-                    style: btnGhost,
-                    children: "✕"
-                  }, void 0, false)]
-                }, void 0, true)]
-              }, void 0, true), actsLote.length > 0 && /*#__PURE__*/_jsxDEV("div", {
-                style: {
-                  fontSize: 12,
-                  color: '#888780',
-                  marginTop: 2
-                },
-                children: ["Gasto: ", fmtMoney(gastoLote), l.hectareas > 0 ? ` (${(gastoLote / l.hectareas).toFixed(1)} USD/ha)` : '', ultima ? ` · Última: ${ultima.tipo} ${ultima.fecha}` : '', mmAcumulados > 0 ? ` · Riego: ${mmAcumulados}mm` : '']
-              }, void 0, true), loteAbierto === l.id && /*#__PURE__*/_jsxDEV(LoteDetalle, {
-                lote: l,
-                data: data,
-                update: update
-              }, void 0, false)]
-            }, l.id, true);
-          }), /*#__PURE__*/_jsxDEV("div", {
-            style: {
-              display: 'flex',
-              gap: 8,
-              marginTop: 6
-            },
-            children: [/*#__PURE__*/_jsxDEV("input", {
-              style: {
-                ...inputStyle,
-                flex: 1
-              },
-              placeholder: "Nombre de lote",
-              value: f.nombre,
-              onChange: e => setNuevoLote(p => ({
-                ...p,
-                [campo.id]: {
-                  ...f,
-                  nombre: e.target.value
-                }
-              }))
-            }, void 0, false), /*#__PURE__*/_jsxDEV("input", {
-              style: {
-                ...inputStyle,
-                width: 90
-              },
-              placeholder: "ha",
-              type: "number",
-              value: f.hectareas,
-              onChange: e => setNuevoLote(p => ({
-                ...p,
-                [campo.id]: {
-                  ...f,
-                  hectareas: e.target.value
-                }
-              }))
-            }, void 0, false), /*#__PURE__*/_jsxDEV("select", {
-              style: inputStyle,
-              value: f.modo,
-              onChange: e => setNuevoLote(p => ({
-                ...p,
-                [campo.id]: {
-                  ...f,
-                  modo: e.target.value
-                }
-              })),
-              children: [/*#__PURE__*/_jsxDEV("option", {
-                children: "Riego"
-              }, void 0, false), /*#__PURE__*/_jsxDEV("option", {
-                children: "Secano"
-              }, void 0, false)]
-            }, void 0, true), /*#__PURE__*/_jsxDEV("button", {
-              onClick: () => addLote(campo.id),
-              style: btnSecondary,
-              children: "+ Lote"
-            }, void 0, false)]
-          }, void 0, true)]
-        }, void 0, true)]
-      }, campo.id, true);
-    })]
-  }, void 0, true);
+          justifyContent: 'space-between',
+          fontSize: 14
+        }
+      }, /*#__PURE__*/React.createElement("span", null, l.nombre, " — ", l.hectareas, " ha (", l.modo || 'Riego', ")"), /*#__PURE__*/React.createElement("div", {
+        style: {
+          display: 'flex',
+          gap: 10
+        }
+      }, /*#__PURE__*/React.createElement("button", {
+        onClick: () => setLoteAbierto(loteAbierto === l.id ? null : l.id),
+        style: {
+          ...btnSecondary,
+          padding: '4px 10px'
+        }
+      }, loteAbierto === l.id ? 'Cerrar' : 'Análisis'), /*#__PURE__*/React.createElement("button", {
+        onClick: () => delLote(l.id),
+        style: btnGhost
+      }, "✕"))), actsLote.length > 0 && /*#__PURE__*/React.createElement("div", {
+        style: {
+          fontSize: 12,
+          color: '#888780',
+          marginTop: 2
+        }
+      }, "Gasto: ", fmtMoney(gastoLote), l.hectareas > 0 ? ` (${(gastoLote / l.hectareas).toFixed(1)} USD/ha)` : '', ultima ? ` · Última: ${ultima.tipo} ${ultima.fecha}` : '', mmAcumulados > 0 ? ` · Riego: ${mmAcumulados}mm` : ''), loteAbierto === l.id && /*#__PURE__*/React.createElement(LoteDetalle, {
+        lote: l,
+        data: data,
+        update: update
+      }));
+    }), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: 'flex',
+        gap: 8,
+        marginTop: 6
+      }
+    }, /*#__PURE__*/React.createElement("input", {
+      style: {
+        ...inputStyle,
+        flex: 1
+      },
+      placeholder: "Nombre de lote",
+      value: f.nombre,
+      onChange: e => setNuevoLote(p => ({
+        ...p,
+        [campo.id]: {
+          ...f,
+          nombre: e.target.value
+        }
+      }))
+    }), /*#__PURE__*/React.createElement("input", {
+      style: {
+        ...inputStyle,
+        width: 90
+      },
+      placeholder: "ha",
+      type: "number",
+      value: f.hectareas,
+      onChange: e => setNuevoLote(p => ({
+        ...p,
+        [campo.id]: {
+          ...f,
+          hectareas: e.target.value
+        }
+      }))
+    }), /*#__PURE__*/React.createElement("select", {
+      style: inputStyle,
+      value: f.modo,
+      onChange: e => setNuevoLote(p => ({
+        ...p,
+        [campo.id]: {
+          ...f,
+          modo: e.target.value
+        }
+      }))
+    }, /*#__PURE__*/React.createElement("option", null, "Riego"), /*#__PURE__*/React.createElement("option", null, "Secano")), /*#__PURE__*/React.createElement("button", {
+      onClick: () => addLote(campo.id),
+      style: btnSecondary
+    }, "+ Lote"))));
+  }));
 }
 
 /* ---------- CICLOS DE CULTIVO ---------- */
@@ -773,142 +689,114 @@ function Ciclos({
     fechaFin: hoyStr()
   } : c));
   const borrarCiclo = id => update('ciclos', cs => cs.filter(c => c.id !== id));
-  return /*#__PURE__*/_jsxDEV("div", {
-    children: [/*#__PURE__*/_jsxDEV("div", {
+  return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: 500,
+      fontSize: 13,
+      marginBottom: 8
+    }
+  }, "Ciclos de cultivo"), abierto ? /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: 10,
+      background: '#EAF3DE',
+      borderRadius: 8,
+      marginBottom: 10,
+      fontSize: 13
+    }
+  }, /*#__PURE__*/React.createElement("strong", null, "En curso:"), " ", abierto.tipo, " — ", abierto.cultivo, " (", abierto.campaña || 's/campaña', ") desde ", abierto.fechaInicio, abierto.alquiler > 0 && /*#__PURE__*/React.createElement("span", null, " · Alquiler asignado: ", fmtMoney(abierto.alquiler)), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 6
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: () => cerrarCiclo(abierto.id),
+    style: btnSecondary
+  }, "Cerrar este ciclo"))) : /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'grid',
+      gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))',
+      gap: 8,
+      marginBottom: 10
+    }
+  }, /*#__PURE__*/React.createElement(Field, {
+    label: "Cultivo"
+  }, /*#__PURE__*/React.createElement("input", {
+    style: inputStyle,
+    value: form.cultivo,
+    onChange: e => setForm({
+      ...form,
+      cultivo: e.target.value
+    }),
+    placeholder: "ej. Trigo"
+  })), /*#__PURE__*/React.createElement(Field, {
+    label: "Tipo"
+  }, /*#__PURE__*/React.createElement("select", {
+    style: inputStyle,
+    value: form.tipo,
+    onChange: e => setForm({
+      ...form,
+      tipo: e.target.value
+    })
+  }, /*#__PURE__*/React.createElement("option", null, "Invierno"), /*#__PURE__*/React.createElement("option", null, "Verano"))), /*#__PURE__*/React.createElement(Field, {
+    label: "Campaña"
+  }, /*#__PURE__*/React.createElement("input", {
+    style: inputStyle,
+    value: form.campaña,
+    onChange: e => setForm({
+      ...form,
+      campaña: e.target.value
+    }),
+    placeholder: "ej. 2026"
+  })), /*#__PURE__*/React.createElement(Field, {
+    label: "Alquiler asignado (USD)"
+  }, /*#__PURE__*/React.createElement("input", {
+    style: inputStyle,
+    type: "number",
+    value: form.alquiler,
+    onChange: e => setForm({
+      ...form,
+      alquiler: e.target.value
+    }),
+    placeholder: "opcional"
+  }))), !abierto && /*#__PURE__*/React.createElement("button", {
+    onClick: abrirCiclo,
+    style: btnPrimary
+  }, "+ Abrir nuevo ciclo"), ciclos.length > 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 12
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: '#5f5e5a',
+      marginBottom: 4
+    }
+  }, "Historial"), ciclos.map(c => {
+    const actsCiclo = data.actividades.filter(a => a.cicloId === c.id);
+    const gastoCiclo = actsCiclo.reduce((s, a) => s + (a.costoTotal || 0), 0) + (Number(c.alquiler) || 0);
+    const cargasCiclo = data.cargas.filter(cg => cg.cicloId === c.id);
+    const kgTotal = cargasCiclo.reduce((s, cg) => s + Number(cg.kgDestino || cg.kgCampo || 0), 0);
+    const rendimiento = lote.hectareas > 0 ? kgTotal / 100 / lote.hectareas : 0;
+    return /*#__PURE__*/React.createElement("div", {
+      key: c.id,
       style: {
-        fontWeight: 500,
-        fontSize: 13,
-        marginBottom: 8
-      },
-      children: "Ciclos de cultivo"
-    }, void 0, false), abierto ? /*#__PURE__*/_jsxDEV("div", {
+        fontSize: 12,
+        padding: '6px 0',
+        borderTop: '1px solid #e3e1d8'
+      }
+    }, /*#__PURE__*/React.createElement("div", {
       style: {
-        padding: 10,
-        background: '#EAF3DE',
-        borderRadius: 8,
-        marginBottom: 10,
-        fontSize: 13
-      },
-      children: [/*#__PURE__*/_jsxDEV("strong", {
-        children: "En curso:"
-      }, void 0, false), " ", abierto.tipo, " — ", abierto.cultivo, " (", abierto.campaña || 's/campaña', ") desde ", abierto.fechaInicio, abierto.alquiler > 0 && /*#__PURE__*/_jsxDEV("span", {
-        children: [" · Alquiler asignado: ", fmtMoney(abierto.alquiler)]
-      }, void 0, true), /*#__PURE__*/_jsxDEV("div", {
-        style: {
-          marginTop: 6
-        },
-        children: /*#__PURE__*/_jsxDEV("button", {
-          onClick: () => cerrarCiclo(abierto.id),
-          style: btnSecondary,
-          children: "Cerrar este ciclo"
-        }, void 0, false)
-      }, void 0, false)]
-    }, void 0, true) : /*#__PURE__*/_jsxDEV("div", {
+        display: 'flex',
+        justifyContent: 'space-between'
+      }
+    }, /*#__PURE__*/React.createElement("span", null, c.tipo, " — ", c.cultivo, " (", c.campaña || 's/campaña', ") — ", c.fechaInicio, " a ", c.fechaFin || 'en curso'), /*#__PURE__*/React.createElement("button", {
+      onClick: () => borrarCiclo(c.id),
+      style: btnGhost
+    }, "🗑")), /*#__PURE__*/React.createElement("div", {
       style: {
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))',
-        gap: 8,
-        marginBottom: 10
-      },
-      children: [/*#__PURE__*/_jsxDEV(Field, {
-        label: "Cultivo",
-        children: /*#__PURE__*/_jsxDEV("input", {
-          style: inputStyle,
-          value: form.cultivo,
-          onChange: e => setForm({
-            ...form,
-            cultivo: e.target.value
-          }),
-          placeholder: "ej. Trigo"
-        }, void 0, false)
-      }, void 0, false), /*#__PURE__*/_jsxDEV(Field, {
-        label: "Tipo",
-        children: /*#__PURE__*/_jsxDEV("select", {
-          style: inputStyle,
-          value: form.tipo,
-          onChange: e => setForm({
-            ...form,
-            tipo: e.target.value
-          }),
-          children: [/*#__PURE__*/_jsxDEV("option", {
-            children: "Invierno"
-          }, void 0, false), /*#__PURE__*/_jsxDEV("option", {
-            children: "Verano"
-          }, void 0, false)]
-        }, void 0, true)
-      }, void 0, false), /*#__PURE__*/_jsxDEV(Field, {
-        label: "Campaña",
-        children: /*#__PURE__*/_jsxDEV("input", {
-          style: inputStyle,
-          value: form.campaña,
-          onChange: e => setForm({
-            ...form,
-            campaña: e.target.value
-          }),
-          placeholder: "ej. 2026"
-        }, void 0, false)
-      }, void 0, false), /*#__PURE__*/_jsxDEV(Field, {
-        label: "Alquiler asignado (USD)",
-        children: /*#__PURE__*/_jsxDEV("input", {
-          style: inputStyle,
-          type: "number",
-          value: form.alquiler,
-          onChange: e => setForm({
-            ...form,
-            alquiler: e.target.value
-          }),
-          placeholder: "opcional"
-        }, void 0, false)
-      }, void 0, false)]
-    }, void 0, true), !abierto && /*#__PURE__*/_jsxDEV("button", {
-      onClick: abrirCiclo,
-      style: btnPrimary,
-      children: "+ Abrir nuevo ciclo"
-    }, void 0, false), ciclos.length > 0 && /*#__PURE__*/_jsxDEV("div", {
-      style: {
-        marginTop: 12
-      },
-      children: [/*#__PURE__*/_jsxDEV("div", {
-        style: {
-          fontSize: 12,
-          color: '#5f5e5a',
-          marginBottom: 4
-        },
-        children: "Historial"
-      }, void 0, false), ciclos.map(c => {
-        const actsCiclo = data.actividades.filter(a => a.cicloId === c.id);
-        const gastoCiclo = actsCiclo.reduce((s, a) => s + (a.costoTotal || 0), 0) + (Number(c.alquiler) || 0);
-        const cargasCiclo = data.cargas.filter(cg => cg.cicloId === c.id);
-        const kgTotal = cargasCiclo.reduce((s, cg) => s + Number(cg.kgDestino || cg.kgCampo || 0), 0);
-        const rendimiento = lote.hectareas > 0 ? kgTotal / 100 / lote.hectareas : 0;
-        return /*#__PURE__*/_jsxDEV("div", {
-          style: {
-            fontSize: 12,
-            padding: '6px 0',
-            borderTop: '1px solid #e3e1d8'
-          },
-          children: [/*#__PURE__*/_jsxDEV("div", {
-            style: {
-              display: 'flex',
-              justifyContent: 'space-between'
-            },
-            children: [/*#__PURE__*/_jsxDEV("span", {
-              children: [c.tipo, " — ", c.cultivo, " (", c.campaña || 's/campaña', ") — ", c.fechaInicio, " a ", c.fechaFin || 'en curso']
-            }, void 0, true), /*#__PURE__*/_jsxDEV("button", {
-              onClick: () => borrarCiclo(c.id),
-              style: btnGhost,
-              children: "🗑"
-            }, void 0, false)]
-          }, void 0, true), /*#__PURE__*/_jsxDEV("div", {
-            style: {
-              color: '#888780'
-            },
-            children: ["Gasto total (con alquiler): ", fmtMoney(gastoCiclo), rendimiento > 0 ? ` · Rinde: ${rendimiento.toFixed(1)} qq/ha` : '']
-          }, void 0, true)]
-        }, c.id, true);
-      })]
-    }, void 0, true)]
-  }, void 0, true);
+        color: '#888780'
+      }
+    }, "Gasto total (con alquiler): ", fmtMoney(gastoCiclo), rendimiento > 0 ? ` · Rinde: ${rendimiento.toFixed(1)} qq/ha` : ''));
+  })));
 }
 
 /* ---------- COSECHA (dentro del detalle de lote) ---------- */
@@ -984,181 +872,150 @@ function Cosecha({
       margen
     };
   }, [cargas, lote, gastoLote]);
-  return /*#__PURE__*/_jsxDEV("div", {
-    children: [/*#__PURE__*/_jsxDEV("div", {
-      style: {
-        fontWeight: 500,
-        fontSize: 13,
-        marginBottom: 8
-      },
-      children: ["Cosecha — cargas y reconciliación ", ciclo ? `(ciclo: ${ciclo.tipo} ${ciclo.cultivo})` : '']
-    }, void 0, true), !ciclo && /*#__PURE__*/_jsxDEV("div", {
-      style: {
-        fontSize: 12,
-        color: '#854F0B',
-        marginBottom: 8
-      },
-      children: "No hay un ciclo abierto en este lote — abrí uno abajo para que el rendimiento no se mezcle con años anteriores."
-    }, void 0, false), /*#__PURE__*/_jsxDEV("div", {
+  return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: 500,
+      fontSize: 13,
+      marginBottom: 8
+    }
+  }, "Cosecha — cargas y reconciliación ", ciclo ? `(ciclo: ${ciclo.tipo} ${ciclo.cultivo})` : ''), !ciclo && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: '#854F0B',
+      marginBottom: 8
+    }
+  }, "No hay un ciclo abierto en este lote — abrí uno abajo para que el rendimiento no se mezcle con años anteriores."), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      gap: 8,
+      marginBottom: 8,
+      flexWrap: 'wrap'
+    }
+  }, /*#__PURE__*/React.createElement("input", {
+    style: inputStyle,
+    type: "date",
+    value: form.fecha,
+    onChange: e => setForm({
+      ...form,
+      fecha: e.target.value
+    })
+  }), /*#__PURE__*/React.createElement("input", {
+    style: {
+      ...inputStyle,
+      flex: 1,
+      minWidth: 120
+    },
+    placeholder: "Patente o Silobolsa",
+    value: form.identificador,
+    onChange: e => setForm({
+      ...form,
+      identificador: e.target.value
+    })
+  }), /*#__PURE__*/React.createElement("input", {
+    style: {
+      ...inputStyle,
+      width: 100
+    },
+    type: "number",
+    placeholder: "kg campo",
+    value: form.kgCampo,
+    onChange: e => setForm({
+      ...form,
+      kgCampo: e.target.value
+    })
+  }), /*#__PURE__*/React.createElement("button", {
+    onClick: agregarCarga,
+    style: btnPrimary
+  }, "+ Cargar")), cargas.map(c => {
+    const tiene = c.kgDestino !== '' && c.kgDestino != null;
+    const diff = tiene ? Number(c.kgDestino) - Number(c.kgCampo) : null;
+    return /*#__PURE__*/React.createElement("div", {
+      key: c.id,
       style: {
         display: 'flex',
+        alignItems: 'center',
         gap: 8,
-        marginBottom: 8,
-        flexWrap: 'wrap'
-      },
-      children: [/*#__PURE__*/_jsxDEV("input", {
-        style: inputStyle,
-        type: "date",
-        value: form.fecha,
-        onChange: e => setForm({
-          ...form,
-          fecha: e.target.value
-        })
-      }, void 0, false), /*#__PURE__*/_jsxDEV("input", {
-        style: {
-          ...inputStyle,
-          flex: 1,
-          minWidth: 120
-        },
-        placeholder: "Patente o Silobolsa",
-        value: form.identificador,
-        onChange: e => setForm({
-          ...form,
-          identificador: e.target.value
-        })
-      }, void 0, false), /*#__PURE__*/_jsxDEV("input", {
-        style: {
-          ...inputStyle,
-          width: 100
-        },
-        type: "number",
-        placeholder: "kg campo",
-        value: form.kgCampo,
-        onChange: e => setForm({
-          ...form,
-          kgCampo: e.target.value
-        })
-      }, void 0, false), /*#__PURE__*/_jsxDEV("button", {
-        onClick: agregarCarga,
-        style: btnPrimary,
-        children: "+ Cargar"
-      }, void 0, false)]
-    }, void 0, true), cargas.map(c => {
-      const tiene = c.kgDestino !== '' && c.kgDestino != null;
-      const diff = tiene ? Number(c.kgDestino) - Number(c.kgCampo) : null;
-      return /*#__PURE__*/_jsxDEV("div", {
-        style: {
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8,
-          fontSize: 12,
-          padding: '4px 0',
-          borderTop: '1px solid #e3e1d8'
-        },
-        children: [/*#__PURE__*/_jsxDEV("span", {
-          style: {
-            width: 80
-          },
-          children: c.fecha
-        }, void 0, false), /*#__PURE__*/_jsxDEV("span", {
-          style: {
-            flex: 1
-          },
-          children: c.identificador
-        }, void 0, false), /*#__PURE__*/_jsxDEV("span", {
-          style: {
-            width: 90
-          },
-          children: ["Campo: ", c.kgCampo, "kg"]
-        }, void 0, true), /*#__PURE__*/_jsxDEV("input", {
-          style: {
-            ...inputStyle,
-            width: 90,
-            padding: '4px 6px'
-          },
-          type: "number",
-          placeholder: "kg destino",
-          value: c.kgDestino,
-          onChange: e => setKgDestino(c.id, e.target.value)
-        }, void 0, false), tiene && /*#__PURE__*/_jsxDEV("span", {
-          style: {
-            color: diff === 0 ? '#3B6D11' : diff < 0 ? '#A32D2D' : '#854F0B',
-            width: 90
-          },
-          children: diff === 0 ? 'OK' : diff < 0 ? `Falta ${Math.abs(diff)}` : `Sobra ${diff}`
-        }, void 0, false), /*#__PURE__*/_jsxDEV("button", {
-          onClick: () => delCarga(c.id),
-          style: btnGhost,
-          children: "✕"
-        }, void 0, false)]
-      }, c.id, true);
-    }), /*#__PURE__*/_jsxDEV("div", {
+        fontSize: 12,
+        padding: '4px 0',
+        borderTop: '1px solid #e3e1d8'
+      }
+    }, /*#__PURE__*/React.createElement("span", {
       style: {
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))',
-        gap: 8,
-        margin: '10px 0'
-      },
-      children: [/*#__PURE__*/_jsxDEV(Field, {
-        label: "Precio estimado (USD/qq)",
-        children: /*#__PURE__*/_jsxDEV("input", {
-          style: inputStyle,
-          type: "number",
-          value: precios.estimado,
-          onChange: e => setPrecios({
-            ...precios,
-            estimado: e.target.value
-          }),
-          onBlur: guardarPrecios
-        }, void 0, false)
-      }, void 0, false), /*#__PURE__*/_jsxDEV(Field, {
-        label: "Precio real (USD/qq)",
-        children: /*#__PURE__*/_jsxDEV("input", {
-          style: inputStyle,
-          type: "number",
-          value: precios.real,
-          onChange: e => setPrecios({
-            ...precios,
-            real: e.target.value
-          }),
-          onBlur: guardarPrecios
-        }, void 0, false)
-      }, void 0, false)]
-    }, void 0, true), cargas.length > 0 && /*#__PURE__*/_jsxDEV("div", {
+        width: 80
+      }
+    }, c.fecha), /*#__PURE__*/React.createElement("span", {
       style: {
-        padding: 12,
-        background: '#EAF3DE',
-        borderRadius: 8,
-        fontSize: 13,
-        color: '#27500A'
+        flex: 1
+      }
+    }, c.identificador), /*#__PURE__*/React.createElement("span", {
+      style: {
+        width: 90
+      }
+    }, "Campo: ", c.kgCampo, "kg"), /*#__PURE__*/React.createElement("input", {
+      style: {
+        ...inputStyle,
+        width: 90,
+        padding: '4px 6px'
       },
-      children: [/*#__PURE__*/_jsxDEV("div", {
-        children: ["Total confirmado: ", /*#__PURE__*/_jsxDEV("strong", {
-          children: [totales.totalConfirmado.toFixed(0), " kg"]
-        }, void 0, true), " ", totales.pendientes > 0 ? `(${totales.pendientes} esperando balanza)` : '']
-      }, void 0, true), /*#__PURE__*/_jsxDEV("div", {
-        children: ["Rendimiento: ", /*#__PURE__*/_jsxDEV("strong", {
-          children: [totales.rendimiento.toFixed(1), " qq/ha"]
-        }, void 0, true)]
-      }, void 0, true), totales.precio > 0 && /*#__PURE__*/_jsxDEV(_Fragment, {
-        children: [/*#__PURE__*/_jsxDEV("div", {
-          style: {
-            marginTop: 6
-          },
-          children: ["Ingreso: ", /*#__PURE__*/_jsxDEV("strong", {
-            children: fmtMoney(totales.ingreso)
-          }, void 0, false)]
-        }, void 0, true), /*#__PURE__*/_jsxDEV("div", {
-          children: ["Margen: ", /*#__PURE__*/_jsxDEV("strong", {
-            style: {
-              color: totales.margen >= 0 ? '#27500A' : '#A32D2D'
-            },
-            children: fmtMoney(totales.margen)
-          }, void 0, false)]
-        }, void 0, true)]
-      }, void 0, true)]
-    }, void 0, true)]
-  }, void 0, true);
+      type: "number",
+      placeholder: "kg destino",
+      value: c.kgDestino,
+      onChange: e => setKgDestino(c.id, e.target.value)
+    }), tiene && /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: diff === 0 ? '#3B6D11' : diff < 0 ? '#A32D2D' : '#854F0B',
+        width: 90
+      }
+    }, diff === 0 ? 'OK' : diff < 0 ? `Falta ${Math.abs(diff)}` : `Sobra ${diff}`), /*#__PURE__*/React.createElement("button", {
+      onClick: () => delCarga(c.id),
+      style: btnGhost
+    }, "✕"));
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'grid',
+      gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))',
+      gap: 8,
+      margin: '10px 0'
+    }
+  }, /*#__PURE__*/React.createElement(Field, {
+    label: "Precio estimado (USD/qq)"
+  }, /*#__PURE__*/React.createElement("input", {
+    style: inputStyle,
+    type: "number",
+    value: precios.estimado,
+    onChange: e => setPrecios({
+      ...precios,
+      estimado: e.target.value
+    }),
+    onBlur: guardarPrecios
+  })), /*#__PURE__*/React.createElement(Field, {
+    label: "Precio real (USD/qq)"
+  }, /*#__PURE__*/React.createElement("input", {
+    style: inputStyle,
+    type: "number",
+    value: precios.real,
+    onChange: e => setPrecios({
+      ...precios,
+      real: e.target.value
+    }),
+    onBlur: guardarPrecios
+  }))), cargas.length > 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: 12,
+      background: '#EAF3DE',
+      borderRadius: 8,
+      fontSize: 13,
+      color: '#27500A'
+    }
+  }, /*#__PURE__*/React.createElement("div", null, "Total confirmado: ", /*#__PURE__*/React.createElement("strong", null, totales.totalConfirmado.toFixed(0), " kg"), " ", totales.pendientes > 0 ? `(${totales.pendientes} esperando balanza)` : ''), /*#__PURE__*/React.createElement("div", null, "Rendimiento: ", /*#__PURE__*/React.createElement("strong", null, totales.rendimiento.toFixed(1), " qq/ha")), totales.precio > 0 && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 6
+    }
+  }, "Ingreso: ", /*#__PURE__*/React.createElement("strong", null, fmtMoney(totales.ingreso))), /*#__PURE__*/React.createElement("div", null, "Margen: ", /*#__PURE__*/React.createElement("strong", {
+    style: {
+      color: totales.margen >= 0 ? '#27500A' : '#A32D2D'
+    }
+  }, fmtMoney(totales.margen))))));
 }
 
 /* ---------- CALCULADORA PERALTA-DISA ---------- */
@@ -1196,131 +1053,111 @@ function CalculoFertilizacion() {
       requiereSplit: ureaTotal > 235
     };
   }, [f]);
-  return /*#__PURE__*/_jsxDEV("div", {
-    children: [/*#__PURE__*/_jsxDEV("div", {
-      style: {
-        fontWeight: 500,
-        fontSize: 13,
-        marginBottom: 8
-      },
-      children: "Fertilización nitrogenada — Peralta-DISA (solo invierno)"
-    }, void 0, false), /*#__PURE__*/_jsxDEV("div", {
-      style: {
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
-        gap: 8
-      },
-      children: [/*#__PURE__*/_jsxDEV(Field, {
-        label: "Rend. objetivo (kg/ha)",
-        children: /*#__PURE__*/_jsxDEV("input", {
-          style: inputStyle,
-          type: "number",
-          value: f.rendObj,
-          onChange: e => set('rendObj', e.target.value)
-        }, void 0, false)
-      }, void 0, false), /*#__PURE__*/_jsxDEV(Field, {
-        label: "Rend. relativo zona",
-        children: /*#__PURE__*/_jsxDEV("input", {
-          style: inputStyle,
-          type: "number",
-          step: "0.01",
-          value: f.rendRelativo,
-          onChange: e => set('rendRelativo', e.target.value)
-        }, void 0, false)
-      }, void 0, false), /*#__PURE__*/_jsxDEV(Field, {
-        label: "N-NO3 0-20cm",
-        children: /*#__PURE__*/_jsxDEV("input", {
-          style: inputStyle,
-          type: "number",
-          value: f.nNo3_0_20,
-          onChange: e => set('nNo3_0_20', e.target.value)
-        }, void 0, false)
-      }, void 0, false), /*#__PURE__*/_jsxDEV(Field, {
-        label: "N-NO3 20-60cm",
-        children: /*#__PURE__*/_jsxDEV("input", {
-          style: inputStyle,
-          type: "number",
-          value: f.nNo3_20_60,
-          onChange: e => set('nNo3_20_60', e.target.value)
-        }, void 0, false)
-      }, void 0, false), /*#__PURE__*/_jsxDEV(Field, {
-        label: "M.O. 0-20cm (%)",
-        children: /*#__PURE__*/_jsxDEV("input", {
-          style: inputStyle,
-          type: "number",
-          value: f.mo,
-          onChange: e => set('mo', e.target.value)
-        }, void 0, false)
-      }, void 0, false), /*#__PURE__*/_jsxDEV(Field, {
-        label: "Nan laboratorio",
-        children: /*#__PURE__*/_jsxDEV("input", {
-          style: inputStyle,
-          type: "number",
-          value: f.nanLab,
-          onChange: e => set('nanLab', e.target.value),
-          placeholder: "opcional"
-        }, void 0, false)
-      }, void 0, false), /*#__PURE__*/_jsxDEV(Field, {
-        label: "N arrancador",
-        children: /*#__PURE__*/_jsxDEV("input", {
-          style: inputStyle,
-          type: "number",
-          value: f.arrancador,
-          onChange: e => set('arrancador', e.target.value)
-        }, void 0, false)
-      }, void 0, false), /*#__PURE__*/_jsxDEV(Field, {
-        label: "Crédito antecesor",
-        children: /*#__PURE__*/_jsxDEV("input", {
-          style: inputStyle,
-          type: "number",
-          value: f.antecesor,
-          onChange: e => set('antecesor', e.target.value)
-        }, void 0, false)
-      }, void 0, false), /*#__PURE__*/_jsxDEV(Field, {
-        label: "Calibración",
-        children: /*#__PURE__*/_jsxDEV("select", {
-          style: inputStyle,
-          value: f.calibracion,
-          onChange: e => set('calibracion', e.target.value),
-          children: [/*#__PURE__*/_jsxDEV("option", {
-            value: "original",
-            children: "Original"
-          }, void 0, false), /*#__PURE__*/_jsxDEV("option", {
-            value: "calibrado",
-            children: "−8% calibrado"
-          }, void 0, false)]
-        }, void 0, true)
-      }, void 0, false)]
-    }, void 0, true), resultado && /*#__PURE__*/_jsxDEV("div", {
-      style: {
-        marginTop: 12,
-        padding: 12,
-        background: '#EAF3DE',
-        borderRadius: 8
-      },
-      children: [/*#__PURE__*/_jsxDEV("div", {
-        style: {
-          fontSize: 22,
-          fontWeight: 500,
-          color: '#27500A'
-        },
-        children: [resultado.ureaTotal.toFixed(0), " kg urea/ha"]
-      }, void 0, true), /*#__PURE__*/_jsxDEV("div", {
-        style: {
-          fontSize: 12,
-          color: '#3B6D11'
-        },
-        children: [resultado.nFertTotal.toFixed(1), " kg N/ha"]
-      }, void 0, true), resultado.requiereSplit && /*#__PURE__*/_jsxDEV("div", {
-        style: {
-          fontSize: 12,
-          color: '#854F0B',
-          marginTop: 6
-        },
-        children: "Supera 235 kg/ha, repartir en 2 aplicaciones."
-      }, void 0, false)]
-    }, void 0, true)]
-  }, void 0, true);
+  return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: 500,
+      fontSize: 13,
+      marginBottom: 8
+    }
+  }, "Fertilización nitrogenada — Peralta-DISA (solo invierno)"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'grid',
+      gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
+      gap: 8
+    }
+  }, /*#__PURE__*/React.createElement(Field, {
+    label: "Rend. objetivo (kg/ha)"
+  }, /*#__PURE__*/React.createElement("input", {
+    style: inputStyle,
+    type: "number",
+    value: f.rendObj,
+    onChange: e => set('rendObj', e.target.value)
+  })), /*#__PURE__*/React.createElement(Field, {
+    label: "Rend. relativo zona"
+  }, /*#__PURE__*/React.createElement("input", {
+    style: inputStyle,
+    type: "number",
+    step: "0.01",
+    value: f.rendRelativo,
+    onChange: e => set('rendRelativo', e.target.value)
+  })), /*#__PURE__*/React.createElement(Field, {
+    label: "N-NO3 0-20cm"
+  }, /*#__PURE__*/React.createElement("input", {
+    style: inputStyle,
+    type: "number",
+    value: f.nNo3_0_20,
+    onChange: e => set('nNo3_0_20', e.target.value)
+  })), /*#__PURE__*/React.createElement(Field, {
+    label: "N-NO3 20-60cm"
+  }, /*#__PURE__*/React.createElement("input", {
+    style: inputStyle,
+    type: "number",
+    value: f.nNo3_20_60,
+    onChange: e => set('nNo3_20_60', e.target.value)
+  })), /*#__PURE__*/React.createElement(Field, {
+    label: "M.O. 0-20cm (%)"
+  }, /*#__PURE__*/React.createElement("input", {
+    style: inputStyle,
+    type: "number",
+    value: f.mo,
+    onChange: e => set('mo', e.target.value)
+  })), /*#__PURE__*/React.createElement(Field, {
+    label: "Nan laboratorio"
+  }, /*#__PURE__*/React.createElement("input", {
+    style: inputStyle,
+    type: "number",
+    value: f.nanLab,
+    onChange: e => set('nanLab', e.target.value),
+    placeholder: "opcional"
+  })), /*#__PURE__*/React.createElement(Field, {
+    label: "N arrancador"
+  }, /*#__PURE__*/React.createElement("input", {
+    style: inputStyle,
+    type: "number",
+    value: f.arrancador,
+    onChange: e => set('arrancador', e.target.value)
+  })), /*#__PURE__*/React.createElement(Field, {
+    label: "Crédito antecesor"
+  }, /*#__PURE__*/React.createElement("input", {
+    style: inputStyle,
+    type: "number",
+    value: f.antecesor,
+    onChange: e => set('antecesor', e.target.value)
+  })), /*#__PURE__*/React.createElement(Field, {
+    label: "Calibración"
+  }, /*#__PURE__*/React.createElement("select", {
+    style: inputStyle,
+    value: f.calibracion,
+    onChange: e => set('calibracion', e.target.value)
+  }, /*#__PURE__*/React.createElement("option", {
+    value: "original"
+  }, "Original"), /*#__PURE__*/React.createElement("option", {
+    value: "calibrado"
+  }, "−8% calibrado")))), resultado && /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 12,
+      padding: 12,
+      background: '#EAF3DE',
+      borderRadius: 8
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 22,
+      fontWeight: 500,
+      color: '#27500A'
+    }
+  }, resultado.ureaTotal.toFixed(0), " kg urea/ha"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: '#3B6D11'
+    }
+  }, resultado.nFertTotal.toFixed(1), " kg N/ha"), resultado.requiereSplit && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: '#854F0B',
+      marginTop: 6
+    }
+  }, "Supera 235 kg/ha, repartir en 2 aplicaciones.")));
 }
 
 /* ---------- DETALLE DE LOTE ---------- */
@@ -1379,7 +1216,7 @@ function LoteDetalle({
       texto: ''
     });
   };
-  return /*#__PURE__*/_jsxDEV("div", {
+  return /*#__PURE__*/React.createElement("div", {
     style: {
       marginTop: 10,
       padding: 12,
@@ -1388,225 +1225,190 @@ function LoteDetalle({
       display: 'flex',
       flexDirection: 'column',
       gap: 14
+    }
+  }, /*#__PURE__*/React.createElement(Ciclos, {
+    lote: lote,
+    data: data,
+    update: update
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      borderTop: '1px solid #e3e1d8'
+    }
+  }), /*#__PURE__*/React.createElement(Cosecha, {
+    lote: lote,
+    data: data,
+    update: update
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      borderTop: '1px solid #e3e1d8'
+    }
+  }), /*#__PURE__*/React.createElement(CalculoFertilizacion, null), /*#__PURE__*/React.createElement("div", {
+    style: {
+      borderTop: '1px solid #e3e1d8'
+    }
+  }), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: 500,
+      fontSize: 13,
+      marginBottom: 8
+    }
+  }, "Nuevo análisis"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      gap: 8,
+      marginBottom: 8
+    }
+  }, /*#__PURE__*/React.createElement("select", {
+    style: inputStyle,
+    value: tipoAnalisis,
+    onChange: e => setTipoAnalisis(e.target.value)
+  }, /*#__PURE__*/React.createElement("option", null, "Agua útil"), /*#__PURE__*/React.createElement("option", null, "Fertilidad")), /*#__PURE__*/React.createElement("input", {
+    style: inputStyle,
+    type: "date",
+    value: formA.fecha,
+    onChange: e => setFormA({
+      ...formA,
+      fecha: e.target.value
+    })
+  })), tipoAnalisis === 'Agua útil' ? /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'grid',
+      gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
+      gap: 8
+    }
+  }, /*#__PURE__*/React.createElement(Field, {
+    label: "Agua útil (mm)"
+  }, /*#__PURE__*/React.createElement("input", {
+    style: inputStyle,
+    type: "number",
+    value: formA.aguaUtilMm,
+    onChange: e => setFormA({
+      ...formA,
+      aguaUtilMm: e.target.value
+    })
+  })), /*#__PURE__*/React.createElement(Field, {
+    label: "Profundidad (cm)"
+  }, /*#__PURE__*/React.createElement("input", {
+    style: inputStyle,
+    type: "number",
+    value: formA.profundidad,
+    onChange: e => setFormA({
+      ...formA,
+      profundidad: e.target.value
+    })
+  }))) : /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'grid',
+      gridTemplateColumns: 'repeat(auto-fit, minmax(90px, 1fr))',
+      gap: 8
+    }
+  }, /*#__PURE__*/React.createElement(Field, {
+    label: "N-NO3"
+  }, /*#__PURE__*/React.createElement("input", {
+    style: inputStyle,
+    type: "number",
+    value: formA.nNo3,
+    onChange: e => setFormA({
+      ...formA,
+      nNo3: e.target.value
+    })
+  })), /*#__PURE__*/React.createElement(Field, {
+    label: "P"
+  }, /*#__PURE__*/React.createElement("input", {
+    style: inputStyle,
+    type: "number",
+    value: formA.p,
+    onChange: e => setFormA({
+      ...formA,
+      p: e.target.value
+    })
+  })), /*#__PURE__*/React.createElement(Field, {
+    label: "M.O."
+  }, /*#__PURE__*/React.createElement("input", {
+    style: inputStyle,
+    type: "number",
+    value: formA.mo,
+    onChange: e => setFormA({
+      ...formA,
+      mo: e.target.value
+    })
+  })), /*#__PURE__*/React.createElement(Field, {
+    label: "pH"
+  }, /*#__PURE__*/React.createElement("input", {
+    style: inputStyle,
+    type: "number",
+    value: formA.ph,
+    onChange: e => setFormA({
+      ...formA,
+      ph: e.target.value
+    })
+  }))), /*#__PURE__*/React.createElement("button", {
+    onClick: guardarAnalisis,
+    style: {
+      ...btnPrimary,
+      marginTop: 8
+    }
+  }, "+ Guardar análisis"), analisisLote.map(a => /*#__PURE__*/React.createElement("div", {
+    key: a.id,
+    style: {
+      fontSize: 12,
+      color: '#5f5e5a',
+      padding: '4px 0',
+      borderTop: '1px solid #e3e1d8'
+    }
+  }, /*#__PURE__*/React.createElement("strong", null, a.tipo), " — ", a.fecha))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: 500,
+      fontSize: 13,
+      marginBottom: 8
+    }
+  }, "Bitácora"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      gap: 8,
+      marginBottom: 8
+    }
+  }, /*#__PURE__*/React.createElement("input", {
+    style: inputStyle,
+    type: "date",
+    value: formN.fecha,
+    onChange: e => setFormN({
+      ...formN,
+      fecha: e.target.value
+    })
+  }), /*#__PURE__*/React.createElement("select", {
+    style: inputStyle,
+    value: formN.tipo,
+    onChange: e => setFormN({
+      ...formN,
+      tipo: e.target.value
+    })
+  }, /*#__PURE__*/React.createElement("option", null, "Observación"), /*#__PURE__*/React.createElement("option", null, "Acierto"), /*#__PURE__*/React.createElement("option", null, "Error"))), /*#__PURE__*/React.createElement("textarea", {
+    style: {
+      ...inputStyle,
+      width: '100%',
+      minHeight: 50
     },
-    children: [/*#__PURE__*/_jsxDEV(Ciclos, {
-      lote: lote,
-      data: data,
-      update: update
-    }, void 0, false), /*#__PURE__*/_jsxDEV("div", {
-      style: {
-        borderTop: '1px solid #e3e1d8'
-      }
-    }, void 0, false), /*#__PURE__*/_jsxDEV(Cosecha, {
-      lote: lote,
-      data: data,
-      update: update
-    }, void 0, false), /*#__PURE__*/_jsxDEV("div", {
-      style: {
-        borderTop: '1px solid #e3e1d8'
-      }
-    }, void 0, false), /*#__PURE__*/_jsxDEV(CalculoFertilizacion, {}, void 0, false), /*#__PURE__*/_jsxDEV("div", {
-      style: {
-        borderTop: '1px solid #e3e1d8'
-      }
-    }, void 0, false), /*#__PURE__*/_jsxDEV("div", {
-      children: [/*#__PURE__*/_jsxDEV("div", {
-        style: {
-          fontWeight: 500,
-          fontSize: 13,
-          marginBottom: 8
-        },
-        children: "Nuevo análisis"
-      }, void 0, false), /*#__PURE__*/_jsxDEV("div", {
-        style: {
-          display: 'flex',
-          gap: 8,
-          marginBottom: 8
-        },
-        children: [/*#__PURE__*/_jsxDEV("select", {
-          style: inputStyle,
-          value: tipoAnalisis,
-          onChange: e => setTipoAnalisis(e.target.value),
-          children: [/*#__PURE__*/_jsxDEV("option", {
-            children: "Agua útil"
-          }, void 0, false), /*#__PURE__*/_jsxDEV("option", {
-            children: "Fertilidad"
-          }, void 0, false)]
-        }, void 0, true), /*#__PURE__*/_jsxDEV("input", {
-          style: inputStyle,
-          type: "date",
-          value: formA.fecha,
-          onChange: e => setFormA({
-            ...formA,
-            fecha: e.target.value
-          })
-        }, void 0, false)]
-      }, void 0, true), tipoAnalisis === 'Agua útil' ? /*#__PURE__*/_jsxDEV("div", {
-        style: {
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
-          gap: 8
-        },
-        children: [/*#__PURE__*/_jsxDEV(Field, {
-          label: "Agua útil (mm)",
-          children: /*#__PURE__*/_jsxDEV("input", {
-            style: inputStyle,
-            type: "number",
-            value: formA.aguaUtilMm,
-            onChange: e => setFormA({
-              ...formA,
-              aguaUtilMm: e.target.value
-            })
-          }, void 0, false)
-        }, void 0, false), /*#__PURE__*/_jsxDEV(Field, {
-          label: "Profundidad (cm)",
-          children: /*#__PURE__*/_jsxDEV("input", {
-            style: inputStyle,
-            type: "number",
-            value: formA.profundidad,
-            onChange: e => setFormA({
-              ...formA,
-              profundidad: e.target.value
-            })
-          }, void 0, false)
-        }, void 0, false)]
-      }, void 0, true) : /*#__PURE__*/_jsxDEV("div", {
-        style: {
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(90px, 1fr))',
-          gap: 8
-        },
-        children: [/*#__PURE__*/_jsxDEV(Field, {
-          label: "N-NO3",
-          children: /*#__PURE__*/_jsxDEV("input", {
-            style: inputStyle,
-            type: "number",
-            value: formA.nNo3,
-            onChange: e => setFormA({
-              ...formA,
-              nNo3: e.target.value
-            })
-          }, void 0, false)
-        }, void 0, false), /*#__PURE__*/_jsxDEV(Field, {
-          label: "P",
-          children: /*#__PURE__*/_jsxDEV("input", {
-            style: inputStyle,
-            type: "number",
-            value: formA.p,
-            onChange: e => setFormA({
-              ...formA,
-              p: e.target.value
-            })
-          }, void 0, false)
-        }, void 0, false), /*#__PURE__*/_jsxDEV(Field, {
-          label: "M.O.",
-          children: /*#__PURE__*/_jsxDEV("input", {
-            style: inputStyle,
-            type: "number",
-            value: formA.mo,
-            onChange: e => setFormA({
-              ...formA,
-              mo: e.target.value
-            })
-          }, void 0, false)
-        }, void 0, false), /*#__PURE__*/_jsxDEV(Field, {
-          label: "pH",
-          children: /*#__PURE__*/_jsxDEV("input", {
-            style: inputStyle,
-            type: "number",
-            value: formA.ph,
-            onChange: e => setFormA({
-              ...formA,
-              ph: e.target.value
-            })
-          }, void 0, false)
-        }, void 0, false)]
-      }, void 0, true), /*#__PURE__*/_jsxDEV("button", {
-        onClick: guardarAnalisis,
-        style: {
-          ...btnPrimary,
-          marginTop: 8
-        },
-        children: "+ Guardar análisis"
-      }, void 0, false), analisisLote.map(a => /*#__PURE__*/_jsxDEV("div", {
-        style: {
-          fontSize: 12,
-          color: '#5f5e5a',
-          padding: '4px 0',
-          borderTop: '1px solid #e3e1d8'
-        },
-        children: [/*#__PURE__*/_jsxDEV("strong", {
-          children: a.tipo
-        }, void 0, false), " — ", a.fecha]
-      }, a.id, true))]
-    }, void 0, true), /*#__PURE__*/_jsxDEV("div", {
-      children: [/*#__PURE__*/_jsxDEV("div", {
-        style: {
-          fontWeight: 500,
-          fontSize: 13,
-          marginBottom: 8
-        },
-        children: "Bitácora"
-      }, void 0, false), /*#__PURE__*/_jsxDEV("div", {
-        style: {
-          display: 'flex',
-          gap: 8,
-          marginBottom: 8
-        },
-        children: [/*#__PURE__*/_jsxDEV("input", {
-          style: inputStyle,
-          type: "date",
-          value: formN.fecha,
-          onChange: e => setFormN({
-            ...formN,
-            fecha: e.target.value
-          })
-        }, void 0, false), /*#__PURE__*/_jsxDEV("select", {
-          style: inputStyle,
-          value: formN.tipo,
-          onChange: e => setFormN({
-            ...formN,
-            tipo: e.target.value
-          }),
-          children: [/*#__PURE__*/_jsxDEV("option", {
-            children: "Observación"
-          }, void 0, false), /*#__PURE__*/_jsxDEV("option", {
-            children: "Acierto"
-          }, void 0, false), /*#__PURE__*/_jsxDEV("option", {
-            children: "Error"
-          }, void 0, false)]
-        }, void 0, true)]
-      }, void 0, true), /*#__PURE__*/_jsxDEV("textarea", {
-        style: {
-          ...inputStyle,
-          width: '100%',
-          minHeight: 50
-        },
-        placeholder: "Qué pasó…",
-        value: formN.texto,
-        onChange: e => setFormN({
-          ...formN,
-          texto: e.target.value
-        })
-      }, void 0, false), /*#__PURE__*/_jsxDEV("button", {
-        onClick: guardarNota,
-        style: {
-          ...btnPrimary,
-          marginTop: 8
-        },
-        children: "+ Guardar nota"
-      }, void 0, false), notasLote.map(n => /*#__PURE__*/_jsxDEV("div", {
-        style: {
-          fontSize: 12,
-          padding: '4px 0',
-          borderTop: '1px solid #e3e1d8'
-        },
-        children: [/*#__PURE__*/_jsxDEV("strong", {
-          children: n.tipo
-        }, void 0, false), " — ", n.fecha, " — ", n.texto]
-      }, n.id, true))]
-    }, void 0, true)]
-  }, void 0, true);
+    placeholder: "Qué pasó…",
+    value: formN.texto,
+    onChange: e => setFormN({
+      ...formN,
+      texto: e.target.value
+    })
+  }), /*#__PURE__*/React.createElement("button", {
+    onClick: guardarNota,
+    style: {
+      ...btnPrimary,
+      marginTop: 8
+    }
+  }, "+ Guardar nota"), notasLote.map(n => /*#__PURE__*/React.createElement("div", {
+    key: n.id,
+    style: {
+      fontSize: 12,
+      padding: '4px 0',
+      borderTop: '1px solid #e3e1d8'
+    }
+  }, /*#__PURE__*/React.createElement("strong", null, n.tipo), " — ", n.fecha, " — ", n.texto))));
 }
 
 /* ---------- RIEGO ---------- */
@@ -1619,107 +1421,87 @@ function Riego({
     ...l,
     objetivoRiego: Number(val) || 0
   } : l));
-  return /*#__PURE__*/_jsxDEV("div", {
+  return /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       flexDirection: 'column',
       gap: 14
-    },
-    children: lotesRiego.map(l => {
-      const campo = data.campos.find(c => c.id === l.campoId);
-      const riegosLote = data.actividades.filter(a => a.loteId === l.id && a.tipo === 'Riego' && a.mm).sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''));
-      const acumulado = riegosLote.reduce((s, a) => s + Number(a.mm), 0);
-      const objetivo = Number(l.objetivoRiego) || 0;
-      const falta = Math.max(0, objetivo - acumulado);
-      const aguaUtil = data.analisis.filter(a => a.loteId === l.id && a.tipo === 'Agua útil').sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''))[0];
-      return /*#__PURE__*/_jsxDEV(Card, {
-        children: [/*#__PURE__*/_jsxDEV("div", {
-          style: {
-            display: 'flex',
-            justifyContent: 'space-between'
-          },
-          children: [/*#__PURE__*/_jsxDEV("span", {
-            style: {
-              fontWeight: 500
-            },
-            children: [campo?.nombre, " — ", l.nombre]
-          }, void 0, true), /*#__PURE__*/_jsxDEV("span", {
-            style: {
-              fontSize: 12,
-              color: '#888780'
-            },
-            children: [l.hectareas, " ha"]
-          }, void 0, true)]
-        }, void 0, true), /*#__PURE__*/_jsxDEV("div", {
-          style: {
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
-            gap: 10,
-            marginTop: 10
-          },
-          children: [/*#__PURE__*/_jsxDEV("div", {
-            children: [/*#__PURE__*/_jsxDEV("div", {
-              style: {
-                fontSize: 12,
-                color: '#888780'
-              },
-              children: "Acumulado"
-            }, void 0, false), /*#__PURE__*/_jsxDEV("div", {
-              style: {
-                fontSize: 18,
-                fontWeight: 500
-              },
-              children: [acumulado, " mm"]
-            }, void 0, true)]
-          }, void 0, true), /*#__PURE__*/_jsxDEV("div", {
-            children: [/*#__PURE__*/_jsxDEV("div", {
-              style: {
-                fontSize: 12,
-                color: '#888780'
-              },
-              children: "Objetivo"
-            }, void 0, false), /*#__PURE__*/_jsxDEV("input", {
-              style: {
-                ...inputStyle,
-                width: 90
-              },
-              type: "number",
-              value: l.objetivoRiego || '',
-              onChange: e => setObjetivo(l.id, e.target.value)
-            }, void 0, false)]
-          }, void 0, true), /*#__PURE__*/_jsxDEV("div", {
-            children: [/*#__PURE__*/_jsxDEV("div", {
-              style: {
-                fontSize: 12,
-                color: '#888780'
-              },
-              children: "Falta"
-            }, void 0, false), /*#__PURE__*/_jsxDEV("div", {
-              style: {
-                fontSize: 18,
-                fontWeight: 500,
-                color: falta > 0 ? '#854F0B' : '#3B6D11'
-              },
-              children: objetivo > 0 ? `${falta} mm` : '—'
-            }, void 0, false)]
-          }, void 0, true), /*#__PURE__*/_jsxDEV("div", {
-            children: [/*#__PURE__*/_jsxDEV("div", {
-              style: {
-                fontSize: 12,
-                color: '#888780'
-              },
-              children: "Último agua útil"
-            }, void 0, false), /*#__PURE__*/_jsxDEV("div", {
-              style: {
-                fontSize: 14
-              },
-              children: aguaUtil ? `${aguaUtil.aguaUtilMm}mm (${aguaUtil.fecha})` : 'Sin datos'
-            }, void 0, false)]
-          }, void 0, true)]
-        }, void 0, true)]
-      }, l.id, true);
-    })
-  }, void 0, false);
+    }
+  }, lotesRiego.map(l => {
+    const campo = data.campos.find(c => c.id === l.campoId);
+    const riegosLote = data.actividades.filter(a => a.loteId === l.id && a.tipo === 'Riego' && a.mm).sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''));
+    const acumulado = riegosLote.reduce((s, a) => s + Number(a.mm), 0);
+    const objetivo = Number(l.objetivoRiego) || 0;
+    const falta = Math.max(0, objetivo - acumulado);
+    const aguaUtil = data.analisis.filter(a => a.loteId === l.id && a.tipo === 'Agua útil').sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''))[0];
+    return /*#__PURE__*/React.createElement(Card, {
+      key: l.id
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: 'flex',
+        justifyContent: 'space-between'
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontWeight: 500
+      }
+    }, campo?.nombre, " — ", l.nombre), /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 12,
+        color: '#888780'
+      }
+    }, l.hectareas, " ha")), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+        gap: 10,
+        marginTop: 10
+      }
+    }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12,
+        color: '#888780'
+      }
+    }, "Acumulado"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 18,
+        fontWeight: 500
+      }
+    }, acumulado, " mm")), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12,
+        color: '#888780'
+      }
+    }, "Objetivo"), /*#__PURE__*/React.createElement("input", {
+      style: {
+        ...inputStyle,
+        width: 90
+      },
+      type: "number",
+      value: l.objetivoRiego || '',
+      onChange: e => setObjetivo(l.id, e.target.value)
+    })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12,
+        color: '#888780'
+      }
+    }, "Falta"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 18,
+        fontWeight: 500,
+        color: falta > 0 ? '#854F0B' : '#3B6D11'
+      }
+    }, objetivo > 0 ? `${falta} mm` : '—')), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12,
+        color: '#888780'
+      }
+    }, "Último agua útil"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 14
+      }
+    }, aguaUtil ? `${aguaUtil.aguaUtilMm}mm (${aguaUtil.fecha})` : 'Sin datos'))));
+  }));
 }
 
 /* ---------- INSUMOS ---------- */
@@ -1755,114 +1537,95 @@ function Insumos({
     });
   };
   const del = id => update('insumos', i => i.filter(x => x.id !== id));
-  return /*#__PURE__*/_jsxDEV("div", {
+  return /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       flexDirection: 'column',
       gap: 14
-    },
-    children: [/*#__PURE__*/_jsxDEV(Card, {
-      children: [/*#__PURE__*/_jsxDEV("div", {
-        style: {
-          fontWeight: 500,
-          marginBottom: 10
-        },
-        children: "Nuevo insumo"
-      }, void 0, false), /*#__PURE__*/_jsxDEV("div", {
-        style: {
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
-          gap: 10
-        },
-        children: [/*#__PURE__*/_jsxDEV(Field, {
-          label: "Nombre",
-          children: /*#__PURE__*/_jsxDEV("input", {
-            style: inputStyle,
-            value: form.nombre,
-            onChange: e => setForm({
-              ...form,
-              nombre: e.target.value
-            })
-          }, void 0, false)
-        }, void 0, false), /*#__PURE__*/_jsxDEV(Field, {
-          label: "Unidad",
-          children: /*#__PURE__*/_jsxDEV("input", {
-            style: inputStyle,
-            value: form.unidad,
-            onChange: e => setForm({
-              ...form,
-              unidad: e.target.value
-            })
-          }, void 0, false)
-        }, void 0, false), /*#__PURE__*/_jsxDEV(Field, {
-          label: "Stock",
-          children: /*#__PURE__*/_jsxDEV("input", {
-            style: inputStyle,
-            type: "number",
-            value: form.stock,
-            onChange: e => setForm({
-              ...form,
-              stock: e.target.value
-            })
-          }, void 0, false)
-        }, void 0, false), /*#__PURE__*/_jsxDEV(Field, {
-          label: "Stock mínimo",
-          children: /*#__PURE__*/_jsxDEV("input", {
-            style: inputStyle,
-            type: "number",
-            value: form.stockMinimo,
-            onChange: e => setForm({
-              ...form,
-              stockMinimo: e.target.value
-            })
-          }, void 0, false)
-        }, void 0, false), /*#__PURE__*/_jsxDEV(Field, {
-          label: "Costo unitario",
-          children: /*#__PURE__*/_jsxDEV("input", {
-            style: inputStyle,
-            type: "number",
-            value: form.costoUnitario,
-            onChange: e => setForm({
-              ...form,
-              costoUnitario: e.target.value
-            })
-          }, void 0, false)
-        }, void 0, false)]
-      }, void 0, true), /*#__PURE__*/_jsxDEV("button", {
-        onClick: add,
-        style: {
-          ...btnPrimary,
-          marginTop: 12
-        },
-        children: "+ Agregar"
-      }, void 0, false)]
-    }, void 0, true), /*#__PURE__*/_jsxDEV(Card, {
-      children: [/*#__PURE__*/_jsxDEV("div", {
-        style: {
-          fontWeight: 500,
-          marginBottom: 10
-        },
-        children: "Stock"
-      }, void 0, false), data.insumos.map(i => /*#__PURE__*/_jsxDEV("div", {
-        style: {
-          display: 'flex',
-          justifyContent: 'space-between',
-          padding: '8px 0',
-          borderTop: '1px solid #f1efe8',
-          fontSize: 14
-        },
-        children: [/*#__PURE__*/_jsxDEV("span", {
-          children: i.nombre
-        }, void 0, false), /*#__PURE__*/_jsxDEV("span", {
-          children: [i.stock, " ", i.unidad, " · ", fmtMoney(precioPromedio(data, i.id)), "/", i.unidad, " promedio ", /*#__PURE__*/_jsxDEV("button", {
-            onClick: () => del(i.id),
-            style: btnGhost,
-            children: "🗑"
-          }, void 0, false)]
-        }, void 0, true)]
-      }, i.id, true))]
-    }, void 0, true)]
-  }, void 0, true);
+    }
+  }, /*#__PURE__*/React.createElement(Card, null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: 500,
+      marginBottom: 10
+    }
+  }, "Nuevo insumo"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'grid',
+      gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
+      gap: 10
+    }
+  }, /*#__PURE__*/React.createElement(Field, {
+    label: "Nombre"
+  }, /*#__PURE__*/React.createElement("input", {
+    style: inputStyle,
+    value: form.nombre,
+    onChange: e => setForm({
+      ...form,
+      nombre: e.target.value
+    })
+  })), /*#__PURE__*/React.createElement(Field, {
+    label: "Unidad"
+  }, /*#__PURE__*/React.createElement("input", {
+    style: inputStyle,
+    value: form.unidad,
+    onChange: e => setForm({
+      ...form,
+      unidad: e.target.value
+    })
+  })), /*#__PURE__*/React.createElement(Field, {
+    label: "Stock"
+  }, /*#__PURE__*/React.createElement("input", {
+    style: inputStyle,
+    type: "number",
+    value: form.stock,
+    onChange: e => setForm({
+      ...form,
+      stock: e.target.value
+    })
+  })), /*#__PURE__*/React.createElement(Field, {
+    label: "Stock mínimo"
+  }, /*#__PURE__*/React.createElement("input", {
+    style: inputStyle,
+    type: "number",
+    value: form.stockMinimo,
+    onChange: e => setForm({
+      ...form,
+      stockMinimo: e.target.value
+    })
+  })), /*#__PURE__*/React.createElement(Field, {
+    label: "Costo unitario"
+  }, /*#__PURE__*/React.createElement("input", {
+    style: inputStyle,
+    type: "number",
+    value: form.costoUnitario,
+    onChange: e => setForm({
+      ...form,
+      costoUnitario: e.target.value
+    })
+  }))), /*#__PURE__*/React.createElement("button", {
+    onClick: add,
+    style: {
+      ...btnPrimary,
+      marginTop: 12
+    }
+  }, "+ Agregar")), /*#__PURE__*/React.createElement(Card, null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: 500,
+      marginBottom: 10
+    }
+  }, "Stock"), data.insumos.map(i => /*#__PURE__*/React.createElement("div", {
+    key: i.id,
+    style: {
+      display: 'flex',
+      justifyContent: 'space-between',
+      padding: '8px 0',
+      borderTop: '1px solid #f1efe8',
+      fontSize: 14
+    }
+  }, /*#__PURE__*/React.createElement("span", null, i.nombre), /*#__PURE__*/React.createElement("span", null, i.stock, " ", i.unidad, " · ", fmtMoney(precioPromedio(data, i.id)), "/", i.unidad, " promedio ", /*#__PURE__*/React.createElement("button", {
+    onClick: () => del(i.id),
+    style: btnGhost
+  }, "🗑"))))));
 }
 
 /* ---------- PROVEEDORES ---------- */
@@ -1919,185 +1682,157 @@ function Proveedores({
       vencimiento: ''
     });
   };
-  return /*#__PURE__*/_jsxDEV("div", {
+  return /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       flexDirection: 'column',
       gap: 14
+    }
+  }, /*#__PURE__*/React.createElement(Card, null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: 500,
+      marginBottom: 10
+    }
+  }, "Nuevo proveedor"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      gap: 10
+    }
+  }, /*#__PURE__*/React.createElement("input", {
+    style: {
+      ...inputStyle,
+      flex: 1
     },
-    children: [/*#__PURE__*/_jsxDEV(Card, {
-      children: [/*#__PURE__*/_jsxDEV("div", {
-        style: {
-          fontWeight: 500,
-          marginBottom: 10
-        },
-        children: "Nuevo proveedor"
-      }, void 0, false), /*#__PURE__*/_jsxDEV("div", {
-        style: {
-          display: 'flex',
-          gap: 10
-        },
-        children: [/*#__PURE__*/_jsxDEV("input", {
-          style: {
-            ...inputStyle,
-            flex: 1
-          },
-          placeholder: "Nombre",
-          value: nombreProv,
-          onChange: e => setNombreProv(e.target.value)
-        }, void 0, false), /*#__PURE__*/_jsxDEV("button", {
-          onClick: addProveedor,
-          style: btnPrimary,
-          children: "+ Agregar"
-        }, void 0, false)]
-      }, void 0, true)]
-    }, void 0, true), /*#__PURE__*/_jsxDEV(Card, {
-      children: [/*#__PURE__*/_jsxDEV("div", {
-        style: {
-          fontWeight: 500,
-          marginBottom: 10
-        },
-        children: "Registrar compra"
-      }, void 0, false), /*#__PURE__*/_jsxDEV("div", {
-        style: {
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
-          gap: 10
-        },
-        children: [/*#__PURE__*/_jsxDEV(Field, {
-          label: "Proveedor",
-          children: /*#__PURE__*/_jsxDEV("select", {
-            style: inputStyle,
-            value: formC.proveedorId,
-            onChange: e => setFormC({
-              ...formC,
-              proveedorId: e.target.value
-            }),
-            children: [/*#__PURE__*/_jsxDEV("option", {
-              value: "",
-              children: "Elegir…"
-            }, void 0, false), data.proveedores.map(p => /*#__PURE__*/_jsxDEV("option", {
-              value: p.id,
-              children: p.nombre
-            }, p.id, false))]
-          }, void 0, true)
-        }, void 0, false), /*#__PURE__*/_jsxDEV(Field, {
-          label: "Insumo",
-          children: /*#__PURE__*/_jsxDEV("select", {
-            style: inputStyle,
-            value: formC.insumoId,
-            onChange: e => setFormC({
-              ...formC,
-              insumoId: e.target.value
-            }),
-            children: [/*#__PURE__*/_jsxDEV("option", {
-              value: "",
-              children: "Elegir…"
-            }, void 0, false), data.insumos.map(i => /*#__PURE__*/_jsxDEV("option", {
-              value: i.id,
-              children: i.nombre
-            }, i.id, false))]
-          }, void 0, true)
-        }, void 0, false), /*#__PURE__*/_jsxDEV(Field, {
-          label: "Cantidad",
-          children: /*#__PURE__*/_jsxDEV("input", {
-            style: inputStyle,
-            type: "number",
-            value: formC.cantidad,
-            onChange: e => setFormC({
-              ...formC,
-              cantidad: e.target.value
-            })
-          }, void 0, false)
-        }, void 0, false), /*#__PURE__*/_jsxDEV(Field, {
-          label: "Precio unitario",
-          children: /*#__PURE__*/_jsxDEV("input", {
-            style: inputStyle,
-            type: "number",
-            value: formC.precioUnitario,
-            onChange: e => setFormC({
-              ...formC,
-              precioUnitario: e.target.value
-            })
-          }, void 0, false)
-        }, void 0, false), /*#__PURE__*/_jsxDEV(Field, {
-          label: "Vencimiento",
-          children: /*#__PURE__*/_jsxDEV("input", {
-            style: inputStyle,
-            type: "date",
-            value: formC.vencimiento,
-            onChange: e => setFormC({
-              ...formC,
-              vencimiento: e.target.value
-            })
-          }, void 0, false)
-        }, void 0, false), /*#__PURE__*/_jsxDEV(Field, {
-          label: "Ubicación",
-          children: /*#__PURE__*/_jsxDEV("input", {
-            style: inputStyle,
-            value: formC.ubicacion,
-            onChange: e => setFormC({
-              ...formC,
-              ubicacion: e.target.value
-            })
-          }, void 0, false)
-        }, void 0, false), /*#__PURE__*/_jsxDEV(Field, {
-          label: "Fecha",
-          children: /*#__PURE__*/_jsxDEV("input", {
-            style: inputStyle,
-            type: "date",
-            value: formC.fecha,
-            onChange: e => setFormC({
-              ...formC,
-              fecha: e.target.value
-            })
-          }, void 0, false)
-        }, void 0, false)]
-      }, void 0, true), /*#__PURE__*/_jsxDEV("label", {
-        style: {
-          display: 'flex',
-          gap: 6,
-          fontSize: 13,
-          marginTop: 10
-        },
-        children: [/*#__PURE__*/_jsxDEV("input", {
-          type: "checkbox",
-          checked: formC.retirado,
-          onChange: e => setFormC({
-            ...formC,
-            retirado: e.target.checked
-          })
-        }, void 0, false), "Ya retirado"]
-      }, void 0, true), /*#__PURE__*/_jsxDEV("button", {
-        onClick: guardarCompra,
-        style: {
-          ...btnPrimary,
-          marginTop: 10
-        },
-        children: "+ Guardar compra"
-      }, void 0, false)]
-    }, void 0, true), /*#__PURE__*/_jsxDEV(Card, {
-      children: [/*#__PURE__*/_jsxDEV("div", {
-        style: {
-          fontWeight: 500,
-          marginBottom: 10
-        },
-        children: "Proveedores"
-      }, void 0, false), data.proveedores.map(p => {
-        const comprasProv = data.compras.filter(c => c.proveedorId === p.id);
-        return /*#__PURE__*/_jsxDEV("div", {
-          style: {
-            padding: '8px 0',
-            borderTop: '1px solid #f1efe8',
-            fontSize: 13
-          },
-          children: [/*#__PURE__*/_jsxDEV("strong", {
-            children: p.nombre
-          }, void 0, false), " — ", comprasProv.length, " compra(s)"]
-        }, p.id, true);
-      })]
-    }, void 0, true)]
-  }, void 0, true);
+    placeholder: "Nombre",
+    value: nombreProv,
+    onChange: e => setNombreProv(e.target.value)
+  }), /*#__PURE__*/React.createElement("button", {
+    onClick: addProveedor,
+    style: btnPrimary
+  }, "+ Agregar"))), /*#__PURE__*/React.createElement(Card, null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: 500,
+      marginBottom: 10
+    }
+  }, "Registrar compra"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'grid',
+      gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
+      gap: 10
+    }
+  }, /*#__PURE__*/React.createElement(Field, {
+    label: "Proveedor"
+  }, /*#__PURE__*/React.createElement("select", {
+    style: inputStyle,
+    value: formC.proveedorId,
+    onChange: e => setFormC({
+      ...formC,
+      proveedorId: e.target.value
+    })
+  }, /*#__PURE__*/React.createElement("option", {
+    value: ""
+  }, "Elegir…"), data.proveedores.map(p => /*#__PURE__*/React.createElement("option", {
+    key: p.id,
+    value: p.id
+  }, p.nombre)))), /*#__PURE__*/React.createElement(Field, {
+    label: "Insumo"
+  }, /*#__PURE__*/React.createElement("select", {
+    style: inputStyle,
+    value: formC.insumoId,
+    onChange: e => setFormC({
+      ...formC,
+      insumoId: e.target.value
+    })
+  }, /*#__PURE__*/React.createElement("option", {
+    value: ""
+  }, "Elegir…"), data.insumos.map(i => /*#__PURE__*/React.createElement("option", {
+    key: i.id,
+    value: i.id
+  }, i.nombre)))), /*#__PURE__*/React.createElement(Field, {
+    label: "Cantidad"
+  }, /*#__PURE__*/React.createElement("input", {
+    style: inputStyle,
+    type: "number",
+    value: formC.cantidad,
+    onChange: e => setFormC({
+      ...formC,
+      cantidad: e.target.value
+    })
+  })), /*#__PURE__*/React.createElement(Field, {
+    label: "Precio unitario"
+  }, /*#__PURE__*/React.createElement("input", {
+    style: inputStyle,
+    type: "number",
+    value: formC.precioUnitario,
+    onChange: e => setFormC({
+      ...formC,
+      precioUnitario: e.target.value
+    })
+  })), /*#__PURE__*/React.createElement(Field, {
+    label: "Vencimiento"
+  }, /*#__PURE__*/React.createElement("input", {
+    style: inputStyle,
+    type: "date",
+    value: formC.vencimiento,
+    onChange: e => setFormC({
+      ...formC,
+      vencimiento: e.target.value
+    })
+  })), /*#__PURE__*/React.createElement(Field, {
+    label: "Ubicación"
+  }, /*#__PURE__*/React.createElement("input", {
+    style: inputStyle,
+    value: formC.ubicacion,
+    onChange: e => setFormC({
+      ...formC,
+      ubicacion: e.target.value
+    })
+  })), /*#__PURE__*/React.createElement(Field, {
+    label: "Fecha"
+  }, /*#__PURE__*/React.createElement("input", {
+    style: inputStyle,
+    type: "date",
+    value: formC.fecha,
+    onChange: e => setFormC({
+      ...formC,
+      fecha: e.target.value
+    })
+  }))), /*#__PURE__*/React.createElement("label", {
+    style: {
+      display: 'flex',
+      gap: 6,
+      fontSize: 13,
+      marginTop: 10
+    }
+  }, /*#__PURE__*/React.createElement("input", {
+    type: "checkbox",
+    checked: formC.retirado,
+    onChange: e => setFormC({
+      ...formC,
+      retirado: e.target.checked
+    })
+  }), "Ya retirado"), /*#__PURE__*/React.createElement("button", {
+    onClick: guardarCompra,
+    style: {
+      ...btnPrimary,
+      marginTop: 10
+    }
+  }, "+ Guardar compra")), /*#__PURE__*/React.createElement(Card, null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: 500,
+      marginBottom: 10
+    }
+  }, "Proveedores"), data.proveedores.map(p => {
+    const comprasProv = data.compras.filter(c => c.proveedorId === p.id);
+    return /*#__PURE__*/React.createElement("div", {
+      key: p.id,
+      style: {
+        padding: '8px 0',
+        borderTop: '1px solid #f1efe8',
+        fontSize: 13
+      }
+    }, /*#__PURE__*/React.createElement("strong", null, p.nombre), " — ", comprasProv.length, " compra(s)");
+  })));
 }
 
 /* ---------- ACTIVIDADES ---------- */
@@ -2158,183 +1893,156 @@ function Actividades({
     ...l,
     campoNombre: data.campos.find(c => c.id === l.campoId)?.nombre || ''
   }));
-  return /*#__PURE__*/_jsxDEV("div", {
+  return /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       flexDirection: 'column',
       gap: 14
+    }
+  }, /*#__PURE__*/React.createElement(Card, null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: 500,
+      marginBottom: 10
+    }
+  }, "Registrar actividad"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'grid',
+      gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+      gap: 10
+    }
+  }, /*#__PURE__*/React.createElement(Field, {
+    label: "Lote"
+  }, /*#__PURE__*/React.createElement("select", {
+    style: inputStyle,
+    value: form.loteId,
+    onChange: e => setForm({
+      ...form,
+      loteId: e.target.value
+    })
+  }, /*#__PURE__*/React.createElement("option", {
+    value: ""
+  }, "Elegir…"), lotesConCampo.map(l => /*#__PURE__*/React.createElement("option", {
+    key: l.id,
+    value: l.id
+  }, l.campoNombre, " — ", l.nombre)))), /*#__PURE__*/React.createElement(Field, {
+    label: "Tipo"
+  }, /*#__PURE__*/React.createElement("select", {
+    style: inputStyle,
+    value: form.tipo,
+    onChange: e => setForm({
+      ...form,
+      tipo: e.target.value
+    })
+  }, TIPOS_ACTIVIDAD.map(t => /*#__PURE__*/React.createElement("option", {
+    key: t
+  }, t)))), /*#__PURE__*/React.createElement(Field, {
+    label: "Fecha"
+  }, /*#__PURE__*/React.createElement("input", {
+    style: inputStyle,
+    type: "date",
+    value: form.fecha,
+    onChange: e => setForm({
+      ...form,
+      fecha: e.target.value
+    })
+  })), form.tipo === 'Riego' && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(Field, {
+    label: "mm"
+  }, /*#__PURE__*/React.createElement("input", {
+    style: inputStyle,
+    type: "number",
+    value: form.mm,
+    onChange: e => setForm({
+      ...form,
+      mm: e.target.value
+    })
+  })), /*#__PURE__*/React.createElement(Field, {
+    label: "Fuente"
+  }, /*#__PURE__*/React.createElement("input", {
+    style: inputStyle,
+    value: form.fuente,
+    onChange: e => setForm({
+      ...form,
+      fuente: e.target.value
+    })
+  }))), form.tipo === 'Cosecha' && /*#__PURE__*/React.createElement(Field, {
+    label: "Rendimiento qq/ha"
+  }, /*#__PURE__*/React.createElement("input", {
+    style: inputStyle,
+    type: "number",
+    value: form.rendimiento,
+    onChange: e => setForm({
+      ...form,
+      rendimiento: e.target.value
+    })
+  }))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 12
+    }
+  }, items.map((it, idx) => /*#__PURE__*/React.createElement("div", {
+    key: idx,
+    style: {
+      display: 'flex',
+      gap: 8,
+      marginBottom: 6
+    }
+  }, /*#__PURE__*/React.createElement("select", {
+    style: {
+      ...inputStyle,
+      flex: 1
     },
-    children: [/*#__PURE__*/_jsxDEV(Card, {
-      children: [/*#__PURE__*/_jsxDEV("div", {
-        style: {
-          fontWeight: 500,
-          marginBottom: 10
-        },
-        children: "Registrar actividad"
-      }, void 0, false), /*#__PURE__*/_jsxDEV("div", {
-        style: {
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
-          gap: 10
-        },
-        children: [/*#__PURE__*/_jsxDEV(Field, {
-          label: "Lote",
-          children: /*#__PURE__*/_jsxDEV("select", {
-            style: inputStyle,
-            value: form.loteId,
-            onChange: e => setForm({
-              ...form,
-              loteId: e.target.value
-            }),
-            children: [/*#__PURE__*/_jsxDEV("option", {
-              value: "",
-              children: "Elegir…"
-            }, void 0, false), lotesConCampo.map(l => /*#__PURE__*/_jsxDEV("option", {
-              value: l.id,
-              children: [l.campoNombre, " — ", l.nombre]
-            }, l.id, true))]
-          }, void 0, true)
-        }, void 0, false), /*#__PURE__*/_jsxDEV(Field, {
-          label: "Tipo",
-          children: /*#__PURE__*/_jsxDEV("select", {
-            style: inputStyle,
-            value: form.tipo,
-            onChange: e => setForm({
-              ...form,
-              tipo: e.target.value
-            }),
-            children: TIPOS_ACTIVIDAD.map(t => /*#__PURE__*/_jsxDEV("option", {
-              children: t
-            }, t, false))
-          }, void 0, false)
-        }, void 0, false), /*#__PURE__*/_jsxDEV(Field, {
-          label: "Fecha",
-          children: /*#__PURE__*/_jsxDEV("input", {
-            style: inputStyle,
-            type: "date",
-            value: form.fecha,
-            onChange: e => setForm({
-              ...form,
-              fecha: e.target.value
-            })
-          }, void 0, false)
-        }, void 0, false), form.tipo === 'Riego' && /*#__PURE__*/_jsxDEV(_Fragment, {
-          children: [/*#__PURE__*/_jsxDEV(Field, {
-            label: "mm",
-            children: /*#__PURE__*/_jsxDEV("input", {
-              style: inputStyle,
-              type: "number",
-              value: form.mm,
-              onChange: e => setForm({
-                ...form,
-                mm: e.target.value
-              })
-            }, void 0, false)
-          }, void 0, false), /*#__PURE__*/_jsxDEV(Field, {
-            label: "Fuente",
-            children: /*#__PURE__*/_jsxDEV("input", {
-              style: inputStyle,
-              value: form.fuente,
-              onChange: e => setForm({
-                ...form,
-                fuente: e.target.value
-              })
-            }, void 0, false)
-          }, void 0, false)]
-        }, void 0, true), form.tipo === 'Cosecha' && /*#__PURE__*/_jsxDEV(Field, {
-          label: "Rendimiento qq/ha",
-          children: /*#__PURE__*/_jsxDEV("input", {
-            style: inputStyle,
-            type: "number",
-            value: form.rendimiento,
-            onChange: e => setForm({
-              ...form,
-              rendimiento: e.target.value
-            })
-          }, void 0, false)
-        }, void 0, false)]
-      }, void 0, true), /*#__PURE__*/_jsxDEV("div", {
-        style: {
-          marginTop: 12
-        },
-        children: [items.map((it, idx) => /*#__PURE__*/_jsxDEV("div", {
-          style: {
-            display: 'flex',
-            gap: 8,
-            marginBottom: 6
-          },
-          children: [/*#__PURE__*/_jsxDEV("select", {
-            style: {
-              ...inputStyle,
-              flex: 1
-            },
-            value: it.insumoId,
-            onChange: e => setItems(items.map((x, i) => i === idx ? {
-              ...x,
-              insumoId: e.target.value
-            } : x)),
-            children: [/*#__PURE__*/_jsxDEV("option", {
-              value: "",
-              children: "Insumo…"
-            }, void 0, false), data.insumos.map(i => /*#__PURE__*/_jsxDEV("option", {
-              value: i.id,
-              children: i.nombre
-            }, i.id, false))]
-          }, void 0, true), /*#__PURE__*/_jsxDEV("input", {
-            style: {
-              ...inputStyle,
-              width: 100
-            },
-            type: "number",
-            placeholder: "cantidad",
-            value: it.cantidad,
-            onChange: e => setItems(items.map((x, i) => i === idx ? {
-              ...x,
-              cantidad: e.target.value
-            } : x))
-          }, void 0, false), /*#__PURE__*/_jsxDEV("button", {
-            onClick: () => setItems(items.filter((_, i) => i !== idx)),
-            style: btnGhost,
-            children: "✕"
-          }, void 0, false)]
-        }, idx, true)), /*#__PURE__*/_jsxDEV("button", {
-          onClick: () => setItems([...items, {
-            insumoId: '',
-            cantidad: ''
-          }]),
-          style: btnSecondary,
-          children: "+ Insumo"
-        }, void 0, false)]
-      }, void 0, true), /*#__PURE__*/_jsxDEV("button", {
-        onClick: guardar,
-        style: {
-          ...btnPrimary,
-          marginTop: 14
-        },
-        children: "+ Guardar"
-      }, void 0, false)]
-    }, void 0, true), /*#__PURE__*/_jsxDEV(Card, {
-      children: [/*#__PURE__*/_jsxDEV("div", {
-        style: {
-          fontWeight: 500,
-          marginBottom: 10
-        },
-        children: "Historial"
-      }, void 0, false), [...data.actividades].sort((a, b) => (b.fecha || '').localeCompare(a.fecha || '')).slice(0, 30).map(act => {
-        const lote = data.lotes.find(l => l.id === act.loteId);
-        return /*#__PURE__*/_jsxDEV("div", {
-          style: {
-            padding: '8px 0',
-            borderTop: '1px solid #f1efe8',
-            fontSize: 14
-          },
-          children: [/*#__PURE__*/_jsxDEV("strong", {
-            children: act.tipo
-          }, void 0, false), " — ", lote?.nombre, " — ", act.fecha, " — ", fmtMoney(act.costoTotal)]
-        }, act.id, true);
-      })]
-    }, void 0, true)]
-  }, void 0, true);
+    value: it.insumoId,
+    onChange: e => setItems(items.map((x, i) => i === idx ? {
+      ...x,
+      insumoId: e.target.value
+    } : x))
+  }, /*#__PURE__*/React.createElement("option", {
+    value: ""
+  }, "Insumo…"), data.insumos.map(i => /*#__PURE__*/React.createElement("option", {
+    key: i.id,
+    value: i.id
+  }, i.nombre))), /*#__PURE__*/React.createElement("input", {
+    style: {
+      ...inputStyle,
+      width: 100
+    },
+    type: "number",
+    placeholder: "cantidad",
+    value: it.cantidad,
+    onChange: e => setItems(items.map((x, i) => i === idx ? {
+      ...x,
+      cantidad: e.target.value
+    } : x))
+  }), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setItems(items.filter((_, i) => i !== idx)),
+    style: btnGhost
+  }, "✕"))), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setItems([...items, {
+      insumoId: '',
+      cantidad: ''
+    }]),
+    style: btnSecondary
+  }, "+ Insumo")), /*#__PURE__*/React.createElement("button", {
+    onClick: guardar,
+    style: {
+      ...btnPrimary,
+      marginTop: 14
+    }
+  }, "+ Guardar")), /*#__PURE__*/React.createElement(Card, null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: 500,
+      marginBottom: 10
+    }
+  }, "Historial"), [...data.actividades].sort((a, b) => (b.fecha || '').localeCompare(a.fecha || '')).slice(0, 30).map(act => {
+    const lote = data.lotes.find(l => l.id === act.loteId);
+    return /*#__PURE__*/React.createElement("div", {
+      key: act.id,
+      style: {
+        padding: '8px 0',
+        borderTop: '1px solid #f1efe8',
+        fontSize: 14
+      }
+    }, /*#__PURE__*/React.createElement("strong", null, act.tipo), " — ", lote?.nombre, " — ", act.fecha, " — ", fmtMoney(act.costoTotal));
+  })));
 }
 
 /* ---------- CLIENTES ---------- */
@@ -2351,53 +2059,44 @@ function Clientes({
     }]);
     setNombre('');
   };
-  return /*#__PURE__*/_jsxDEV("div", {
+  return /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       flexDirection: 'column',
       gap: 14
+    }
+  }, /*#__PURE__*/React.createElement(Card, null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: 500,
+      marginBottom: 10
+    }
+  }, "Nuevo cliente"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      gap: 10
+    }
+  }, /*#__PURE__*/React.createElement("input", {
+    style: {
+      ...inputStyle,
+      flex: 1
     },
-    children: [/*#__PURE__*/_jsxDEV(Card, {
-      children: [/*#__PURE__*/_jsxDEV("div", {
-        style: {
-          fontWeight: 500,
-          marginBottom: 10
-        },
-        children: "Nuevo cliente"
-      }, void 0, false), /*#__PURE__*/_jsxDEV("div", {
-        style: {
-          display: 'flex',
-          gap: 10
-        },
-        children: [/*#__PURE__*/_jsxDEV("input", {
-          style: {
-            ...inputStyle,
-            flex: 1
-          },
-          value: nombre,
-          onChange: e => setNombre(e.target.value)
-        }, void 0, false), /*#__PURE__*/_jsxDEV("button", {
-          onClick: add,
-          style: btnPrimary,
-          children: "+ Agregar"
-        }, void 0, false)]
-      }, void 0, true)]
-    }, void 0, true), data.clientes.map(cli => {
-      const campos = data.campos.filter(c => c.clienteId === cli.id);
-      return /*#__PURE__*/_jsxDEV(Card, {
-        children: [/*#__PURE__*/_jsxDEV("strong", {
-          children: cli.nombre
-        }, void 0, false), /*#__PURE__*/_jsxDEV("div", {
-          style: {
-            fontSize: 13,
-            color: '#5f5e5a',
-            marginTop: 6
-          },
-          children: [campos.length, " campo(s)"]
-        }, void 0, true)]
-      }, cli.id, true);
-    })]
-  }, void 0, true);
+    value: nombre,
+    onChange: e => setNombre(e.target.value)
+  }), /*#__PURE__*/React.createElement("button", {
+    onClick: add,
+    style: btnPrimary
+  }, "+ Agregar"))), data.clientes.map(cli => {
+    const campos = data.campos.filter(c => c.clienteId === cli.id);
+    return /*#__PURE__*/React.createElement(Card, {
+      key: cli.id
+    }, /*#__PURE__*/React.createElement("strong", null, cli.nombre), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 13,
+        color: '#5f5e5a',
+        marginTop: 6
+      }
+    }, campos.length, " campo(s)"));
+  }));
 }
 
 /* ---------- USUARIOS ---------- */
@@ -2446,131 +2145,108 @@ function Usuarios({
     });
     cargar();
   };
-  return /*#__PURE__*/_jsxDEV("div", {
+  return /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       flexDirection: 'column',
       gap: 14
-    },
-    children: [/*#__PURE__*/_jsxDEV(Card, {
-      children: [/*#__PURE__*/_jsxDEV("div", {
-        style: {
-          fontWeight: 500,
-          marginBottom: 10
-        },
-        children: "Nuevo acceso"
-      }, void 0, false), /*#__PURE__*/_jsxDEV("div", {
-        style: {
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
-          gap: 10
-        },
-        children: [/*#__PURE__*/_jsxDEV(Field, {
-          label: "Nombre",
-          children: /*#__PURE__*/_jsxDEV("input", {
-            style: inputStyle,
-            value: form.nombre,
-            onChange: e => setForm({
-              ...form,
-              nombre: e.target.value
-            })
-          }, void 0, false)
-        }, void 0, false), /*#__PURE__*/_jsxDEV(Field, {
-          label: "Usuario",
-          children: /*#__PURE__*/_jsxDEV("input", {
-            style: inputStyle,
-            value: form.usuario,
-            onChange: e => setForm({
-              ...form,
-              usuario: e.target.value
-            })
-          }, void 0, false)
-        }, void 0, false), /*#__PURE__*/_jsxDEV(Field, {
-          label: "Contraseña",
-          children: /*#__PURE__*/_jsxDEV("input", {
-            style: inputStyle,
-            type: "text",
-            value: form.password,
-            onChange: e => setForm({
-              ...form,
-              password: e.target.value
-            })
-          }, void 0, false)
-        }, void 0, false), /*#__PURE__*/_jsxDEV(Field, {
-          label: "Rol",
-          children: /*#__PURE__*/_jsxDEV("select", {
-            style: inputStyle,
-            value: form.rol,
-            onChange: e => setForm({
-              ...form,
-              rol: e.target.value
-            }),
-            children: [/*#__PURE__*/_jsxDEV("option", {
-              value: "productor",
-              children: "Productor"
-            }, void 0, false), /*#__PURE__*/_jsxDEV("option", {
-              value: "admin",
-              children: "Admin"
-            }, void 0, false)]
-          }, void 0, true)
-        }, void 0, false), form.rol === 'productor' && /*#__PURE__*/_jsxDEV(Field, {
-          label: "Cliente",
-          children: /*#__PURE__*/_jsxDEV("select", {
-            style: inputStyle,
-            value: form.clienteId,
-            onChange: e => setForm({
-              ...form,
-              clienteId: e.target.value
-            }),
-            children: [/*#__PURE__*/_jsxDEV("option", {
-              value: "",
-              children: "Elegir…"
-            }, void 0, false), data.clientes.map(c => /*#__PURE__*/_jsxDEV("option", {
-              value: c.id,
-              children: c.nombre
-            }, c.id, false))]
-          }, void 0, true)
-        }, void 0, false)]
-      }, void 0, true), msg && /*#__PURE__*/_jsxDEV("div", {
-        style: {
-          color: '#A32D2D',
-          fontSize: 13,
-          marginTop: 8
-        },
-        children: msg
-      }, void 0, false), /*#__PURE__*/_jsxDEV("button", {
-        onClick: crear,
-        style: {
-          ...btnPrimary,
-          marginTop: 12
-        },
-        children: "+ Crear acceso"
-      }, void 0, false)]
-    }, void 0, true), /*#__PURE__*/_jsxDEV(Card, {
-      children: [/*#__PURE__*/_jsxDEV("div", {
-        style: {
-          fontWeight: 500,
-          marginBottom: 10
-        },
-        children: "Accesos existentes"
-      }, void 0, false), usuarios.map(u => /*#__PURE__*/_jsxDEV("div", {
-        style: {
-          display: 'flex',
-          justifyContent: 'space-between',
-          padding: '8px 0',
-          borderTop: '1px solid #f1efe8',
-          fontSize: 14
-        },
-        children: [/*#__PURE__*/_jsxDEV("span", {
-          children: [u.nombre, " (", u.usuario, ") — ", u.rol]
-        }, void 0, true), /*#__PURE__*/_jsxDEV("button", {
-          onClick: () => borrar(u.id),
-          style: btnGhost,
-          children: "🗑"
-        }, void 0, false)]
-      }, u.id, true))]
-    }, void 0, true)]
-  }, void 0, true);
+    }
+  }, /*#__PURE__*/React.createElement(Card, null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: 500,
+      marginBottom: 10
+    }
+  }, "Nuevo acceso"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'grid',
+      gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
+      gap: 10
+    }
+  }, /*#__PURE__*/React.createElement(Field, {
+    label: "Nombre"
+  }, /*#__PURE__*/React.createElement("input", {
+    style: inputStyle,
+    value: form.nombre,
+    onChange: e => setForm({
+      ...form,
+      nombre: e.target.value
+    })
+  })), /*#__PURE__*/React.createElement(Field, {
+    label: "Usuario"
+  }, /*#__PURE__*/React.createElement("input", {
+    style: inputStyle,
+    value: form.usuario,
+    onChange: e => setForm({
+      ...form,
+      usuario: e.target.value
+    })
+  })), /*#__PURE__*/React.createElement(Field, {
+    label: "Contraseña"
+  }, /*#__PURE__*/React.createElement("input", {
+    style: inputStyle,
+    type: "text",
+    value: form.password,
+    onChange: e => setForm({
+      ...form,
+      password: e.target.value
+    })
+  })), /*#__PURE__*/React.createElement(Field, {
+    label: "Rol"
+  }, /*#__PURE__*/React.createElement("select", {
+    style: inputStyle,
+    value: form.rol,
+    onChange: e => setForm({
+      ...form,
+      rol: e.target.value
+    })
+  }, /*#__PURE__*/React.createElement("option", {
+    value: "productor"
+  }, "Productor"), /*#__PURE__*/React.createElement("option", {
+    value: "admin"
+  }, "Admin"))), form.rol === 'productor' && /*#__PURE__*/React.createElement(Field, {
+    label: "Cliente"
+  }, /*#__PURE__*/React.createElement("select", {
+    style: inputStyle,
+    value: form.clienteId,
+    onChange: e => setForm({
+      ...form,
+      clienteId: e.target.value
+    })
+  }, /*#__PURE__*/React.createElement("option", {
+    value: ""
+  }, "Elegir…"), data.clientes.map(c => /*#__PURE__*/React.createElement("option", {
+    key: c.id,
+    value: c.id
+  }, c.nombre))))), msg && /*#__PURE__*/React.createElement("div", {
+    style: {
+      color: '#A32D2D',
+      fontSize: 13,
+      marginTop: 8
+    }
+  }, msg), /*#__PURE__*/React.createElement("button", {
+    onClick: crear,
+    style: {
+      ...btnPrimary,
+      marginTop: 12
+    }
+  }, "+ Crear acceso")), /*#__PURE__*/React.createElement(Card, null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: 500,
+      marginBottom: 10
+    }
+  }, "Accesos existentes"), usuarios.map(u => /*#__PURE__*/React.createElement("div", {
+    key: u.id,
+    style: {
+      display: 'flex',
+      justifyContent: 'space-between',
+      padding: '8px 0',
+      borderTop: '1px solid #f1efe8',
+      fontSize: 14
+    }
+  }, /*#__PURE__*/React.createElement("span", null, u.nombre, " (", u.usuario, ") — ", u.rol), /*#__PURE__*/React.createElement("button", {
+    onClick: () => borrar(u.id),
+    style: btnGhost
+  }, "🗑")))));
 }
 
 /* ---------- CONSULTAS ---------- */
@@ -2597,75 +2273,63 @@ function Consultas({
       respondida: true
     } : x));
   };
-  return /*#__PURE__*/_jsxDEV("div", {
+  return /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       flexDirection: 'column',
       gap: 14
-    },
-    children: [data.consultas.length === 0 && /*#__PURE__*/_jsxDEV(Card, {
-      children: /*#__PURE__*/_jsxDEV("div", {
-        style: {
-          color: '#888780',
-          fontSize: 13
-        },
-        children: "Sin consultas todavía."
-      }, void 0, false)
-    }, void 0, false), [...data.consultas].reverse().map(c => {
-      const cliente = data.clientes.find(cl => cl.id === c.clienteId);
-      return /*#__PURE__*/_jsxDEV(Card, {
-        children: [/*#__PURE__*/_jsxDEV("div", {
-          style: {
-            display: 'flex',
-            justifyContent: 'space-between'
-          },
-          children: [/*#__PURE__*/_jsxDEV("strong", {
-            children: cliente?.nombre || 'Productor'
-          }, void 0, false), /*#__PURE__*/_jsxDEV("span", {
-            style: {
-              fontSize: 12,
-              color: '#888780'
-            },
-            children: c.fecha
-          }, void 0, false)]
-        }, void 0, true), /*#__PURE__*/_jsxDEV("div", {
-          style: {
-            margin: '8px 0',
-            fontSize: 14
-          },
-          children: c.texto
-        }, void 0, false), c.respondida ? /*#__PURE__*/_jsxDEV("div", {
-          style: {
-            background: '#EAF3DE',
-            padding: 8,
-            borderRadius: 6,
-            fontSize: 13
-          },
-          children: c.respuesta
-        }, void 0, false) : /*#__PURE__*/_jsxDEV("div", {
-          style: {
-            display: 'flex',
-            gap: 8
-          },
-          children: [/*#__PURE__*/_jsxDEV("input", {
-            style: {
-              ...inputStyle,
-              flex: 1
-            },
-            placeholder: "Tu respuesta…",
-            value: respuestas[c.id] || '',
-            onChange: e => setRespuestas({
-              ...respuestas,
-              [c.id]: e.target.value
-            })
-          }, void 0, false), /*#__PURE__*/_jsxDEV("button", {
-            onClick: () => responder(c.id),
-            style: btnPrimary,
-            children: "Responder"
-          }, void 0, false)]
-        }, void 0, true)]
-      }, c.id, true);
-    })]
-  }, void 0, true);
+    }
+  }, data.consultas.length === 0 && /*#__PURE__*/React.createElement(Card, null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      color: '#888780',
+      fontSize: 13
+    }
+  }, "Sin consultas todavía.")), [...data.consultas].reverse().map(c => {
+    const cliente = data.clientes.find(cl => cl.id === c.clienteId);
+    return /*#__PURE__*/React.createElement(Card, {
+      key: c.id
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: 'flex',
+        justifyContent: 'space-between'
+      }
+    }, /*#__PURE__*/React.createElement("strong", null, cliente?.nombre || 'Productor'), /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 12,
+        color: '#888780'
+      }
+    }, c.fecha)), /*#__PURE__*/React.createElement("div", {
+      style: {
+        margin: '8px 0',
+        fontSize: 14
+      }
+    }, c.texto), c.respondida ? /*#__PURE__*/React.createElement("div", {
+      style: {
+        background: '#EAF3DE',
+        padding: 8,
+        borderRadius: 6,
+        fontSize: 13
+      }
+    }, c.respuesta) : /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: 'flex',
+        gap: 8
+      }
+    }, /*#__PURE__*/React.createElement("input", {
+      style: {
+        ...inputStyle,
+        flex: 1
+      },
+      placeholder: "Tu respuesta…",
+      value: respuestas[c.id] || '',
+      onChange: e => setRespuestas({
+        ...respuestas,
+        [c.id]: e.target.value
+      })
+    }), /*#__PURE__*/React.createElement("button", {
+      onClick: () => responder(c.id),
+      style: btnPrimary
+    }, "Responder")));
+  }));
 }
-ReactDOM.createRoot(document.getElementById('root')).render(/*#__PURE__*/_jsxDEV(App, {}, void 0, false));
+ReactDOM.createRoot(document.getElementById('root')).render(/*#__PURE__*/React.createElement(App, null));
