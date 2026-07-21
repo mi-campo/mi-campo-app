@@ -12,6 +12,7 @@ const METODOS_POR_TIPO = {
 };
 const TIPOS_CON_APLICACION = Object.keys(METODOS_POR_TIPO);
 const CATEGORIAS_INSUMO = ['Insecticida', 'Herbicida', 'Fungicida', 'Fertilizante', 'Semilla', 'Cebo', 'Otro'];
+const CULTIVOS_SIEMBRA = ['Soja', 'Trigo', 'Garbanzo', 'Maíz'];
 const inputStyle = {
   padding: '8px 10px',
   borderRadius: 6,
@@ -1895,7 +1896,10 @@ function Actividades({
     metodo: '',
     haReales: '',
     haFacturadas: '',
-    tarifaContratista: ''
+    tarifaContratista: '',
+    cultivo: '',
+    variedad: '',
+    densidad: ''
   };
   const [form, setForm] = useState(formInicial);
   const [items, setItems] = useState([{
@@ -2025,7 +2029,39 @@ function Actividades({
       ...form,
       rendimiento: e.target.value
     })
-  })), esAplicacion && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(Field, {
+  })), form.tipo === 'Siembra' && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(Field, {
+    label: "Cultivo"
+  }, /*#__PURE__*/React.createElement("select", {
+    style: inputStyle,
+    value: form.cultivo,
+    onChange: e => setForm({
+      ...form,
+      cultivo: e.target.value
+    })
+  }, /*#__PURE__*/React.createElement("option", {
+    value: ""
+  }, "Elegir…"), CULTIVOS_SIEMBRA.map(c => /*#__PURE__*/React.createElement("option", {
+    key: c
+  }, c)))), /*#__PURE__*/React.createElement(Field, {
+    label: form.cultivo === 'Maíz' ? 'Híbrido' : 'Variedad'
+  }, /*#__PURE__*/React.createElement("input", {
+    style: inputStyle,
+    value: form.variedad,
+    onChange: e => setForm({
+      ...form,
+      variedad: e.target.value
+    })
+  })), /*#__PURE__*/React.createElement(Field, {
+    label: "Densidad (kg/ha)"
+  }, /*#__PURE__*/React.createElement("input", {
+    style: inputStyle,
+    type: "number",
+    value: form.densidad,
+    onChange: e => setForm({
+      ...form,
+      densidad: e.target.value
+    })
+  }))), esAplicacion && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(Field, {
     label: "Método"
   }, /*#__PURE__*/React.createElement("select", {
     style: inputStyle,
@@ -2070,6 +2106,24 @@ function Actividades({
       tarifaContratista: e.target.value
     })
   })))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 12
+    }
+  }, /*#__PURE__*/React.createElement(Field, {
+    label: "Observaciones"
+  }, /*#__PURE__*/React.createElement("textarea", {
+    style: {
+      ...inputStyle,
+      width: '100%',
+      minHeight: 50,
+      resize: 'vertical'
+    },
+    value: form.notas,
+    onChange: e => setForm({
+      ...form,
+      notas: e.target.value
+    })
+  }))), /*#__PURE__*/React.createElement("div", {
     style: {
       marginTop: 12
     }
@@ -2146,6 +2200,7 @@ function Actividades({
   }, "Historial"), [...data.actividades].sort((a, b) => (b.fecha || '').localeCompare(a.fecha || '')).slice(0, 30).map(act => {
     const lote = data.lotes.find(l => l.id === act.loteId);
     const haInfo = act.haReales ? ` · ${act.haReales}ha` + (act.haFacturadas && act.haFacturadas != act.haReales ? ` (${act.haFacturadas}ha facturadas)` : '') : '';
+    const siembraInfo = act.tipo === 'Siembra' && act.cultivo ? ` — ${act.cultivo}${act.variedad ? ' ' + act.variedad : ''}${act.densidad ? ` (${act.densidad} kg/ha)` : ''}` : '';
     return /*#__PURE__*/React.createElement("div", {
       key: act.id,
       style: {
@@ -2153,7 +2208,7 @@ function Actividades({
         borderTop: '1px solid #f1efe8',
         fontSize: 14
       }
-    }, /*#__PURE__*/React.createElement("strong", null, act.tipo), act.metodo ? ` (${act.metodo})` : '', " — ", lote?.nombre, " — ", act.fecha, haInfo, " — ", fmtMoney(act.costoTotal), act.costoContratista > 0 && /*#__PURE__*/React.createElement("div", {
+    }, /*#__PURE__*/React.createElement("strong", null, act.tipo), act.metodo ? ` (${act.metodo})` : '', " — ", lote?.nombre, " — ", act.fecha, haInfo, siembraInfo, " — ", fmtMoney(act.costoTotal), act.costoContratista > 0 && /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 12,
         color: '#888780'
@@ -2163,7 +2218,13 @@ function Actividades({
         fontSize: 12,
         color: '#888780'
       }
-    }, act.items.map(it => data.insumos.find(i => i.id === it.insumoId)?.nombre).filter(Boolean).join(', ')));
+    }, act.items.map(it => data.insumos.find(i => i.id === it.insumoId)?.nombre).filter(Boolean).join(', ')), act.notas && /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12,
+        color: '#5f5e5a',
+        fontStyle: 'italic'
+      }
+    }, act.notas));
   })));
 }
 
