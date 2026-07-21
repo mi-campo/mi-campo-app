@@ -1887,7 +1887,7 @@ function Actividades({
 }) {
   const formInicial = {
     loteId: '',
-    tipo: 'Fitosanitario',
+    tipo: 'Siembra',
     fecha: '',
     notas: '',
     rendimiento: '',
