@@ -4,7 +4,8 @@ const {
   useMemo
 } = React;
 const uid = () => Math.random().toString(36).slice(2, 10);
-const TIPOS_ACTIVIDAD = ['Fitosanitario', 'Riego', 'Siembra', 'Fertilización', 'Cosecha'];
+const TIPOS_ACTIVIDAD = ['Fitosanitario', 'Fertilización', 'Labor', 'Riego', 'Siembra', 'Cosecha'];
+const METODOS_LABOR = ['Terrestre', 'Aéreo (avión)', 'Drone'];
 const inputStyle = {
   padding: '8px 10px',
   borderRadius: 6,
@@ -1847,7 +1848,8 @@ function Actividades({
     notas: '',
     rendimiento: '',
     mm: '',
-    fuente: ''
+    fuente: '',
+    metodo: ''
   });
   const [items, setItems] = useState([{
     insumoId: '',
@@ -1882,7 +1884,8 @@ function Actividades({
       notas: '',
       rendimiento: '',
       mm: '',
-      fuente: ''
+      fuente: '',
+      metodo: ''
     });
     setItems([{
       insumoId: '',
@@ -1974,7 +1977,20 @@ function Actividades({
       ...form,
       rendimiento: e.target.value
     })
-  }))), /*#__PURE__*/React.createElement("div", {
+  })), form.tipo === 'Labor' && /*#__PURE__*/React.createElement(Field, {
+    label: "Método"
+  }, /*#__PURE__*/React.createElement("select", {
+    style: inputStyle,
+    value: form.metodo,
+    onChange: e => setForm({
+      ...form,
+      metodo: e.target.value
+    })
+  }, /*#__PURE__*/React.createElement("option", {
+    value: ""
+  }, "Elegir…"), METODOS_LABOR.map(m => /*#__PURE__*/React.createElement("option", {
+    key: m
+  }, m))))), /*#__PURE__*/React.createElement("div", {
     style: {
       marginTop: 12
     }
@@ -2041,7 +2057,7 @@ function Actividades({
         borderTop: '1px solid #f1efe8',
         fontSize: 14
       }
-    }, /*#__PURE__*/React.createElement("strong", null, act.tipo), " — ", lote?.nombre, " — ", act.fecha, " — ", fmtMoney(act.costoTotal));
+    }, /*#__PURE__*/React.createElement("strong", null, act.tipo), act.metodo ? ` (${act.metodo})` : '', " — ", lote?.nombre, " — ", act.fecha, " — ", fmtMoney(act.costoTotal));
   })));
 }
 
