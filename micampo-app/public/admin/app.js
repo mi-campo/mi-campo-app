@@ -4,8 +4,9 @@ const {
   useMemo
 } = React;
 const uid = () => Math.random().toString(36).slice(2, 10);
-const TIPOS_ACTIVIDAD = ['Fitosanitario', 'Fertilización', 'Labor', 'Riego', 'Siembra', 'Cosecha'];
-const METODOS_LABOR = ['Terrestre', 'Aéreo (avión)', 'Drone'];
+const TIPOS_ACTIVIDAD = ['Siembra', 'Fertilización', 'Fitosanitario', 'Riego', 'Cosecha'];
+const TIPOS_CON_APLICACION = ['Fertilización', 'Fitosanitario'];
+const METODOS_APLICACION = ['Terrestre', 'Aéreo (avión)', 'Drone'];
 const inputStyle = {
   padding: '8px 10px',
   borderRadius: 6,
@@ -522,6 +523,8 @@ function Campos({
       hectareas: '',
       modo: 'Riego'
     };
+    const haTotalCampo = lotes.reduce((s, l) => s + (Number(l.hectareas) || 0), 0);
+    const gastoTotalCampo = data.actividades.filter(a => lotes.some(l => l.id === a.loteId)).reduce((s, a) => s + (a.costoTotal || 0), 0);
     return /*#__PURE__*/React.createElement(Card, {
       key: campo.id
     }, /*#__PURE__*/React.createElement("div", {
@@ -534,7 +537,13 @@ function Campos({
       style: {
         fontWeight: 500
       }
-    }, campo.nombre), cliente && /*#__PURE__*/React.createElement("span", {
+    }, campo.nombre), /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 12,
+        color: '#888780',
+        marginLeft: 8
+      }
+    }, haTotalCampo, " ha · ", lotes.length, " lote(s)", gastoTotalCampo > 0 ? ` · Gasto: ${fmtMoney(gastoTotalCampo)}` : ''), cliente && /*#__PURE__*/React.createElement("span", {
       style: {
         fontSize: 12,
         color: '#993C1D',
@@ -1841,7 +1850,7 @@ function Actividades({
   data,
   update
 }) {
-  const [form, setForm] = useState({
+  const formInicial = {
     loteId: '',
     tipo: 'Fitosanitario',
     fecha: '',
@@ -1849,25 +1858,35 @@ function Actividades({
     rendimiento: '',
     mm: '',
     fuente: '',
-    metodo: ''
-  });
+    metodo: '',
+    haReales: '',
+    haFacturadas: '',
+    tarifaContratista: ''
+  };
+  const [form, setForm] = useState(formInicial);
   const [items, setItems] = useState([{
     insumoId: '',
     cantidad: ''
   }]);
+  const esAplicacion = TIPOS_CON_APLICACION.includes(form.tipo);
   const guardar = () => {
     if (!form.loteId || !form.fecha) return;
     const usados = items.filter(it => it.insumoId && Number(it.cantidad) > 0);
-    let costoTotal = 0;
+    let costoInsumos = 0;
     usados.forEach(it => {
-      costoTotal += Number(it.cantidad) * precioPromedio(data, it.insumoId);
+      costoInsumos += Number(it.cantidad) * precioPromedio(data, it.insumoId);
     });
+    const haFact = Number(form.haFacturadas) || Number(form.haReales) || 0;
+    const costoContratista = esAplicacion && form.tarifaContratista ? Number(form.tarifaContratista) * haFact : 0;
+    const costoTotal = costoInsumos + costoContratista;
     const ciclo = cicloActivo(data, form.loteId);
     update('actividades', a => [...a, {
       id: uid(),
       ...form,
       cicloId: ciclo ? ciclo.id : null,
       items: usados,
+      costoInsumos,
+      costoContratista,
       costoTotal
     }]);
     update('insumos', ins => ins.map(i => {
@@ -1878,14 +1897,9 @@ function Actividades({
       } : i;
     }));
     setForm({
+      ...formInicial,
       loteId: form.loteId,
-      tipo: 'Fitosanitario',
-      fecha: '',
-      notas: '',
-      rendimiento: '',
-      mm: '',
-      fuente: '',
-      metodo: ''
+      tipo: form.tipo
     });
     setItems([{
       insumoId: '',
@@ -1977,7 +1991,7 @@ function Actividades({
       ...form,
       rendimiento: e.target.value
     })
-  })), form.tipo === 'Labor' && /*#__PURE__*/React.createElement(Field, {
+  })), esAplicacion && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(Field, {
     label: "Método"
   }, /*#__PURE__*/React.createElement("select", {
     style: inputStyle,
@@ -1988,50 +2002,97 @@ function Actividades({
     })
   }, /*#__PURE__*/React.createElement("option", {
     value: ""
-  }, "Elegir…"), METODOS_LABOR.map(m => /*#__PURE__*/React.createElement("option", {
+  }, "Elegir…"), METODOS_APLICACION.map(m => /*#__PURE__*/React.createElement("option", {
     key: m
-  }, m))))), /*#__PURE__*/React.createElement("div", {
+  }, m)))), /*#__PURE__*/React.createElement(Field, {
+    label: "Ha reales (dosis)"
+  }, /*#__PURE__*/React.createElement("input", {
+    style: inputStyle,
+    type: "number",
+    value: form.haReales,
+    onChange: e => setForm({
+      ...form,
+      haReales: e.target.value
+    })
+  })), /*#__PURE__*/React.createElement(Field, {
+    label: "Ha facturadas contratista"
+  }, /*#__PURE__*/React.createElement("input", {
+    style: inputStyle,
+    type: "number",
+    placeholder: "= ha reales si vacío",
+    value: form.haFacturadas,
+    onChange: e => setForm({
+      ...form,
+      haFacturadas: e.target.value
+    })
+  })), /*#__PURE__*/React.createElement(Field, {
+    label: "Tarifa contratista USD/ha"
+  }, /*#__PURE__*/React.createElement("input", {
+    style: inputStyle,
+    type: "number",
+    value: form.tarifaContratista,
+    onChange: e => setForm({
+      ...form,
+      tarifaContratista: e.target.value
+    })
+  })))), /*#__PURE__*/React.createElement("div", {
     style: {
       marginTop: 12
     }
-  }, items.map((it, idx) => /*#__PURE__*/React.createElement("div", {
-    key: idx,
+  }, /*#__PURE__*/React.createElement("div", {
     style: {
-      display: 'flex',
-      gap: 8,
+      fontSize: 12,
+      color: '#888780',
       marginBottom: 6
     }
-  }, /*#__PURE__*/React.createElement("select", {
-    style: {
-      ...inputStyle,
-      flex: 1
-    },
-    value: it.insumoId,
-    onChange: e => setItems(items.map((x, i) => i === idx ? {
-      ...x,
-      insumoId: e.target.value
-    } : x))
-  }, /*#__PURE__*/React.createElement("option", {
-    value: ""
-  }, "Insumo…"), data.insumos.map(i => /*#__PURE__*/React.createElement("option", {
-    key: i.id,
-    value: i.id
-  }, i.nombre))), /*#__PURE__*/React.createElement("input", {
-    style: {
-      ...inputStyle,
-      width: 100
-    },
-    type: "number",
-    placeholder: "cantidad",
-    value: it.cantidad,
-    onChange: e => setItems(items.map((x, i) => i === idx ? {
-      ...x,
-      cantidad: e.target.value
-    } : x))
+  }, "Insumos aplicados (cantidad total, se divide por las ha reales)"), items.map((it, idx) => {
+    const dosis = form.haReales && it.cantidad ? (Number(it.cantidad) / Number(form.haReales)).toFixed(2) : null;
+    return /*#__PURE__*/React.createElement("div", {
+      key: idx,
+      style: {
+        display: 'flex',
+        gap: 8,
+        marginBottom: 6,
+        alignItems: 'center'
+      }
+    }, /*#__PURE__*/React.createElement("select", {
+      style: {
+        ...inputStyle,
+        flex: 1
+      },
+      value: it.insumoId,
+      onChange: e => setItems(items.map((x, i) => i === idx ? {
+        ...x,
+        insumoId: e.target.value
+      } : x))
+    }, /*#__PURE__*/React.createElement("option", {
+      value: ""
+    }, "Insumo…"), data.insumos.map(i => /*#__PURE__*/React.createElement("option", {
+      key: i.id,
+      value: i.id
+    }, i.nombre))), /*#__PURE__*/React.createElement("input", {
+      style: {
+        ...inputStyle,
+        width: 100
+      },
+      type: "number",
+      placeholder: "cantidad total",
+      value: it.cantidad,
+      onChange: e => setItems(items.map((x, i) => i === idx ? {
+        ...x,
+        cantidad: e.target.value
+      } : x))
+    }), dosis && /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 12,
+        color: '#888780',
+        width: 90
+      }
+    }, dosis, " /ha"), /*#__PURE__*/React.createElement("button", {
+      onClick: () => setItems(items.filter((_, i) => i !== idx)),
+      style: btnGhost
+    }, "✕"));
   }), /*#__PURE__*/React.createElement("button", {
-    onClick: () => setItems(items.filter((_, i) => i !== idx)),
-    style: btnGhost
-  }, "✕"))), /*#__PURE__*/React.createElement("button", {
     onClick: () => setItems([...items, {
       insumoId: '',
       cantidad: ''
@@ -2050,6 +2111,7 @@ function Actividades({
     }
   }, "Historial"), [...data.actividades].sort((a, b) => (b.fecha || '').localeCompare(a.fecha || '')).slice(0, 30).map(act => {
     const lote = data.lotes.find(l => l.id === act.loteId);
+    const haInfo = act.haReales ? ` · ${act.haReales}ha` + (act.haFacturadas && act.haFacturadas != act.haReales ? ` (${act.haFacturadas}ha facturadas)` : '') : '';
     return /*#__PURE__*/React.createElement("div", {
       key: act.id,
       style: {
@@ -2057,7 +2119,17 @@ function Actividades({
         borderTop: '1px solid #f1efe8',
         fontSize: 14
       }
-    }, /*#__PURE__*/React.createElement("strong", null, act.tipo), act.metodo ? ` (${act.metodo})` : '', " — ", lote?.nombre, " — ", act.fecha, " — ", fmtMoney(act.costoTotal));
+    }, /*#__PURE__*/React.createElement("strong", null, act.tipo), act.metodo ? ` (${act.metodo})` : '', " — ", lote?.nombre, " — ", act.fecha, haInfo, " — ", fmtMoney(act.costoTotal), act.costoContratista > 0 && /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12,
+        color: '#888780'
+      }
+    }, "Insumos: ", fmtMoney(act.costoInsumos), " + Contratista: ", fmtMoney(act.costoContratista)), act.items && act.items.length > 0 && /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12,
+        color: '#888780'
+      }
+    }, act.items.map(it => data.insumos.find(i => i.id === it.insumoId)?.nombre).filter(Boolean).join(', ')));
   })));
 }
 
