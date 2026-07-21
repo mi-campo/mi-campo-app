@@ -4,9 +4,14 @@ const {
   useMemo
 } = React;
 const uid = () => Math.random().toString(36).slice(2, 10);
-const TIPOS_ACTIVIDAD = ['Siembra', 'Fertilización', 'Fitosanitario', 'Riego', 'Cosecha'];
-const TIPOS_CON_APLICACION = ['Fertilización', 'Fitosanitario'];
-const METODOS_APLICACION = ['Terrestre', 'Aéreo (avión)', 'Drone'];
+const TIPOS_ACTIVIDAD = ['Siembra', 'Fertilización', 'Pulverización', 'Riego', 'Cosecha'];
+const METODOS_POR_TIPO = {
+  Siembra: ['Sembradora', 'Drone'],
+  Fertilización: ['Voleo', 'Drone', 'Con siembra'],
+  Pulverización: ['Terrestre', 'Drone']
+};
+const TIPOS_CON_APLICACION = Object.keys(METODOS_POR_TIPO);
+const CATEGORIAS_INSUMO = ['Insecticida', 'Herbicida', 'Fungicida', 'Fertilizante', 'Semilla', 'Cebo', 'Otro'];
 const inputStyle = {
   padding: '8px 10px',
   borderRadius: 6,
@@ -1521,6 +1526,8 @@ function Insumos({
 }) {
   const [form, setForm] = useState({
     nombre: '',
+    categoria: 'Herbicida',
+    especificar: '',
     unidad: 'kg',
     stock: '',
     stockMinimo: '',
@@ -1539,6 +1546,8 @@ function Insumos({
     }]);
     setForm({
       nombre: '',
+      categoria: form.categoria,
+      especificar: '',
       unidad: 'kg',
       stock: '',
       stockMinimo: '',
@@ -1572,6 +1581,26 @@ function Insumos({
     onChange: e => setForm({
       ...form,
       nombre: e.target.value
+    })
+  })), /*#__PURE__*/React.createElement(Field, {
+    label: "Categoría"
+  }, /*#__PURE__*/React.createElement("select", {
+    style: inputStyle,
+    value: form.categoria,
+    onChange: e => setForm({
+      ...form,
+      categoria: e.target.value
+    })
+  }, CATEGORIAS_INSUMO.map(c => /*#__PURE__*/React.createElement("option", {
+    key: c
+  }, c)))), form.categoria === 'Otro' && /*#__PURE__*/React.createElement(Field, {
+    label: "Especificar"
+  }, /*#__PURE__*/React.createElement("input", {
+    style: inputStyle,
+    value: form.especificar,
+    onChange: e => setForm({
+      ...form,
+      especificar: e.target.value
     })
   })), /*#__PURE__*/React.createElement(Field, {
     label: "Unidad"
@@ -1632,7 +1661,12 @@ function Insumos({
       borderTop: '1px solid #f1efe8',
       fontSize: 14
     }
-  }, /*#__PURE__*/React.createElement("span", null, i.nombre), /*#__PURE__*/React.createElement("span", null, i.stock, " ", i.unidad, " · ", fmtMoney(precioPromedio(data, i.id)), "/", i.unidad, " promedio ", /*#__PURE__*/React.createElement("button", {
+  }, /*#__PURE__*/React.createElement("span", null, i.nombre, " ", /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 11,
+      color: '#888780'
+    }
+  }, "(", i.categoria, i.categoria === 'Otro' && i.especificar ? ': ' + i.especificar : '', ")")), /*#__PURE__*/React.createElement("span", null, i.stock, " ", i.unidad, " · ", fmtMoney(precioPromedio(data, i.id)), "/", i.unidad, " promedio ", /*#__PURE__*/React.createElement("button", {
     onClick: () => del(i.id),
     style: btnGhost
   }, "🗑"))))));
@@ -2002,7 +2036,7 @@ function Actividades({
     })
   }, /*#__PURE__*/React.createElement("option", {
     value: ""
-  }, "Elegir…"), METODOS_APLICACION.map(m => /*#__PURE__*/React.createElement("option", {
+  }, "Elegir…"), (METODOS_POR_TIPO[form.tipo] || []).map(m => /*#__PURE__*/React.createElement("option", {
     key: m
   }, m)))), /*#__PURE__*/React.createElement(Field, {
     label: "Ha reales (dosis)"
