@@ -421,52 +421,29 @@ function Resumen({
 
 /* ---------- CAMPOS Y LOTES ---------- */
 const TIPOS_APORTE = ['Insumos', 'Servicios/Labores', 'Alquiler', 'Riego/Infraestructura', 'Extraordinario', 'Otro'];
-function netoAportes(p) {
-  return (p.aportes || []).reduce((s, a) => s + (a.efecto === 'A favor' ? Number(a.valorUSD) || 0 : -(Number(a.valorUSD) || 0)), 0);
-}
 function AportesParticipante({
   campo,
   participante,
   update
 }) {
-  const aportes = participante.aportes || [];
-  const [nuevo, setNuevo] = useState({
-    tipo: 'Alquiler',
-    descripcion: '',
-    valorUSD: '',
-    efecto: 'A favor'
-  });
-  const totalAFavor = aportes.filter(a => a.efecto === 'A favor').reduce((s, a) => s + (Number(a.valorUSD) || 0), 0);
-  const totalEnContra = aportes.filter(a => a.efecto === 'En contra').reduce((s, a) => s + (Number(a.valorUSD) || 0), 0);
-  const netoAporte = totalAFavor - totalEnContra;
-  const agregar = () => {
-    if (!nuevo.valorUSD) return;
+  const categorias = participante.categoriasAporte || [];
+  const todoTildado = categorias.includes('Todo');
+  const toggle = cat => {
+    let nuevas;
+    if (cat === 'Todo') {
+      nuevas = todoTildado ? [] : ['Todo', ...TIPOS_APORTE];
+    } else {
+      nuevas = categorias.includes(cat) ? categorias.filter(c => c !== cat && c !== 'Todo') : [...categorias.filter(c => c !== 'Todo'), cat];
+      if (TIPOS_APORTE.every(t => nuevas.includes(t))) nuevas = ['Todo', ...TIPOS_APORTE];
+    }
     update('campos', cs => cs.map(c => c.id !== campo.id ? c : {
       ...c,
       participantes: c.participantes.map(p => p.id !== participante.id ? p : {
         ...p,
-        aportes: [...(p.aportes || []), {
-          id: uid(),
-          ...nuevo,
-          valorUSD: Number(nuevo.valorUSD),
-          fecha: new Date().toISOString().slice(0, 10)
-        }]
+        categoriasAporte: nuevas
       })
     }));
-    setNuevo({
-      tipo: 'Alquiler',
-      descripcion: '',
-      valorUSD: '',
-      efecto: 'A favor'
-    });
   };
-  const quitarAporte = aid => update('campos', cs => cs.map(c => c.id !== campo.id ? c : {
-    ...c,
-    participantes: c.participantes.map(p => p.id !== participante.id ? p : {
-      ...p,
-      aportes: (p.aportes || []).filter(a => a.id !== aid)
-    })
-  }));
   return /*#__PURE__*/React.createElement("div", {
     style: {
       marginTop: 4,
@@ -474,113 +451,51 @@ function AportesParticipante({
       paddingLeft: 10,
       borderLeft: '2px solid #e3e1d8'
     }
-  }, aportes.map(a => /*#__PURE__*/React.createElement("div", {
-    key: a.id,
+  }, /*#__PURE__*/React.createElement("div", {
     style: {
-      display: 'flex',
-      gap: 6,
-      alignItems: 'center',
-      fontSize: 12,
-      color: '#5f5e5a',
-      marginBottom: 3
-    }
-  }, /*#__PURE__*/React.createElement("span", {
-    style: {
-      fontWeight: 500,
-      minWidth: 90
-    }
-  }, a.tipo), /*#__PURE__*/React.createElement("span", {
-    style: {
-      flex: 1
-    }
-  }, a.descripcion), /*#__PURE__*/React.createElement("span", {
-    style: {
-      color: a.efecto === 'A favor' ? '#3B6D11' : '#A32D2D',
-      fontWeight: 500
-    }
-  }, a.efecto === 'A favor' ? '−' : '+', " ", fmtMoney(a.valorUSD)), /*#__PURE__*/React.createElement("button", {
-    onClick: () => quitarAporte(a.id),
-    style: {
-      ...btnGhost,
-      padding: '2px 6px'
-    }
-  }, "✕"))), aportes.length > 0 && /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 12,
-      fontWeight: 500,
+      fontSize: 11,
+      color: '#888780',
       marginBottom: 4
     }
-  }, "Neto de estos ajustes: ", netoAporte >= 0 ? '−' : '+', " ", fmtMoney(Math.abs(netoAporte)), " sobre lo que le corresponde pagar"), /*#__PURE__*/React.createElement("div", {
+  }, "Qué aporta:"), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
-      gap: 6,
-      alignItems: 'center',
+      gap: 8,
       flexWrap: 'wrap'
     }
-  }, /*#__PURE__*/React.createElement("select", {
+  }, /*#__PURE__*/React.createElement("label", {
     style: {
-      ...inputStyle,
-      padding: '3px 6px',
-      fontSize: 12
-    },
-    value: nuevo.tipo,
-    onChange: e => setNuevo({
-      ...nuevo,
-      tipo: e.target.value
-    })
-  }, TIPOS_APORTE.map(t => /*#__PURE__*/React.createElement("option", {
-    key: t
-  }, t))), /*#__PURE__*/React.createElement("input", {
-    style: {
-      ...inputStyle,
-      flex: 1,
-      minWidth: 140,
-      padding: '3px 6px',
-      fontSize: 12
-    },
-    placeholder: "Descripción (ej: bolsas de maíz)",
-    value: nuevo.descripcion,
-    onChange: e => setNuevo({
-      ...nuevo,
-      descripcion: e.target.value
-    })
-  }), /*#__PURE__*/React.createElement("input", {
-    style: {
-      ...inputStyle,
-      width: 90,
-      padding: '3px 6px',
-      fontSize: 12
-    },
-    type: "number",
-    placeholder: "USD",
-    value: nuevo.valorUSD,
-    onChange: e => setNuevo({
-      ...nuevo,
-      valorUSD: e.target.value
-    })
-  }), /*#__PURE__*/React.createElement("select", {
-    style: {
-      ...inputStyle,
-      padding: '3px 6px',
-      fontSize: 12
-    },
-    value: nuevo.efecto,
-    onChange: e => setNuevo({
-      ...nuevo,
-      efecto: e.target.value
-    })
-  }, /*#__PURE__*/React.createElement("option", {
-    value: "A favor"
-  }, "A favor (le resta a lo que debe)"), /*#__PURE__*/React.createElement("option", {
-    value: "En contra"
-  }, "En contra (le suma a lo que debe)")), /*#__PURE__*/React.createElement("button", {
-    onClick: agregar,
-    style: {
-      ...btnGhost,
-      fontSize: 11,
-      padding: '3px 8px'
+      display: 'flex',
+      gap: 4,
+      alignItems: 'center',
+      fontSize: 12,
+      background: todoTildado ? '#EAF3DE' : '#f4f2ea',
+      padding: '3px 8px',
+      borderRadius: 6,
+      cursor: 'pointer',
+      fontWeight: 500
     }
-  }, "+ Ajuste")));
+  }, /*#__PURE__*/React.createElement("input", {
+    type: "checkbox",
+    checked: todoTildado,
+    onChange: () => toggle('Todo')
+  }), "Todo"), TIPOS_APORTE.map(cat => /*#__PURE__*/React.createElement("label", {
+    key: cat,
+    style: {
+      display: 'flex',
+      gap: 4,
+      alignItems: 'center',
+      fontSize: 12,
+      background: categorias.includes(cat) ? '#EAF3DE' : '#f4f2ea',
+      padding: '3px 8px',
+      borderRadius: 6,
+      cursor: 'pointer'
+    }
+  }, /*#__PURE__*/React.createElement("input", {
+    type: "checkbox",
+    checked: categorias.includes(cat),
+    onChange: () => toggle(cat)
+  }), cat))));
 }
 function ParticipacionCampo({
   campo,
@@ -592,11 +507,6 @@ function ParticipacionCampo({
     clienteId: '',
     porcentaje: ''
   });
-  const modoDivision = campo.modoDivision || 'porcentaje';
-  const setModoDivision = m => update('campos', cs => cs.map(c => c.id === campo.id ? {
-    ...c,
-    modoDivision: m
-  } : c));
   const agregar = () => {
     if (!nuevo.clienteId) return;
     update('campos', cs => cs.map(c => c.id === campo.id ? {
@@ -605,7 +515,7 @@ function ParticipacionCampo({
         id: uid(),
         clienteId: nuevo.clienteId,
         porcentaje: nuevo.porcentaje ? Number(nuevo.porcentaje) : null,
-        aportes: []
+        categoriasAporte: []
       }]
     } : c));
     setNuevo({
@@ -625,7 +535,6 @@ function ParticipacionCampo({
     } : p)
   } : c));
   const sumaPorcentajes = participantes.reduce((s, p) => s + (Number(p.porcentaje) || 0), 0);
-  const totalAportadoTodos = participantes.reduce((s, p) => s + netoAportes(p), 0);
 
   // Compatibilidad: si el campo todavia usa el modelo viejo (un solo cliente) y no tiene participantes cargados, se muestra como referencia
   const clienteViejo = !participantes.length && campo.clienteId ? data.clientes.find(c => c.id === campo.clienteId) : null;
@@ -638,49 +547,11 @@ function ParticipacionCampo({
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: {
-      display: 'flex',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      marginBottom: 6
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
       fontSize: 12,
-      color: '#888780'
-    }
-  }, "Participación / propietarios"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: 'flex',
-      gap: 4,
-      fontSize: 11
-    }
-  }, /*#__PURE__*/React.createElement("button", {
-    onClick: () => setModoDivision('porcentaje'),
-    style: {
-      padding: '3px 8px',
-      borderRadius: 5,
-      border: 'none',
-      cursor: 'pointer',
-      background: modoDivision === 'porcentaje' ? '#EAF3DE' : '#f0efe8',
-      color: modoDivision === 'porcentaje' ? '#27500A' : '#5f5e5a'
-    }
-  }, "% fijo"), /*#__PURE__*/React.createElement("button", {
-    onClick: () => setModoDivision('aportes'),
-    style: {
-      padding: '3px 8px',
-      borderRadius: 5,
-      border: 'none',
-      cursor: 'pointer',
-      background: modoDivision === 'aportes' ? '#EAF3DE' : '#f0efe8',
-      color: modoDivision === 'aportes' ? '#27500A' : '#5f5e5a'
-    }
-  }, "Según aportes"))), modoDivision === 'aportes' && /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 11,
       color: '#888780',
       marginBottom: 6
     }
-  }, "El % de cada participante se calcula solo, en proporción a lo que aportó cada uno (columna \"Total aportado\" de abajo)."), clienteViejo && /*#__PURE__*/React.createElement("div", {
+  }, "Participación / propietarios"), clienteViejo && /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 13,
       color: '#993C1D',
@@ -688,8 +559,6 @@ function ParticipacionCampo({
     }
   }, "Cliente (modelo simple): ", clienteViejo.nombre, " (", campo.porcentajeProductor || 0, "%) — agregá participantes abajo para pasar al modelo detallado."), participantes.map(p => {
     const cliente = data.clientes.find(c => c.id === p.clienteId);
-    const totalAportadoPart = netoAportes(p);
-    const porcentajeCalculado = modoDivision === 'aportes' ? totalAportadoTodos > 0 ? Math.round(totalAportadoPart / totalAportadoTodos * 1000) / 10 : 0 : null;
     return /*#__PURE__*/React.createElement("div", {
       key: p.id,
       style: {
@@ -710,7 +579,7 @@ function ParticipacionCampo({
         fontWeight: 500,
         minWidth: 100
       }
-    }, cliente?.nombre || '?'), modoDivision === 'porcentaje' ? /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("input", {
+    }, cliente?.nombre || '?'), /*#__PURE__*/React.createElement("input", {
       style: {
         ...inputStyle,
         width: 70,
@@ -728,18 +597,7 @@ function ParticipacionCampo({
         fontSize: 11,
         color: '#888780'
       }
-    }, "% de la división final")) : /*#__PURE__*/React.createElement("span", {
-      style: {
-        fontSize: 13,
-        fontWeight: 500,
-        color: '#27500A'
-      }
-    }, porcentajeCalculado, "% ", /*#__PURE__*/React.createElement("span", {
-      style: {
-        fontWeight: 400,
-        color: '#888780'
-      }
-    }, "(según ", fmtMoney(totalAportadoPart), " aportados)")), /*#__PURE__*/React.createElement("button", {
+    }, "% de la división final"), /*#__PURE__*/React.createElement("button", {
       onClick: () => quitar(p.id),
       style: {
         ...btnGhost,
@@ -750,17 +608,12 @@ function ParticipacionCampo({
       participante: p,
       update: update
     }));
-  }), modoDivision === 'porcentaje' && participantes.length > 0 && sumaPorcentajes !== 100 && sumaPorcentajes > 0 && /*#__PURE__*/React.createElement("div", {
+  }), participantes.length > 0 && sumaPorcentajes !== 100 && sumaPorcentajes > 0 && /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,
       color: '#854F0B'
     }
-  }, "⚠️ Los porcentajes suman ", sumaPorcentajes, "%, no 100%."), modoDivision === 'aportes' && participantes.length > 0 && totalAportadoTodos === 0 && /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 11,
-      color: '#854F0B'
-    }
-  }, "⚠️ Todavía no cargaste ningún aporte con valor en USD, así que no se puede calcular el %."), /*#__PURE__*/React.createElement("div", {
+  }, "⚠️ Los porcentajes suman ", sumaPorcentajes, "%, no 100%."), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       gap: 6,
@@ -808,33 +661,28 @@ function ParticipacionCampo({
   }, "Agregar")), participantes.length > 0 && /*#__PURE__*/React.createElement(ResumenGastosCampo, {
     campo: campo,
     participantes: participantes,
-    modoDivision: modoDivision,
     data: data
   }));
 }
 function ResumenGastosCampo({
   campo,
   participantes,
-  modoDivision,
   data
 }) {
   const lotesCampo = data.lotes.filter(l => l.campoId === campo.id);
   const actividadesCampo = data.actividades.filter(a => lotesCampo.some(l => l.id === a.loteId));
   const gastoCompartido = actividadesCampo.filter(a => !a.paraClienteId).reduce((s, a) => s + (a.costoTotal || 0), 0);
-  const totalAportadoTodos = participantes.reduce((s, p) => s + netoAportes(p), 0);
   const filas = participantes.map(p => {
     const cliente = data.clientes.find(c => c.id === p.clienteId);
     const gastoDirecto = actividadesCampo.filter(a => a.paraClienteId === p.clienteId).reduce((s, a) => s + (a.costoTotal || 0), 0);
-    const totalAportadoPart = netoAportes(p);
-    const porcentaje = modoDivision === 'aportes' ? totalAportadoTodos > 0 ? totalAportadoPart / totalAportadoTodos * 100 : 0 : Number(p.porcentaje) || 0;
+    const porcentaje = Number(p.porcentaje) || 0;
     const parteCompartido = gastoCompartido * (porcentaje / 100);
-    const totalACargo = gastoDirecto + parteCompartido - totalAportadoPart;
+    const totalACargo = gastoDirecto + parteCompartido;
     return {
       nombre: cliente?.nombre || '?',
       gastoDirecto,
       parteCompartido,
-      totalACargo,
-      totalAportadoPart
+      totalACargo
     };
   });
   return /*#__PURE__*/React.createElement("div", {
@@ -858,7 +706,7 @@ function ResumenGastosCampo({
   }, "Gasto compartido total (actividades sin asignar a nadie en particular): ", fmtMoney(gastoCompartido)), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'grid',
-      gridTemplateColumns: 'auto repeat(4, 1fr)',
+      gridTemplateColumns: 'auto repeat(3, 1fr)',
       gap: '4px 10px',
       fontSize: 12,
       alignItems: 'center'
@@ -871,11 +719,7 @@ function ResumenGastosCampo({
     style: {
       color: '#888780'
     }
-  }, "+ Parte compartido"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      color: '#888780'
-    }
-  }, "− Ajustes netos"), /*#__PURE__*/React.createElement("div", {
+  }, "+ Parte compartido (según %)"), /*#__PURE__*/React.createElement("div", {
     style: {
       color: '#888780'
     }
@@ -885,7 +729,7 @@ function ResumenGastosCampo({
     style: {
       fontWeight: 500
     }
-  }, f.nombre), /*#__PURE__*/React.createElement("div", null, fmtMoney(f.gastoDirecto)), /*#__PURE__*/React.createElement("div", null, fmtMoney(f.parteCompartido)), /*#__PURE__*/React.createElement("div", null, fmtMoney(f.totalAportadoPart)), /*#__PURE__*/React.createElement("div", {
+  }, f.nombre), /*#__PURE__*/React.createElement("div", null, fmtMoney(f.gastoDirecto)), /*#__PURE__*/React.createElement("div", null, fmtMoney(f.parteCompartido)), /*#__PURE__*/React.createElement("div", {
     style: {
       fontWeight: 500
     }
