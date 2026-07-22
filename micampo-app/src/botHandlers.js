@@ -140,13 +140,20 @@ function validar(interpretado) {
   }
 }
 
+function aguaUtilPromedio(data, loteId) {
+  const registros = data.analisis.filter(a => a.loteId === loteId && a.tipo === 'Agua útil' && a.aguaUtilMm !== '' && a.aguaUtilMm != null);
+  if (registros.length === 0) return 0;
+  const ultimaFecha = registros.reduce((max, r) => (r.fecha || '') > max ? r.fecha : max, '');
+  const delUltimoMuestreo = registros.filter(r => r.fecha === ultimaFecha);
+  return delUltimoMuestreo.reduce((s, r) => s + Number(r.aguaUtilMm), 0) / delUltimoMuestreo.length;
+}
+
 function balanceRiego(data, lote) {
   const registros = data.actividades.filter(a => a.loteId === lote.id && a.tipo === 'Riego' && a.mm);
   const esLluvia = (r) => (r.fuente || '').toLowerCase().includes('lluvia');
   const acumuladoRiego = registros.filter(r => !esLluvia(r)).reduce((s, a) => s + Number(a.mm), 0);
   const acumuladoLluvia = registros.filter(esLluvia).reduce((s, a) => s + Number(a.mm), 0);
-  const aguaUtil = data.analisis.filter(a => a.loteId === lote.id && a.tipo === 'Agua útil').sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''))[0];
-  const aguaUtilMm = aguaUtil ? Number(aguaUtil.aguaUtilMm) || 0 : 0;
+  const aguaUtilMm = aguaUtilPromedio(data, lote.id);
   const objetivo = Number(lote.objetivoRiego) || 0;
   const disponible = aguaUtilMm + acumuladoRiego + acumuladoLluvia;
   return { acumuladoRiego, acumuladoLluvia, aguaUtilMm, objetivo, disponible, balance: objetivo > 0 ? objetivo - disponible : null };
