@@ -91,12 +91,18 @@ function validar(interpretado) {
 function manejarRiego(interpretado) {
   const data = load();
   const lote = buscarLotes(data, interpretado.lote, interpretado.campo)[0];
-  data.actividades.push({ id: uid(), loteId: lote.id, cicloId: cicloActivo(data, lote.id)?.id || null, tipo: 'Riego', fecha: fechaDe(interpretado), mm: interpretado.mm, fuente: interpretado.fuente || undefined, items: [], costoTotal: 0, notas: '' });
+  // Red de seguridad: un riego real nunca es de miles de mm. Si la IA interpretó mal un "mil"/"ml" como multiplicador, lo corrige acá.
+  let mm = Number(interpretado.mm);
+  let corregido = false;
+  if (mm > 500 && mm % 1000 === 0) { mm = mm / 1000; corregido = true; }
+  data.actividades.push({ id: uid(), loteId: lote.id, cicloId: cicloActivo(data, lote.id)?.id || null, tipo: 'Riego', fecha: fechaDe(interpretado), mm, fuente: interpretado.fuente || undefined, items: [], costoTotal: 0, notas: '' });
   save(data);
   const acumulado = data.actividades.filter(a => a.loteId === lote.id && a.tipo === 'Riego' && a.mm).reduce((s, a) => s + Number(a.mm), 0);
   const objetivo = Number(lote.objetivoRiego) || 0;
   const falta = objetivo > 0 ? Math.max(0, objetivo - acumulado) : null;
-  let texto = `✅ Riego cargado: ${nombreConCampo(data, lote)} — ${interpretado.mm}mm${interpretado.fuente ? ` (${interpretado.fuente})` : ''}\nAcumulado: ${acumulado}mm`;
+  let texto = `✅ Riego cargado: ${nombreConCampo(data, lote)} — ${mm}mm${interpretado.fuente ? ` (${interpretado.fuente})` : ''}`;
+  if (corregido) texto += `\n(interpreté "${interpretado.mm}" como ${mm}mm — avisame si no era eso)`;
+  texto += `\nAcumulado: ${acumulado}mm`;
   if (falta !== null) texto += ` · Faltan ${falta}mm para el objetivo`;
   return texto;
 }
