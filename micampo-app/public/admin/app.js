@@ -565,6 +565,11 @@ function ParticipacionCampo({
     clienteId: '',
     porcentaje: ''
   });
+  const modoDivision = campo.modoDivision || 'porcentaje';
+  const setModoDivision = m => update('campos', cs => cs.map(c => c.id === campo.id ? {
+    ...c,
+    modoDivision: m
+  } : c));
   const agregar = () => {
     if (!nuevo.clienteId) return;
     update('campos', cs => cs.map(c => c.id === campo.id ? {
@@ -593,6 +598,7 @@ function ParticipacionCampo({
     } : p)
   } : c));
   const sumaPorcentajes = participantes.reduce((s, p) => s + (Number(p.porcentaje) || 0), 0);
+  const totalAportadoTodos = participantes.reduce((s, p) => s + (p.aportes || []).reduce((s2, a) => s2 + (Number(a.valorUSD) || 0), 0), 0);
 
   // Compatibilidad: si el campo todavia usa el modelo viejo (un solo cliente) y no tiene participantes cargados, se muestra como referencia
   const clienteViejo = !participantes.length && campo.clienteId ? data.clientes.find(c => c.id === campo.clienteId) : null;
@@ -605,11 +611,49 @@ function ParticipacionCampo({
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: {
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 6
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
       fontSize: 12,
+      color: '#888780'
+    }
+  }, "Participación / propietarios"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      gap: 4,
+      fontSize: 11
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: () => setModoDivision('porcentaje'),
+    style: {
+      padding: '3px 8px',
+      borderRadius: 5,
+      border: 'none',
+      cursor: 'pointer',
+      background: modoDivision === 'porcentaje' ? '#EAF3DE' : '#f0efe8',
+      color: modoDivision === 'porcentaje' ? '#27500A' : '#5f5e5a'
+    }
+  }, "% fijo"), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setModoDivision('aportes'),
+    style: {
+      padding: '3px 8px',
+      borderRadius: 5,
+      border: 'none',
+      cursor: 'pointer',
+      background: modoDivision === 'aportes' ? '#EAF3DE' : '#f0efe8',
+      color: modoDivision === 'aportes' ? '#27500A' : '#5f5e5a'
+    }
+  }, "Según aportes"))), modoDivision === 'aportes' && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
       color: '#888780',
       marginBottom: 6
     }
-  }, "Participación / propietarios"), clienteViejo && /*#__PURE__*/React.createElement("div", {
+  }, "El % de cada participante se calcula solo, en proporción a lo que aportó cada uno (columna \"Total aportado\" de abajo)."), clienteViejo && /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 13,
       color: '#993C1D',
@@ -617,6 +661,8 @@ function ParticipacionCampo({
     }
   }, "Cliente (modelo simple): ", clienteViejo.nombre, " (", campo.porcentajeProductor || 0, "%) — agregá participantes abajo para pasar al modelo detallado."), participantes.map(p => {
     const cliente = data.clientes.find(c => c.id === p.clienteId);
+    const totalAportadoPart = (p.aportes || []).reduce((s, a) => s + (Number(a.valorUSD) || 0), 0);
+    const porcentajeCalculado = modoDivision === 'aportes' ? totalAportadoTodos > 0 ? Math.round(totalAportadoPart / totalAportadoTodos * 1000) / 10 : 0 : null;
     return /*#__PURE__*/React.createElement("div", {
       key: p.id,
       style: {
@@ -637,7 +683,7 @@ function ParticipacionCampo({
         fontWeight: 500,
         minWidth: 100
       }
-    }, cliente?.nombre || '?'), /*#__PURE__*/React.createElement("input", {
+    }, cliente?.nombre || '?'), modoDivision === 'porcentaje' ? /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("input", {
       style: {
         ...inputStyle,
         width: 70,
@@ -655,7 +701,18 @@ function ParticipacionCampo({
         fontSize: 11,
         color: '#888780'
       }
-    }, "% de la división final"), /*#__PURE__*/React.createElement("button", {
+    }, "% de la división final")) : /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 13,
+        fontWeight: 500,
+        color: '#27500A'
+      }
+    }, porcentajeCalculado, "% ", /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontWeight: 400,
+        color: '#888780'
+      }
+    }, "(según ", fmtMoney(totalAportadoPart), " aportados)")), /*#__PURE__*/React.createElement("button", {
       onClick: () => quitar(p.id),
       style: {
         ...btnGhost,
@@ -666,12 +723,17 @@ function ParticipacionCampo({
       participante: p,
       update: update
     }));
-  }), participantes.length > 0 && sumaPorcentajes !== 100 && sumaPorcentajes > 0 && /*#__PURE__*/React.createElement("div", {
+  }), modoDivision === 'porcentaje' && participantes.length > 0 && sumaPorcentajes !== 100 && sumaPorcentajes > 0 && /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,
       color: '#854F0B'
     }
-  }, "⚠️ Los porcentajes suman ", sumaPorcentajes, "%, no 100%."), /*#__PURE__*/React.createElement("div", {
+  }, "⚠️ Los porcentajes suman ", sumaPorcentajes, "%, no 100%."), modoDivision === 'aportes' && participantes.length > 0 && totalAportadoTodos === 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: '#854F0B'
+    }
+  }, "⚠️ Todavía no cargaste ningún aporte con valor en USD, así que no se puede calcular el %."), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       gap: 6,
