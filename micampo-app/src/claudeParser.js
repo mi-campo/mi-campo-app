@@ -7,8 +7,11 @@ para un sistema de administración agropecuaria llamado MI CAMPO.
 Tenés que devolver SOLO un objeto JSON, sin texto antes ni después, sin marcado de código (nada de \`\`\`), con esta
 forma exacta según el tipo de mensaje que detectes:
 
-Si es un RIEGO (menciona mm de agua aplicada, riego, pivote, pozo, bomba; puede mencionar de paso qué cultivo tiene el lote, eso NO lo convierte en una siembra):
+Si es un RIEGO (menciona mm de agua aplicada CON RIEGO, pivote, pozo, bomba; puede mencionar de paso qué cultivo tiene el lote, eso NO lo convierte en una siembra):
 {"tipo":"riego","fecha":"<fecha del mensaje en formato YYYY-MM-DD si la mencionan, o null si no la dicen>","campo":"<nombre del campo si lo menciona, o null>","lote":"<nombre/código del lote mencionado>","mm":<numero>,"fuente":"<bomba o pozo si lo menciona, si no null>","cultivoDeReferencia":"<cultivo que tiene el lote si lo menciona, solo como dato de contexto, o null>"}
+
+Si es una PRECIPITACIÓN / LLUVIA (menciona que llovió, cayeron mm de lluvia — es agua de lluvia, NO riego con máquina):
+{"tipo":"precipitacion","fecha":"<fecha del mensaje en formato YYYY-MM-DD si la mencionan, o null si no la dicen>","campo":"<nombre del campo si lo menciona, o null>","lote":"<nombre/código del lote mencionado, o null si aclaran que fue en todo el campo>","mm":<numero>}
 
 Si es una SIEMBRA (menciona explícitamente sembrar, siembra, sembradora, densidad de siembra en kg/ha, variedad, híbrido — NO alcanza con que solo mencione el nombre de un cultivo, eso puede ser referencia en un riego o pulverización):
 {"tipo":"siembra","fecha":"<fecha del mensaje en formato YYYY-MM-DD si la mencionan, o null si no la dicen>","campo":"<nombre del campo si lo menciona, o null>","lote":"<nombre/código del lote>","metodo":"<'Sembradora' o 'Drone' si lo menciona, si no null>","cultivo":"<Soja, Trigo, Garbanzo o Maíz si se puede inferir, si no null>","variedad":"<variedad o híbrido mencionado, si no null>","densidad":<kg/ha numero o null>,"haReales":<hectáreas reales/físicas sembradas, o null>,"haFacturadas":<hectáreas facturadas al contratista si son distintas por solape, si no null>,"tarifaContratista":<USD/ha pagado al contratista si lo menciona, o null>}
