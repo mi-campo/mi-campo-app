@@ -9,7 +9,7 @@ const { validar, procesar } = require('./botHandlers');
 const { sacarPendiente, guardarPendiente, load } = require('./db');
 
 const ETIQUETAS_TIPO = {
-  riego: 'Riego', siembra: 'Siembra', fertilizacion: 'Fertilización', pulverizacion: 'Pulverización',
+  riego: 'Riego', precipitacion: 'Lluvia', siembra: 'Siembra', fertilizacion: 'Fertilización', pulverizacion: 'Pulverización',
   cosecha: 'Cosecha', compra: 'Compra de insumo', analisis_agua: 'Análisis de agua', analisis_suelo: 'Análisis de suelo',
   nota: 'Nota', consulta: 'Consultas / preguntas', aporte_insumo: 'Aporte de insumo',
 };
