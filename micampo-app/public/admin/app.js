@@ -778,7 +778,91 @@ function ParticipacionCampo({
       fontSize: 12,
       padding: '4px 10px'
     }
-  }, "Agregar")));
+  }, "Agregar")), participantes.length > 0 && /*#__PURE__*/React.createElement(ResumenGastosCampo, {
+    campo: campo,
+    participantes: participantes,
+    modoDivision: modoDivision,
+    data: data
+  }));
+}
+function ResumenGastosCampo({
+  campo,
+  participantes,
+  modoDivision,
+  data
+}) {
+  const lotesCampo = data.lotes.filter(l => l.campoId === campo.id);
+  const actividadesCampo = data.actividades.filter(a => lotesCampo.some(l => l.id === a.loteId));
+  const gastoCompartido = actividadesCampo.filter(a => !a.paraClienteId).reduce((s, a) => s + (a.costoTotal || 0), 0);
+  const totalAportadoTodos = participantes.reduce((s, p) => s + (p.aportes || []).reduce((s2, a) => s2 + (Number(a.valorUSD) || 0), 0), 0);
+  const filas = participantes.map(p => {
+    const cliente = data.clientes.find(c => c.id === p.clienteId);
+    const gastoDirecto = actividadesCampo.filter(a => a.paraClienteId === p.clienteId).reduce((s, a) => s + (a.costoTotal || 0), 0);
+    const totalAportadoPart = (p.aportes || []).reduce((s, a) => s + (Number(a.valorUSD) || 0), 0);
+    const porcentaje = modoDivision === 'aportes' ? totalAportadoTodos > 0 ? totalAportadoPart / totalAportadoTodos * 100 : 0 : Number(p.porcentaje) || 0;
+    const parteCompartido = gastoCompartido * (porcentaje / 100);
+    const totalACargo = gastoDirecto + parteCompartido;
+    return {
+      nombre: cliente?.nombre || '?',
+      gastoDirecto,
+      parteCompartido,
+      totalACargo,
+      totalAportadoPart
+    };
+  });
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 10,
+      paddingTop: 10,
+      borderTop: '1px solid #e3e1d8'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      fontWeight: 500,
+      marginBottom: 6
+    }
+  }, "Resumen (calculado con las actividades cargadas)"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: '#888780',
+      marginBottom: 8
+    }
+  }, "Gasto compartido total (actividades sin asignar a nadie en particular): ", fmtMoney(gastoCompartido)), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'grid',
+      gridTemplateColumns: 'auto repeat(4, 1fr)',
+      gap: '4px 10px',
+      fontSize: 12,
+      alignItems: 'center'
+    }
+  }, /*#__PURE__*/React.createElement("div", null), /*#__PURE__*/React.createElement("div", {
+    style: {
+      color: '#888780'
+    }
+  }, "Gasto directo"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      color: '#888780'
+    }
+  }, "+ Parte compartido"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      color: '#888780'
+    }
+  }, "= A su cargo"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      color: '#888780'
+    }
+  }, "Aportó (USD)"), filas.map((f, i) => /*#__PURE__*/React.createElement(React.Fragment, {
+    key: i
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: 500
+    }
+  }, f.nombre), /*#__PURE__*/React.createElement("div", null, fmtMoney(f.gastoDirecto)), /*#__PURE__*/React.createElement("div", null, fmtMoney(f.parteCompartido)), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: 500
+    }
+  }, fmtMoney(f.totalACargo)), /*#__PURE__*/React.createElement("div", null, fmtMoney(f.totalAportadoPart))))));
 }
 function Campos({
   data,
@@ -2624,7 +2708,8 @@ function Actividades({
     tarifaContratista: '',
     cultivo: '',
     variedad: '',
-    densidad: ''
+    densidad: '',
+    paraClienteId: ''
   };
   const [form, setForm] = useState(formInicial);
   const [items, setItems] = useState([{
@@ -2739,6 +2824,9 @@ function Actividades({
     ...l,
     campoNombre: data.campos.find(c => c.id === l.campoId)?.nombre || ''
   }));
+  const loteSeleccionado = data.lotes.find(l => l.id === form.loteId);
+  const campoDelLoteSeleccionado = loteSeleccionado ? data.campos.find(c => c.id === loteSeleccionado.campoId) : null;
+  const participantesDelLote = (campoDelLoteSeleccionado?.participantes || []).length > 1 ? campoDelLoteSeleccionado.participantes : [];
   return /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
@@ -2791,7 +2879,21 @@ function Actividades({
       ...form,
       fecha: e.target.value
     })
-  })), form.tipo === 'Riego' && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(Field, {
+  })), participantesDelLote.length > 0 && /*#__PURE__*/React.createElement(Field, {
+    label: "¿Para quién es este gasto?"
+  }, /*#__PURE__*/React.createElement("select", {
+    style: inputStyle,
+    value: form.paraClienteId,
+    onChange: e => setForm({
+      ...form,
+      paraClienteId: e.target.value
+    })
+  }, /*#__PURE__*/React.createElement("option", {
+    value: ""
+  }, "Todos (compartido)"), participantesDelLote.map(p => /*#__PURE__*/React.createElement("option", {
+    key: p.clienteId,
+    value: p.clienteId
+  }, data.clientes.find(c => c.id === p.clienteId)?.nombre || '?')))), form.tipo === 'Riego' && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(Field, {
     label: "mm"
   }, /*#__PURE__*/React.createElement("input", {
     style: inputStyle,
@@ -3044,6 +3146,7 @@ function Actividades({
     const haInfo = act.haReales ? ` · ${act.haReales}ha` + (act.haFacturadas && act.haFacturadas != act.haReales ? ` (${act.haFacturadas}ha facturadas)` : '') : '';
     const siembraInfo = act.tipo === 'Siembra' && act.cultivo ? ` — ${act.cultivo}${act.variedad ? ' ' + act.variedad : ''}${act.densidad ? ` (${act.densidad} kg/ha)` : ''}` : '';
     const riegoInfo = act.tipo === 'Riego' && act.mm ? ` — ${act.mm}mm${act.fuente ? ` (${act.fuente})` : ''}` : '';
+    const paraCliente = act.paraClienteId ? data.clientes.find(c => c.id === act.paraClienteId) : null;
     return /*#__PURE__*/React.createElement("div", {
       key: act.id,
       style: {
@@ -3057,7 +3160,13 @@ function Actividades({
         justifyContent: 'space-between',
         alignItems: 'flex-start'
       }
-    }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("strong", null, act.tipo), act.metodo ? ` (${act.metodo})` : '', " — ", lote?.nombre, " — ", act.fecha, riegoInfo, haInfo, siembraInfo, " — ", fmtMoney(act.costoTotal), act.costoContratista > 0 && /*#__PURE__*/React.createElement("div", {
+    }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("strong", null, act.tipo), act.metodo ? ` (${act.metodo})` : '', " — ", lote?.nombre, " — ", act.fecha, riegoInfo, haInfo, siembraInfo, " — ", fmtMoney(act.costoTotal), paraCliente && /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 11,
+        color: '#993C1D',
+        marginLeft: 6
+      }
+    }, "(", paraCliente.nombre, ")"), act.costoContratista > 0 && /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 12,
         color: '#888780'
