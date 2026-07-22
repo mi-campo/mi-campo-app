@@ -19,6 +19,7 @@ const emptyData = {
   consultas: [],
   ciclos: [],
   contactosBot: [],
+  tarifario: {},
 };
 
 function uid() {
