@@ -10,7 +10,8 @@ const { sacarPendiente, guardarPendiente, load } = require('./db');
 
 const ETIQUETAS_TIPO = {
   riego: 'Riego', siembra: 'Siembra', fertilizacion: 'Fertilización', pulverizacion: 'Pulverización',
-  cosecha: 'Cosecha', compra: 'Compra de insumo', analisis_agua: 'Análisis de agua', analisis_suelo: 'Análisis de suelo', nota: 'Nota',
+  cosecha: 'Cosecha', compra: 'Compra de insumo', analisis_agua: 'Análisis de agua', analisis_suelo: 'Análisis de suelo',
+  nota: 'Nota', consulta: 'Consultas / preguntas',
 };
 
 function normalizarNumero(n) {
@@ -111,7 +112,7 @@ app.post('/webhook', async (req, res) => {
       return;
     }
 
-    const textoConfirmacion = procesar(interpretado);
+    const textoConfirmacion = await procesar(interpretado, permiso.contacto);
     await enviarMensajeWA(numeroRemitente, textoConfirmacion);
   } catch (err) {
     console.error('Error procesando mensaje:', err);
