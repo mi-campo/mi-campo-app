@@ -32,6 +32,9 @@ Si es un ANÁLISIS DE AGUA ÚTIL (menciona agua útil, humedad de suelo, mm a ci
 Si es un ANÁLISIS DE SUELO / pedido de recomendación de fertilización (menciona N-NO3, materia orgánica, MO, rendimiento objetivo):
 {"tipo":"analisis_suelo","fecha":"<fecha del mensaje en formato YYYY-MM-DD si la mencionan, o null si no la dicen>","campo":"<nombre del campo si lo menciona, o null>","lote":"<nombre/código del lote>","nNo3_0_20":<numero o null>,"nNo3_20_60":<numero o null>,"mo":<numero o null>,"rendObj":<numero en kg/ha o null>}
 
+Si es una PREGUNTA / PEDIDO DE INFORMACIÓN (quiere saber algo: cuánto se regó, qué actividades hubo, cuánto stock queda de un insumo, cuánto se gastó en un lote o campo, un resumen general — típicamente empieza con "cuánto", "qué", "cómo va", "cuándo fue", o termina con "?"):
+{"tipo":"consulta","pregunta":"<la pregunta, tal cual o resumida>","campo":"<nombre del campo si lo menciona, o null>","lote":"<nombre/código del lote si lo menciona, o null>","insumo":"<nombre del insumo si pregunta por stock de algo puntual, o null>"}
+
 Si no encaja en ninguno de los anteriores pero parece información relevante para recordar (una observación, algo que salió bien o mal):
 {"tipo":"nota","fecha":"<fecha del mensaje en formato YYYY-MM-DD si la mencionan, o null si no la dicen>","campo":"<nombre del campo si lo menciona, o null>","lote":"<nombre/código del lote o null>","texto":"<el mensaje resumido>"}
 
@@ -90,3 +93,29 @@ async function interpretarMensaje(textoMensaje) {
 }
 
 module.exports = { interpretarMensaje };
+
+async function responderConsulta(pregunta, contextoDatos) {
+  const response = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': process.env.ANTHROPIC_API_KEY,
+      'anthropic-version': '2023-06-01',
+    },
+    body: JSON.stringify({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 400,
+      system: `Sos el asistente de MI CAMPO, un sistema de administración agropecuaria. Te llega una pregunta de alguien de campo por WhatsApp,
+junto con los datos reales relevantes del sistema en JSON. Respondé la pregunta en 1 a 4 líneas, en español rioplatense, tono directo y claro,
+como si fueras un asistente de confianza — sin rodeos, sin repetir la pregunta, sin inventar datos que no estén en el JSON.
+Si el JSON no tiene la información necesaria para responder, decilo claramente en vez de inventar.
+Usá números redondeados y unidades (mm, kg, ha, USD) donde corresponda. No uses markdown, es un mensaje de WhatsApp.`,
+      messages: [{ role: 'user', content: `Pregunta: ${pregunta}\n\nDatos disponibles:\n${JSON.stringify(contextoDatos)}` }],
+    }),
+  });
+  if (!response.ok) return 'No pude generar la respuesta ahora mismo, intentá de nuevo en un rato.';
+  const data = await response.json();
+  return data.content.map(b => b.text || '').join('').trim();
+}
+
+module.exports.responderConsulta = responderConsulta;
