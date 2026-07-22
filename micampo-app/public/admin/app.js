@@ -33,6 +33,33 @@ function laborKey(tipo, metodo) {
 }
 const CATEGORIAS_INSUMO = ['Insecticida', 'Herbicida', 'Fungicida', 'Fertilizante', 'Semilla', 'Cebo', 'Otro'];
 const CULTIVOS_SIEMBRA = ['Soja', 'Trigo', 'Garbanzo', 'Maíz'];
+const COLOR_CULTIVO = {
+  'Soja': {
+    texto: '#27500A',
+    fondo: '#EAF3DE',
+    borde: '#8FBF5E'
+  },
+  'Trigo': {
+    texto: '#854F0B',
+    fondo: '#FBF0DD',
+    borde: '#E0A93E'
+  },
+  'Garbanzo': {
+    texto: '#7A4A00',
+    fondo: '#FDEFD9',
+    borde: '#D9A441'
+  },
+  'Maíz': {
+    texto: '#A3450A',
+    fondo: '#FCE9DC',
+    borde: '#E28A4C'
+  },
+  'sin cultivo': {
+    texto: '#5f5e5a',
+    fondo: '#f1efe8',
+    borde: '#c9c6bb'
+  }
+};
 const OBJETIVO_RIEGO_POR_CULTIVO = {
   'Garbanzo': 400,
   'Trigo': 550,
@@ -93,6 +120,33 @@ function precioPromedio(data, insumoId) {
 }
 function cicloActivo(data, loteId) {
   return (data.ciclos || []).find(c => c.loteId === loteId && !c.fechaFin) || null;
+}
+function proximoCultivoBarbecho(data, loteId) {
+  const cerrados = (data.ciclos || []).filter(c => c.loteId === loteId && c.fechaFin).sort((a, b) => (b.fechaFin || '').localeCompare(a.fechaFin || ''));
+  const ultimo = cerrados[0];
+  const anterior = cerrados[1];
+  if (!ultimo) return 'Soja 1ra'; // sin antecedentes, default
+  if (ultimo.cultivo === 'Garbanzo') return 'Maíz 2da';
+  if (ultimo.cultivo === 'Maíz') return 'Soja 1ra';
+  if (ultimo.cultivo === 'Trigo') return 'Soja 2da';
+  if (ultimo.cultivo === 'Soja') {
+    // La rotación tiene 2 sojas (1ra después del maíz, 2da después del trigo) — hay que mirar el cultivo anterior para saber cuál fue
+    if (anterior?.cultivo === 'Trigo') return 'Garbanzo';
+    return 'Trigo'; // por defecto asume que la soja que acaba de cerrar fue la de 1ra
+  }
+  return 'Soja 1ra';
+}
+function aguaUtilPromedio(data, loteId) {
+  const registros = data.analisis.filter(a => a.loteId === loteId && a.tipo === 'Agua útil' && a.aguaUtilMm !== '' && a.aguaUtilMm != null);
+  if (registros.length === 0) return null;
+  const ultimaFecha = registros.reduce((max, r) => (r.fecha || '') > max ? r.fecha : max, '');
+  const delUltimoMuestreo = registros.filter(r => r.fecha === ultimaFecha);
+  const promedio = delUltimoMuestreo.reduce((s, r) => s + Number(r.aguaUtilMm), 0) / delUltimoMuestreo.length;
+  return {
+    promedio: Math.round(promedio * 10) / 10,
+    fecha: ultimaFecha,
+    cantidadLecturas: delUltimoMuestreo.length
+  };
 }
 function Card({
   children,
@@ -164,7 +218,7 @@ function App() {
       color: '#888780'
     }
   }, "Cargando MI CAMPO…");
-  const tabs = [['resumen', 'Resumen'], ['campos', 'Campos y lotes'], ['riego', 'Riego'], ['insumos', 'Insumos'], ['proveedores', 'Proveedores'], ['actividades', 'Actividades'], ['tarifario', 'Tarifario'], ['clientes', 'Clientes'], ['usuarios', 'Usuarios'], ['whatsapp', 'WhatsApp'], ['consultas', 'Consultas']];
+  const tabs = [['resumen', 'Resumen'], ['campos', 'Campos y lotes'], ['riego', 'Riego'], ['fertilizacion', 'Fertilización'], ['insumos', 'Insumos'], ['proveedores', 'Proveedores'], ['actividades', 'Actividades'], ['tarifario', 'Tarifario'], ['clientes', 'Clientes'], ['usuarios', 'Usuarios'], ['whatsapp', 'WhatsApp'], ['consultas', 'Consultas']];
   return /*#__PURE__*/React.createElement("div", {
     style: {
       maxWidth: 1000,
@@ -241,6 +295,9 @@ function App() {
     data: data,
     update: update
   }), tab === 'riego' && /*#__PURE__*/React.createElement(Riego, {
+    data: data,
+    update: update
+  }), tab === 'fertilizacion' && /*#__PURE__*/React.createElement(Fertilizacion, {
     data: data,
     update: update
   }), tab === 'insumos' && /*#__PURE__*/React.createElement(Insumos, {
@@ -1487,13 +1544,23 @@ function Cosecha({
 }
 
 /* ---------- CALCULADORA PERALTA-DISA ---------- */
-function CalculoFertilizacion() {
-  const [f, setF] = useState({
-    rendObj: '',
-    rendRelativo: '1',
+function CalculoFertilizacion({
+  lote,
+  data,
+  update
+}) {
+  const fertilidadLote = data.analisis.filter(a => a.loteId === lote.id && a.tipo === 'Fertilidad').sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''));
+  const ultima = fertilidadLote[0];
+  const [formBase, setFormBase] = useState({
+    fecha: '',
     nNo3_0_20: '',
     nNo3_20_60: '',
     mo: '',
+    ph: ''
+  });
+  const [f, setF] = useState({
+    rendObj: '',
+    rendRelativo: '1',
     nanLab: '',
     arrancador: '0',
     antecesor: '0',
@@ -1503,16 +1570,37 @@ function CalculoFertilizacion() {
     ...f,
     [k]: v
   });
+  const guardarBase = () => {
+    if (!formBase.fecha) return;
+    update('analisis', a => [...a, {
+      id: uid(),
+      loteId: lote.id,
+      tipo: 'Fertilidad',
+      ...formBase
+    }]);
+    setFormBase({
+      fecha: '',
+      nNo3_0_20: '',
+      nNo3_20_60: '',
+      mo: '',
+      ph: ''
+    });
+  };
+
+  // Usa la ultima lectura de N-NO3/MO cargada como base del calculo, siempre editable
+  const nNo3_0_20 = ultima?.nNo3_0_20 ?? '';
+  const nNo3_20_60 = ultima?.nNo3_20_60 ?? '';
+  const mo = ultima?.mo ?? '';
   const resultado = useMemo(() => {
     const rendObj = Number(f.rendObj) || 0;
     if (rendObj <= 0) return null;
     const rendObjZona = rendObj * (Number(f.rendRelativo) || 1);
     const requerimiento = 28 / 0.625 * rendObjZona / 1000;
-    const nNo3suelo = (Number(f.nNo3_0_20) || 0) * 1.35 * 2 + (Number(f.nNo3_20_60) || 0) * 1.3 * 4;
-    const mo = Number(f.mo) || 0;
-    const nan = f.nanLab !== '' ? Number(f.nanLab) : 11.017 * mo + 18.43;
+    const nNo3suelo = (Number(nNo3_0_20) || 0) * 1.35 * 2 + (Number(nNo3_20_60) || 0) * 1.3 * 4;
+    const moN = Number(mo) || 0;
+    const nan = f.nanLab !== '' ? Number(f.nanLab) : 11.017 * moN + 18.43;
     const factorNan = f.calibracion === 'calibrado' ? 3.404 : 3.7;
-    const mineralizacion = (factorNan * nan + mo / 100 * 0.58 * 1.3 * 0.2 * 10000 * 0.042 * 1000 / 10) / 2;
+    const mineralizacion = (factorNan * nan + moN / 100 * 0.58 * 1.3 * 0.2 * 10000 * 0.042 * 1000 / 10) / 2;
     const nFertTotal = Math.max(0, requerimiento - nNo3suelo - (Number(f.arrancador) || 0) - mineralizacion + (Number(f.antecesor) || 0));
     const ureaTotal = nFertTotal / 0.46;
     return {
@@ -1520,14 +1608,104 @@ function CalculoFertilizacion() {
       ureaTotal,
       requiereSplit: ureaTotal > 235
     };
-  }, [f]);
+  }, [f, nNo3_0_20, nNo3_20_60, mo]);
+  const aplicacionesReales = data.actividades.filter(a => a.loteId === lote.id && a.tipo === 'Fertilización').sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''));
   return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
     style: {
       fontWeight: 500,
       fontSize: 13,
       marginBottom: 8
     }
-  }, "Fertilización nitrogenada — Peralta-DISA (solo invierno)"), /*#__PURE__*/React.createElement("div", {
+  }, "Datos base (fertilidad)"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'grid',
+      gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))',
+      gap: 8,
+      marginBottom: 8
+    }
+  }, /*#__PURE__*/React.createElement(Field, {
+    label: "Fecha"
+  }, /*#__PURE__*/React.createElement("input", {
+    style: inputStyle,
+    type: "date",
+    value: formBase.fecha,
+    onChange: e => setFormBase({
+      ...formBase,
+      fecha: e.target.value
+    })
+  })), /*#__PURE__*/React.createElement(Field, {
+    label: "N-NO3 0-20cm"
+  }, /*#__PURE__*/React.createElement("input", {
+    style: inputStyle,
+    type: "number",
+    value: formBase.nNo3_0_20,
+    onChange: e => setFormBase({
+      ...formBase,
+      nNo3_0_20: e.target.value
+    })
+  })), /*#__PURE__*/React.createElement(Field, {
+    label: "N-NO3 20-60cm"
+  }, /*#__PURE__*/React.createElement("input", {
+    style: inputStyle,
+    type: "number",
+    value: formBase.nNo3_20_60,
+    onChange: e => setFormBase({
+      ...formBase,
+      nNo3_20_60: e.target.value
+    })
+  })), /*#__PURE__*/React.createElement(Field, {
+    label: "M.O. (%)"
+  }, /*#__PURE__*/React.createElement("input", {
+    style: inputStyle,
+    type: "number",
+    value: formBase.mo,
+    onChange: e => setFormBase({
+      ...formBase,
+      mo: e.target.value
+    })
+  })), /*#__PURE__*/React.createElement(Field, {
+    label: "pH"
+  }, /*#__PURE__*/React.createElement("input", {
+    style: inputStyle,
+    type: "number",
+    value: formBase.ph,
+    onChange: e => setFormBase({
+      ...formBase,
+      ph: e.target.value
+    })
+  }))), /*#__PURE__*/React.createElement("button", {
+    onClick: guardarBase,
+    style: btnSecondary
+  }, "+ Guardar datos base"), fertilidadLote.length > 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 8
+    }
+  }, fertilidadLote.slice(0, 4).map(a => /*#__PURE__*/React.createElement("div", {
+    key: a.id,
+    style: {
+      fontSize: 12,
+      color: '#5f5e5a',
+      padding: '3px 0',
+      borderTop: '1px solid #e3e1d8'
+    }
+  }, a.fecha, " — N-NO3 ", a.nNo3_0_20 || 0, "/", a.nNo3_20_60 || 0, " ppm · MO ", a.mo || 0, "% · pH ", a.ph || '-'))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      borderTop: '1px solid #e3e1d8',
+      margin: '14px 0'
+    }
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: 500,
+      fontSize: 13,
+      marginBottom: 4
+    }
+  }, "Recomendación — Peralta-DISA"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: '#888780',
+      marginBottom: 8
+    }
+  }, "Usa el N-NO3 y MO del último dato base cargado arriba", ultima ? ` (${ultima.fecha})` : ' (todavía no hay ninguno)', "."), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'grid',
       gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
@@ -1548,27 +1726,6 @@ function CalculoFertilizacion() {
     step: "0.01",
     value: f.rendRelativo,
     onChange: e => set('rendRelativo', e.target.value)
-  })), /*#__PURE__*/React.createElement(Field, {
-    label: "N-NO3 0-20cm"
-  }, /*#__PURE__*/React.createElement("input", {
-    style: inputStyle,
-    type: "number",
-    value: f.nNo3_0_20,
-    onChange: e => set('nNo3_0_20', e.target.value)
-  })), /*#__PURE__*/React.createElement(Field, {
-    label: "N-NO3 20-60cm"
-  }, /*#__PURE__*/React.createElement("input", {
-    style: inputStyle,
-    type: "number",
-    value: f.nNo3_20_60,
-    onChange: e => set('nNo3_20_60', e.target.value)
-  })), /*#__PURE__*/React.createElement(Field, {
-    label: "M.O. 0-20cm (%)"
-  }, /*#__PURE__*/React.createElement("input", {
-    style: inputStyle,
-    type: "number",
-    value: f.mo,
-    onChange: e => set('mo', e.target.value)
   })), /*#__PURE__*/React.createElement(Field, {
     label: "Nan laboratorio"
   }, /*#__PURE__*/React.createElement("input", {
@@ -1625,7 +1782,95 @@ function CalculoFertilizacion() {
       color: '#854F0B',
       marginTop: 6
     }
-  }, "Supera 235 kg/ha, repartir en 2 aplicaciones.")));
+  }, "Supera 235 kg/ha, repartir en 1ª y 2ª fertilización.")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      borderTop: '1px solid #e3e1d8',
+      margin: '14px 0'
+    }
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: 500,
+      fontSize: 13,
+      marginBottom: 6
+    }
+  }, "Aplicaciones reales"), aplicacionesReales.length === 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: '#888780'
+    }
+  }, "Todavía no hay ninguna fertilización cargada en este lote."), aplicacionesReales.map(a => /*#__PURE__*/React.createElement("div", {
+    key: a.id,
+    style: {
+      fontSize: 12,
+      color: '#5f5e5a',
+      padding: '3px 0',
+      borderTop: '1px solid #e3e1d8'
+    }
+  }, a.fecha, " — ", a.metodo || 'sin método', " — ", (a.items || []).map(it => {
+    const ins = data.insumos.find(i => i.id === it.insumoId);
+    return `${it.cantidad}${ins?.unidad || ''} ${ins?.nombre || '?'}`;
+  }).join(', ') || 'sin insumos')), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: '#888780',
+      marginTop: 4
+    }
+  }, "Para cargar una nueva aplicación (1ª o 2ª fertilización), andá a la pestaña Actividades."));
+}
+function Fertilizacion({
+  data,
+  update
+}) {
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 14
+    }
+  }, data.lotes.map(l => {
+    const campo = data.campos.find(c => c.id === l.campoId);
+    const ciclo = cicloActivo(data, l.id);
+    const esInvierno = ciclo && ['Trigo', 'Garbanzo'].includes(ciclo.cultivo);
+    return /*#__PURE__*/React.createElement(Card, {
+      key: l.id,
+      style: {
+        borderLeft: `4px solid ${(COLOR_CULTIVO[ciclo?.cultivo] || COLOR_CULTIVO['sin cultivo']).borde}`
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: 'flex',
+        justifyContent: 'space-between',
+        marginBottom: esInvierno ? 10 : 0
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontWeight: 500
+      }
+    }, campo?.nombre, " — ", l.nombre), (() => {
+      const col = COLOR_CULTIVO[ciclo?.cultivo] || COLOR_CULTIVO['sin cultivo'];
+      return /*#__PURE__*/React.createElement("span", {
+        style: {
+          fontSize: 12,
+          fontWeight: 500,
+          color: col.texto,
+          background: col.fondo,
+          border: `1px solid ${col.borde}`,
+          borderRadius: 5,
+          padding: '2px 8px',
+          marginLeft: 8
+        }
+      }, ciclo ? ciclo.cultivo : `Barbecho → ${proximoCultivoBarbecho(data, l.id)}`);
+    })()), esInvierno ? /*#__PURE__*/React.createElement(CalculoFertilizacion, {
+      lote: l,
+      data: data,
+      update: update
+    }) : /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12,
+        color: '#888780'
+      }
+    }, "Peralta-DISA es solo para cultivos de invierno (Trigo/Garbanzo) — este lote no aplica ahora."));
+  }));
 }
 
 /* ---------- DETALLE DE LOTE ---------- */
@@ -1901,43 +2146,12 @@ function LoteDetalle({
   data,
   update
 }) {
-  const [tipoAnalisis, setTipoAnalisis] = useState('Agua útil');
-  const [formA, setFormA] = useState({
-    fecha: '',
-    aguaUtilMm: '',
-    profundidad: '',
-    nNo3: '',
-    p: '',
-    mo: '',
-    ph: '',
-    notas: ''
-  });
   const [formN, setFormN] = useState({
     fecha: '',
     tipo: 'Observación',
     texto: ''
   });
-  const analisisLote = data.analisis.filter(a => a.loteId === lote.id).sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''));
   const notasLote = data.notas.filter(n => n.loteId === lote.id).sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''));
-  const guardarAnalisis = () => {
-    if (!formA.fecha) return;
-    update('analisis', a => [...a, {
-      id: uid(),
-      loteId: lote.id,
-      tipo: tipoAnalisis,
-      ...formA
-    }]);
-    setFormA({
-      fecha: '',
-      aguaUtilMm: '',
-      profundidad: '',
-      nNo3: '',
-      p: '',
-      mo: '',
-      ph: '',
-      notas: ''
-    });
-  };
   const guardarNota = () => {
     if (!formN.fecha || !formN.texto.trim()) return;
     update('notas', n => [...n, {
@@ -1985,121 +2199,12 @@ function LoteDetalle({
     style: {
       borderTop: '1px solid #e3e1d8'
     }
-  }), /*#__PURE__*/React.createElement(CalculoFertilizacion, null), /*#__PURE__*/React.createElement("div", {
+  }), /*#__PURE__*/React.createElement("div", {
     style: {
-      borderTop: '1px solid #e3e1d8'
+      fontSize: 11,
+      color: '#888780'
     }
-  }), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontWeight: 500,
-      fontSize: 13,
-      marginBottom: 8
-    }
-  }, "Nuevo análisis"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: 'flex',
-      gap: 8,
-      marginBottom: 8
-    }
-  }, /*#__PURE__*/React.createElement("select", {
-    style: inputStyle,
-    value: tipoAnalisis,
-    onChange: e => setTipoAnalisis(e.target.value)
-  }, /*#__PURE__*/React.createElement("option", null, "Agua útil"), /*#__PURE__*/React.createElement("option", null, "Fertilidad")), /*#__PURE__*/React.createElement("input", {
-    style: inputStyle,
-    type: "date",
-    value: formA.fecha,
-    onChange: e => setFormA({
-      ...formA,
-      fecha: e.target.value
-    })
-  })), tipoAnalisis === 'Agua útil' ? /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: 'grid',
-      gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
-      gap: 8
-    }
-  }, /*#__PURE__*/React.createElement(Field, {
-    label: "Agua útil (mm)"
-  }, /*#__PURE__*/React.createElement("input", {
-    style: inputStyle,
-    type: "number",
-    value: formA.aguaUtilMm,
-    onChange: e => setFormA({
-      ...formA,
-      aguaUtilMm: e.target.value
-    })
-  })), /*#__PURE__*/React.createElement(Field, {
-    label: "Profundidad (cm)"
-  }, /*#__PURE__*/React.createElement("input", {
-    style: inputStyle,
-    type: "number",
-    value: formA.profundidad,
-    onChange: e => setFormA({
-      ...formA,
-      profundidad: e.target.value
-    })
-  }))) : /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: 'grid',
-      gridTemplateColumns: 'repeat(auto-fit, minmax(90px, 1fr))',
-      gap: 8
-    }
-  }, /*#__PURE__*/React.createElement(Field, {
-    label: "N-NO3"
-  }, /*#__PURE__*/React.createElement("input", {
-    style: inputStyle,
-    type: "number",
-    value: formA.nNo3,
-    onChange: e => setFormA({
-      ...formA,
-      nNo3: e.target.value
-    })
-  })), /*#__PURE__*/React.createElement(Field, {
-    label: "P"
-  }, /*#__PURE__*/React.createElement("input", {
-    style: inputStyle,
-    type: "number",
-    value: formA.p,
-    onChange: e => setFormA({
-      ...formA,
-      p: e.target.value
-    })
-  })), /*#__PURE__*/React.createElement(Field, {
-    label: "M.O."
-  }, /*#__PURE__*/React.createElement("input", {
-    style: inputStyle,
-    type: "number",
-    value: formA.mo,
-    onChange: e => setFormA({
-      ...formA,
-      mo: e.target.value
-    })
-  })), /*#__PURE__*/React.createElement(Field, {
-    label: "pH"
-  }, /*#__PURE__*/React.createElement("input", {
-    style: inputStyle,
-    type: "number",
-    value: formA.ph,
-    onChange: e => setFormA({
-      ...formA,
-      ph: e.target.value
-    })
-  }))), /*#__PURE__*/React.createElement("button", {
-    onClick: guardarAnalisis,
-    style: {
-      ...btnPrimary,
-      marginTop: 8
-    }
-  }, "+ Guardar análisis"), analisisLote.map(a => /*#__PURE__*/React.createElement("div", {
-    key: a.id,
-    style: {
-      fontSize: 12,
-      color: '#5f5e5a',
-      padding: '4px 0',
-      borderTop: '1px solid #e3e1d8'
-    }
-  }, /*#__PURE__*/React.createElement("strong", null, a.tipo), " — ", a.fecha))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+  }, "El agua útil se carga desde la pestaña \"Riego\", y los datos de fertilidad + la recomendación desde la pestaña \"Fertilización\"."), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
     style: {
       fontWeight: 500,
       fontSize: 13,
@@ -2169,6 +2274,32 @@ function Riego({
     ...e,
     [id]: !e[id]
   }));
+  const [formAgua, setFormAgua] = useState({});
+  const [aguaAbierta, setAguaAbierta] = useState({});
+  const toggleAgua = id => setAguaAbierta(e => ({
+    ...e,
+    [id]: !e[id]
+  }));
+  const guardarAgua = loteId => {
+    const f = formAgua[loteId];
+    if (!f || !f.fecha || f.aguaUtilMm === '' || f.aguaUtilMm == null) return;
+    update('analisis', a => [...a, {
+      id: uid(),
+      loteId,
+      tipo: 'Agua útil',
+      fecha: f.fecha,
+      aguaUtilMm: f.aguaUtilMm,
+      profundidad: f.profundidad || '200'
+    }]);
+    setFormAgua(p => ({
+      ...p,
+      [loteId]: {
+        fecha: '',
+        aguaUtilMm: '',
+        profundidad: '200'
+      }
+    }));
+  };
   return /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
@@ -2184,13 +2315,22 @@ function Riego({
     const acumuladoRiego = riegosLote.reduce((s, a) => s + Number(a.mm), 0);
     const acumuladoLluvia = lluviasLote.reduce((s, a) => s + Number(a.mm), 0);
     const objetivo = Number(l.objetivoRiego) || 0;
-    const aguaUtil = data.analisis.filter(a => a.loteId === l.id && a.tipo === 'Agua útil').sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''))[0];
-    const aguaUtilMm = aguaUtil ? Number(aguaUtil.aguaUtilMm) || 0 : 0;
+    const aguaUtil = aguaUtilPromedio(data, l.id);
+    const aguaUtilMm = aguaUtil ? aguaUtil.promedio : 0;
     const disponible = aguaUtilMm + acumuladoRiego + acumuladoLluvia;
     const balance = objetivo - disponible;
     const ciclo = cicloActivo(data, l.id);
+    const lecturasAguaLote = data.analisis.filter(a => a.loteId === l.id && a.tipo === 'Agua útil').sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''));
+    const fAgua = formAgua[l.id] || {
+      fecha: '',
+      aguaUtilMm: '',
+      profundidad: '200'
+    };
     return /*#__PURE__*/React.createElement(Card, {
-      key: l.id
+      key: l.id,
+      style: {
+        borderLeft: `4px solid ${(COLOR_CULTIVO[ciclo?.cultivo] || COLOR_CULTIVO['sin cultivo']).borde}`
+      }
     }, /*#__PURE__*/React.createElement("div", {
       style: {
         display: 'flex',
@@ -2200,17 +2340,21 @@ function Riego({
       style: {
         fontWeight: 500
       }
-    }, campo?.nombre, " — ", l.nombre, ciclo ? /*#__PURE__*/React.createElement("span", {
-      style: {
-        fontWeight: 400,
-        color: '#3B6D11'
-      }
-    }, " — ", ciclo.cultivo) : /*#__PURE__*/React.createElement("span", {
-      style: {
-        fontWeight: 400,
-        color: '#888780'
-      }
-    }, " — sin cultivo / barbecho")), /*#__PURE__*/React.createElement("span", {
+    }, campo?.nombre, " — ", l.nombre), (() => {
+      const col = COLOR_CULTIVO[ciclo?.cultivo] || COLOR_CULTIVO['sin cultivo'];
+      return /*#__PURE__*/React.createElement("span", {
+        style: {
+          fontSize: 12,
+          fontWeight: 500,
+          color: col.texto,
+          background: col.fondo,
+          border: `1px solid ${col.borde}`,
+          borderRadius: 5,
+          padding: '2px 8px',
+          marginLeft: 8
+        }
+      }, ciclo ? ciclo.cultivo : `Barbecho → ${proximoCultivoBarbecho(data, l.id)}`);
+    })(), /*#__PURE__*/React.createElement("span", {
       style: {
         fontSize: 12,
         color: '#888780'
@@ -2237,7 +2381,7 @@ function Riego({
         fontSize: 11,
         color: '#aaa89f'
       }
-    }, aguaUtil ? aguaUtil.fecha : '')), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    }, aguaUtil ? `${aguaUtil.fecha}${aguaUtil.cantidadLecturas > 1 ? ` · promedio de ${aguaUtil.cantidadLecturas} lecturas` : ''}` : '')), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 12,
         color: '#888780'
@@ -2287,7 +2431,87 @@ function Riego({
         color: '#888780',
         marginTop: 6
       }
-    }, "Objetivo ", objetivo, "mm = agua útil (", aguaUtilMm, "mm) + riego (", acumuladoRiego, "mm) + precipitaciones (", acumuladoLluvia, "mm) → cubierto ", disponible, "mm de ", objetivo, "mm"), registrosLote.length > 0 && /*#__PURE__*/React.createElement("div", {
+    }, "Objetivo ", objetivo, "mm = agua útil (", aguaUtilMm, "mm) + riego (", acumuladoRiego, "mm) + precipitaciones (", acumuladoLluvia, "mm) → cubierto ", disponible, "mm de ", objetivo, "mm"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        marginTop: 10
+      }
+    }, /*#__PURE__*/React.createElement("button", {
+      onClick: () => toggleAgua(l.id),
+      style: {
+        ...btnGhost,
+        fontSize: 12
+      }
+    }, aguaAbierta[l.id] ? '▲ Cerrar carga de agua útil' : '💧 Cargar lectura de agua útil'), aguaAbierta[l.id] && /*#__PURE__*/React.createElement("div", {
+      style: {
+        marginTop: 8,
+        padding: 10,
+        background: '#faf9f5',
+        borderRadius: 8
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))',
+        gap: 8
+      }
+    }, /*#__PURE__*/React.createElement(Field, {
+      label: "Fecha"
+    }, /*#__PURE__*/React.createElement("input", {
+      style: inputStyle,
+      type: "date",
+      value: fAgua.fecha,
+      onChange: e => setFormAgua(p => ({
+        ...p,
+        [l.id]: {
+          ...fAgua,
+          fecha: e.target.value
+        }
+      }))
+    })), /*#__PURE__*/React.createElement(Field, {
+      label: "Agua útil (mm)"
+    }, /*#__PURE__*/React.createElement("input", {
+      style: inputStyle,
+      type: "number",
+      value: fAgua.aguaUtilMm,
+      onChange: e => setFormAgua(p => ({
+        ...p,
+        [l.id]: {
+          ...fAgua,
+          aguaUtilMm: e.target.value
+        }
+      }))
+    })), /*#__PURE__*/React.createElement(Field, {
+      label: "Profundidad (cm)"
+    }, /*#__PURE__*/React.createElement("input", {
+      style: inputStyle,
+      type: "number",
+      value: fAgua.profundidad,
+      onChange: e => setFormAgua(p => ({
+        ...p,
+        [l.id]: {
+          ...fAgua,
+          profundidad: e.target.value
+        }
+      }))
+    }))), /*#__PURE__*/React.createElement("button", {
+      onClick: () => guardarAgua(l.id),
+      style: {
+        ...btnPrimary,
+        marginTop: 8
+      }
+    }, "+ Guardar lectura"), lecturasAguaLote.length > 0 && /*#__PURE__*/React.createElement("div", {
+      style: {
+        marginTop: 8
+      }
+    }, lecturasAguaLote.slice(0, 6).map(a => /*#__PURE__*/React.createElement("div", {
+      key: a.id,
+      style: {
+        fontSize: 12,
+        color: '#5f5e5a',
+        padding: '3px 0',
+        borderTop: '1px solid #e3e1d8'
+      }
+    }, a.fecha, " — ", a.aguaUtilMm, "mm (", a.profundidad || '200', "cm)"))))), registrosLote.length > 0 && /*#__PURE__*/React.createElement("div", {
       style: {
         marginTop: 10
       }
