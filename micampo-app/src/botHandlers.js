@@ -84,7 +84,7 @@ function validar(interpretado) {
     }
     case 'cosecha': {
       if (!interpretado.identificador) return { ok: false, pregunta: '¿Patente del camión o número de silobolsa?', campoFaltante: 'identificador' };
-      if (!interpretado.kgCampo) return { ok: false, pregunta: '¿Cuántos kg fueron?', campoFaltante: 'kgCampo' };
+      if (!interpretado.cargas || interpretado.cargas.length === 0 || interpretado.cargas.every(c => !c.kg)) return { ok: false, pregunta: '¿Cuántos kg fueron y de qué lote(s)? Mandá el mensaje de nuevo con esos datos.', campoFaltante: null };
       return { ok: true };
     }
     case 'compra': {
@@ -227,12 +227,22 @@ function manejarSiembra(interpretado) {
 
 function manejarCosecha(interpretado) {
   const data = load();
-  const candidatos = interpretado.lote ? buscarLotes(data, interpretado.lote, interpretado.campo) : [];
-  const lote = candidatos.length === 1 ? candidatos[0] : null;
-  data.cargas.push({ id: uid(), loteId: lote ? lote.id : null, cicloId: lote ? cicloActivo(data, lote.id)?.id || null : null, fecha: fechaDe(interpretado), identificador: interpretado.identificador, kgCampo: Number(interpretado.kgCampo), kgDestino: '' });
+  const resultados = [];
+  interpretado.cargas.forEach(carga => {
+    if (!carga.kg) return;
+    const candidatos = carga.lote ? buscarLotes(data, carga.lote, carga.campo) : [];
+    const lote = candidatos.length === 1 ? candidatos[0] : null;
+    data.cargas.push({ id: uid(), loteId: lote ? lote.id : null, cicloId: lote ? cicloActivo(data, lote.id)?.id || null : null, fecha: fechaDe(interpretado), identificador: interpretado.identificador, kgCampo: Number(carga.kg), kgDestino: '' });
+    resultados.push({ lote, kg: Number(carga.kg), sinAsignar: !lote });
+  });
   save(data);
-  if (!lote) return `✅ Carga registrada (${interpretado.identificador} — ${interpretado.kgCampo}kg), sin lote asignado todavía. Avisale al administrador para que la asigne a mano.`;
-  return `✅ Carga registrada: ${nombreConCampo(data, lote)} — ${interpretado.identificador} — ${interpretado.kgCampo}kg`;
+  const totalKg = resultados.reduce((s, r) => s + r.kg, 0);
+  let texto = `✅ Carga registrada — ${interpretado.identificador} — ${totalKg}kg total`;
+  resultados.forEach(r => {
+    texto += r.lote ? `\n· ${nombreConCampo(data, r.lote)}: ${r.kg}kg` : `\n· ${r.kg}kg sin lote asignado (avisale al administrador)`;
+  });
+  if (resultados.length > 1) texto += `\n(discriminado en ${resultados.length} lotes distintos bajo la misma patente)`;
+  return texto;
 }
 
 function manejarAnalisisAgua(interpretado) {
