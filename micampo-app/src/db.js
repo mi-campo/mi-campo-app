@@ -18,6 +18,7 @@ const emptyData = {
   cargas: [],
   consultas: [],
   ciclos: [],
+  contactosBot: [],
 };
 
 function uid() {
@@ -62,6 +63,19 @@ function buscarLotes(data, nombreBuscado) {
   if (!nombreBuscado) return [];
   const normalizar = (s) => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
   const buscado = normalizar(nombreBuscado);
+
+  // Si viene como "Campo — Lote" o "Campo - Lote" (respuesta a una desambiguación), separar y filtrar por campo primero
+  const partes = nombreBuscado.split(/—|-{2,}| - /);
+  if (partes.length === 2) {
+    const campoBuscado = normalizar(partes[0]);
+    const loteBuscado = normalizar(partes[1]);
+    const campo = data.campos.find(c => normalizar(c.nombre) === campoBuscado || normalizar(c.nombre).includes(campoBuscado));
+    if (campo) {
+      const enEseCampo = data.lotes.filter(l => l.campoId === campo.id && (normalizar(l.nombre) === loteBuscado || normalizar(l.nombre).includes(loteBuscado)));
+      if (enEseCampo.length > 0) return enEseCampo;
+    }
+  }
+
   const exacto = data.lotes.filter(l => normalizar(l.nombre) === buscado);
   if (exacto.length > 0) return exacto;
   return data.lotes.filter(l => normalizar(l.nombre).includes(buscado) || buscado.includes(normalizar(l.nombre)));
