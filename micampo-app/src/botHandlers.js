@@ -65,11 +65,22 @@ function validar(interpretado) {
     }
     case 'pulverizacion': {
       if (!interpretado.lotes || interpretado.lotes.length === 0) return { ok: false, pregunta: '¿De qué lote(s) es esta pulverización? Decime el campo y el lote de cada uno.', campoFaltante: null };
+      const lotesResueltosVal = [];
       for (const l of interpretado.lotes) {
         const r = resolverLote(data, l.lote, l.campo);
         if (!r.ok) return r;
+        lotesResueltosVal.push({ ...l, loteObj: r.lote });
       }
       if (!interpretado.items || interpretado.items.length === 0 || !interpretado.items[0].producto) return { ok: false, pregunta: '¿Qué producto(s) se aplicó y cuánto de cada uno? Mandá el mensaje de nuevo con esos datos.', campoFaltante: null };
+      // Red de seguridad: si hay más de un lote y ninguno especifica sus hectáreas una por una,
+      // no asumir que se aplicó el lote entero cuando el total real dado no coincide con la suma de los lotes completos.
+      if (lotesResueltosVal.length > 1 && lotesResueltosVal.every(l => l.haReales == null) && interpretado.haRealesTotal) {
+        const sumaLotesCompletos = lotesResueltosVal.reduce((s, l) => s + (Number(l.loteObj.hectareas) || 0), 0);
+        if (Math.abs(sumaLotesCompletos - Number(interpretado.haRealesTotal)) > 2) {
+          const nombres = lotesResueltosVal.map(l => nombreConCampo(data, l.loteObj)).join(', ');
+          return { ok: false, pregunta: `Esas ${interpretado.haRealesTotal}ha no coinciden con el tamaño completo de ${nombres} (suman ${sumaLotesCompletos}ha) — parece una aplicación parcial. ¿Cuántas hectáreas de cada lote se trataron? Mandá el mensaje de nuevo aclarando eso.`, campoFaltante: null };
+        }
+      }
       return { ok: true };
     }
     case 'siembra': {
