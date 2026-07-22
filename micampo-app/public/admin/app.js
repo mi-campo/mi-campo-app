@@ -33,7 +33,13 @@ function laborKey(tipo, metodo) {
 }
 const CATEGORIAS_INSUMO = ['Insecticida', 'Herbicida', 'Fungicida', 'Fertilizante', 'Semilla', 'Cebo', 'Otro'];
 const CULTIVOS_SIEMBRA = ['Soja', 'Trigo', 'Garbanzo', 'Maíz'];
-const TIPOS_BOT = [['riego', 'Riego'], ['siembra', 'Siembra'], ['fertilizacion', 'Fertilización'], ['pulverizacion', 'Pulverización'], ['cosecha', 'Cosecha'], ['compra', 'Compra de insumo'], ['aporte_insumo', 'Aporte de insumo'], ['analisis_agua', 'Análisis de agua'], ['analisis_suelo', 'Análisis de suelo'], ['nota', 'Nota'], ['consulta', 'Consultas / preguntas']];
+const OBJETIVO_RIEGO_POR_CULTIVO = {
+  'Garbanzo': 400,
+  'Trigo': 550,
+  'Soja': 120,
+  'Maíz': 200
+};
+const TIPOS_BOT = [['riego', 'Riego'], ['precipitacion', 'Lluvia'], ['siembra', 'Siembra'], ['fertilizacion', 'Fertilización'], ['pulverizacion', 'Pulverización'], ['cosecha', 'Cosecha'], ['compra', 'Compra de insumo'], ['aporte_insumo', 'Aporte de insumo'], ['analisis_agua', 'Análisis de agua'], ['analisis_suelo', 'Análisis de suelo'], ['nota', 'Nota'], ['consulta', 'Consultas / preguntas']];
 const inputStyle = {
   padding: '8px 10px',
   borderRadius: 6,
@@ -821,8 +827,6 @@ function Campos({
 }) {
   const [nuevoCampo, setNuevoCampo] = useState('');
   const [clienteCampo, setClienteCampo] = useState('');
-  const [presupuestoCampo, setPresupuestoCampo] = useState('');
-  const [porcentajeCampo, setPorcentajeCampo] = useState('');
   const [nuevoLote, setNuevoLote] = useState({});
   const [loteAbierto, setLoteAbierto] = useState(null);
   const addCampo = () => {
@@ -831,13 +835,11 @@ function Campos({
       id: uid(),
       nombre: nuevoCampo.trim(),
       clienteId: clienteCampo || null,
-      presupuesto: Number(presupuestoCampo) || 0,
-      porcentajeProductor: Number(porcentajeCampo) || 0
+      presupuesto: 0,
+      porcentajeProductor: 0
     }]);
     setNuevoCampo('');
     setClienteCampo('');
-    setPresupuestoCampo('');
-    setPorcentajeCampo('');
   };
   const delCampo = id => {
     update('campos', c => c.filter(x => x.id !== id));
@@ -899,28 +901,16 @@ function Campos({
   }, "Propio"), data.clientes.map(c => /*#__PURE__*/React.createElement("option", {
     key: c.id,
     value: c.id
-  }, c.nombre))), /*#__PURE__*/React.createElement("input", {
-    style: {
-      ...inputStyle,
-      width: 150
-    },
-    type: "number",
-    placeholder: "Presupuesto USD",
-    value: presupuestoCampo,
-    onChange: e => setPresupuestoCampo(e.target.value)
-  }), /*#__PURE__*/React.createElement("input", {
-    style: {
-      ...inputStyle,
-      width: 110
-    },
-    type: "number",
-    placeholder: "% productor",
-    value: porcentajeCampo,
-    onChange: e => setPorcentajeCampo(e.target.value)
-  }), /*#__PURE__*/React.createElement("button", {
+  }, c.nombre))), /*#__PURE__*/React.createElement("button", {
     onClick: addCampo,
     style: btnPrimary
-  }, "+ Agregar"))), data.campos.map(campo => {
+  }, "+ Agregar")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: '#888780',
+      marginTop: 6
+    }
+  }, "La participación de cada cliente/productor (con %, aportes, etc) se carga después, dentro del campo ya creado.")), data.campos.map(campo => {
     const lotes = data.lotes.filter(l => l.campoId === campo.id);
     const cliente = data.clientes.find(c => c.id === campo.clienteId);
     const f = nuevoLote[campo.id] || {
@@ -1145,6 +1135,13 @@ function Ciclos({
         fechaFin: null
       }];
     });
+    const objetivoDefault = OBJETIVO_RIEGO_POR_CULTIVO[form.cultivo.trim()];
+    if (objetivoDefault && (lote.modo || 'Riego') === 'Riego') {
+      update('lotes', ls => ls.map(l => l.id === lote.id ? {
+        ...l,
+        objetivoRiego: objetivoDefault
+      } : l));
+    }
     setForm({
       cultivo: '',
       tipo: 'Invierno',
@@ -1187,15 +1184,18 @@ function Ciclos({
     }
   }, /*#__PURE__*/React.createElement(Field, {
     label: "Cultivo"
-  }, /*#__PURE__*/React.createElement("input", {
+  }, /*#__PURE__*/React.createElement("select", {
     style: inputStyle,
     value: form.cultivo,
     onChange: e => setForm({
       ...form,
       cultivo: e.target.value
-    }),
-    placeholder: "ej. Trigo"
-  })), /*#__PURE__*/React.createElement(Field, {
+    })
+  }, /*#__PURE__*/React.createElement("option", {
+    value: ""
+  }, "Elegir…"), CULTIVOS_SIEMBRA.map(c => /*#__PURE__*/React.createElement("option", {
+    key: c
+  }, c)))), /*#__PURE__*/React.createElement(Field, {
     label: "Tipo"
   }, /*#__PURE__*/React.createElement("select", {
     style: inputStyle,
@@ -2177,11 +2177,18 @@ function Riego({
     }
   }, lotesRiego.map(l => {
     const campo = data.campos.find(c => c.id === l.campoId);
-    const riegosLote = data.actividades.filter(a => a.loteId === l.id && a.tipo === 'Riego' && a.mm).sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''));
-    const acumulado = riegosLote.reduce((s, a) => s + Number(a.mm), 0);
+    const registrosLote = data.actividades.filter(a => a.loteId === l.id && a.tipo === 'Riego' && a.mm).sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''));
+    const esLluvia = r => (r.fuente || '').toLowerCase().includes('lluvia');
+    const riegosLote = registrosLote.filter(r => !esLluvia(r));
+    const lluviasLote = registrosLote.filter(esLluvia);
+    const acumuladoRiego = riegosLote.reduce((s, a) => s + Number(a.mm), 0);
+    const acumuladoLluvia = lluviasLote.reduce((s, a) => s + Number(a.mm), 0);
     const objetivo = Number(l.objetivoRiego) || 0;
-    const falta = Math.max(0, objetivo - acumulado);
     const aguaUtil = data.analisis.filter(a => a.loteId === l.id && a.tipo === 'Agua útil').sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''))[0];
+    const aguaUtilMm = aguaUtil ? Number(aguaUtil.aguaUtilMm) || 0 : 0;
+    const disponible = aguaUtilMm + acumuladoRiego + acumuladoLluvia;
+    const balance = objetivo - disponible;
+    const ciclo = cicloActivo(data, l.id);
     return /*#__PURE__*/React.createElement(Card, {
       key: l.id
     }, /*#__PURE__*/React.createElement("div", {
@@ -2193,7 +2200,17 @@ function Riego({
       style: {
         fontWeight: 500
       }
-    }, campo?.nombre, " — ", l.nombre), /*#__PURE__*/React.createElement("span", {
+    }, campo?.nombre, " — ", l.nombre, ciclo ? /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontWeight: 400,
+        color: '#3B6D11'
+      }
+    }, " — ", ciclo.cultivo) : /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontWeight: 400,
+        color: '#888780'
+      }
+    }, " — sin cultivo / barbecho")), /*#__PURE__*/React.createElement("span", {
       style: {
         fontSize: 12,
         color: '#888780'
@@ -2210,12 +2227,17 @@ function Riego({
         fontSize: 12,
         color: '#888780'
       }
-    }, "Acumulado"), /*#__PURE__*/React.createElement("div", {
+    }, "Agua útil (2m)"), /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 18,
         fontWeight: 500
       }
-    }, acumulado, " mm")), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    }, aguaUtil ? `${aguaUtilMm} mm` : 'Sin datos'), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 11,
+        color: '#aaa89f'
+      }
+    }, aguaUtil ? aguaUtil.fecha : '')), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 12,
         color: '#888780'
@@ -2233,22 +2255,39 @@ function Riego({
         fontSize: 12,
         color: '#888780'
       }
-    }, "Falta"), /*#__PURE__*/React.createElement("div", {
+    }, "Riego"), /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 18,
-        fontWeight: 500,
-        color: falta > 0 ? '#854F0B' : '#3B6D11'
+        fontWeight: 500
       }
-    }, objetivo > 0 ? `${falta} mm` : '—')), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    }, acumuladoRiego, " mm")), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 12,
         color: '#888780'
       }
-    }, "Último agua útil"), /*#__PURE__*/React.createElement("div", {
+    }, "Precipitaciones"), /*#__PURE__*/React.createElement("div", {
       style: {
-        fontSize: 14
+        fontSize: 18,
+        fontWeight: 500
       }
-    }, aguaUtil ? `${aguaUtil.aguaUtilMm}mm (${aguaUtil.fecha})` : 'Sin datos'))), riegosLote.length > 0 && /*#__PURE__*/React.createElement("div", {
+    }, acumuladoLluvia, " mm")), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12,
+        color: '#888780'
+      }
+    }, balance >= 0 ? 'Falta' : 'Sobra'), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 18,
+        fontWeight: 500,
+        color: balance > 0 ? '#854F0B' : '#3B6D11'
+      }
+    }, objetivo > 0 ? `${Math.abs(balance)} mm` : '—'))), objetivo > 0 && /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 11,
+        color: '#888780',
+        marginTop: 6
+      }
+    }, "Objetivo ", objetivo, "mm = agua útil (", aguaUtilMm, "mm) + riego (", acumuladoRiego, "mm) + precipitaciones (", acumuladoLluvia, "mm) → cubierto ", disponible, "mm de ", objetivo, "mm"), registrosLote.length > 0 && /*#__PURE__*/React.createElement("div", {
       style: {
         marginTop: 10
       }
@@ -2258,11 +2297,11 @@ function Riego({
         ...btnGhost,
         fontSize: 12
       }
-    }, expandidos[l.id] ? '▲ Ocultar detalle' : `▼ Ver ${riegosLote.length} riego(s) individuales`), expandidos[l.id] && /*#__PURE__*/React.createElement("div", {
+    }, expandidos[l.id] ? '▲ Ocultar detalle' : `▼ Ver ${registrosLote.length} registro(s) individuales`), expandidos[l.id] && /*#__PURE__*/React.createElement("div", {
       style: {
         marginTop: 6
       }
-    }, riegosLote.map(r => /*#__PURE__*/React.createElement("div", {
+    }, registrosLote.map(r => /*#__PURE__*/React.createElement("div", {
       key: r.id,
       style: {
         fontSize: 13,
@@ -2270,7 +2309,7 @@ function Riego({
         borderTop: '1px solid #f1efe8',
         color: '#5f5e5a'
       }
-    }, r.fecha, " — ", r.mm, "mm", r.fuente ? ` (${r.fuente})` : '')), /*#__PURE__*/React.createElement("div", {
+    }, r.fecha, " — ", esLluvia(r) ? '🌧️ Lluvia' : '💧 Riego', " ", r.mm, "mm", r.fuente && !esLluvia(r) ? ` (${r.fuente})` : '')), /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 11,
         color: '#888780',
