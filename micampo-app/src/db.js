@@ -59,10 +59,23 @@ function saveUsers(users) {
   fs.writeFileSync(USERS_PATH, JSON.stringify(users, null, 2));
 }
 
-function buscarLotes(data, nombreBuscado) {
+function buscarLotes(data, nombreBuscado, nombreCampo) {
   if (!nombreBuscado) return [];
   const normalizar = (s) => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
   const buscado = normalizar(nombreBuscado);
+
+  // Si viene "campo" por separado (desde el parser), filtrar primero por campo
+  if (nombreCampo) {
+    const campoBuscado = normalizar(nombreCampo);
+    const camposCandidatos = data.campos.filter(c => normalizar(c.nombre) === campoBuscado || normalizar(c.nombre).includes(campoBuscado) || campoBuscado.includes(normalizar(c.nombre)));
+    if (camposCandidatos.length === 1) {
+      const enEseCampo = data.lotes.filter(l => l.campoId === camposCandidatos[0].id);
+      const exactoEnCampo = enEseCampo.filter(l => normalizar(l.nombre) === buscado);
+      if (exactoEnCampo.length > 0) return exactoEnCampo;
+      const fuzzyEnCampo = enEseCampo.filter(l => normalizar(l.nombre).includes(buscado) || buscado.includes(normalizar(l.nombre)));
+      if (fuzzyEnCampo.length > 0) return fuzzyEnCampo;
+    }
+  }
 
   // Si viene como "Campo — Lote" o "Campo - Lote" (respuesta a una desambiguación), separar y filtrar por campo primero
   const partes = nombreBuscado.split(/—|-{2,}| - /);
