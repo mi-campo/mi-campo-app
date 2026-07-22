@@ -5,6 +5,29 @@ function hoy() {
   return new Date().toISOString().slice(0, 10);
 }
 
+function laborKey(tipo, metodo) {
+  if (tipo === 'Cosecha') return 'Cosecha';
+  if (tipo === 'Siembra') return metodo === 'Drone' ? 'Siembra con drone' : 'Siembra';
+  if (tipo === 'Fertilización') {
+    if (metodo === 'Voleo') return 'Fertilización voleo';
+    if (metodo === 'Drone') return 'Fertilización drone';
+    if (metodo === 'Con siembra') return 'Siembra con fertilización';
+    return null;
+  }
+  if (tipo === 'Pulverización') {
+    if (metodo === 'Terrestre') return 'Pulverización terrestre';
+    if (metodo === 'Drone') return 'Pulverización drone';
+    if (metodo === 'Aéreo (avión)' || metodo === 'Aereo' || metodo === 'Avión' || metodo === 'Avion') return 'Pulverización avión';
+    return null;
+  }
+  return null;
+}
+
+function tarifaAutomatica(data, tipo, metodo) {
+  const key = laborKey(tipo, metodo);
+  return key && data.tarifario && data.tarifario[key] ? Number(data.tarifario[key]) : null;
+}
+
 function fechaDe(interpretado) {
   if (interpretado.fecha && /^\d{4}-\d{2}-\d{2}$/.test(interpretado.fecha)) return interpretado.fecha;
   return hoy();
@@ -82,6 +105,13 @@ function validar(interpretado) {
       if (!r.ok) return r;
       return { ok: true };
     }
+    case 'aporte_insumo': {
+      const r = resolverLote(data, interpretado.lote, interpretado.campo);
+      if (!r.ok) return r;
+      if (!interpretado.producto || !interpretado.cantidad) return { ok: false, pregunta: 'Mandá el mensaje de nuevo con el producto y la cantidad.', campoFaltante: null };
+      if (!interpretado.clienteAportante) return { ok: false, pregunta: '¿A nombre de quién es ese aporte?', campoFaltante: 'clienteAportante' };
+      return { ok: true };
+    }
     case 'nota':
       return { ok: true };
     case 'consulta':
@@ -98,7 +128,9 @@ function manejarRiego(interpretado) {
   let mm = Number(interpretado.mm);
   let corregido = false;
   if (mm > 500 && mm % 1000 === 0) { mm = mm / 1000; corregido = true; }
-  data.actividades.push({ id: uid(), loteId: lote.id, cicloId: cicloActivo(data, lote.id)?.id || null, tipo: 'Riego', fecha: fechaDe(interpretado), mm, fuente: interpretado.fuente || undefined, items: [], costoTotal: 0, notas: '' });
+  const tarifaMm = data.tarifario && data.tarifario['Riego'] ? Number(data.tarifario['Riego']) : 0;
+  const costoTotal = tarifaMm * mm * (Number(lote.hectareas) || 0);
+  data.actividades.push({ id: uid(), loteId: lote.id, cicloId: cicloActivo(data, lote.id)?.id || null, tipo: 'Riego', fecha: fechaDe(interpretado), mm, fuente: interpretado.fuente || undefined, items: [], costoTotal, notas: '' });
   save(data);
   const acumulado = data.actividades.filter(a => a.loteId === lote.id && a.tipo === 'Riego' && a.mm).reduce((s, a) => s + Number(a.mm), 0);
   const objetivo = Number(lote.objetivoRiego) || 0;
@@ -107,6 +139,7 @@ function manejarRiego(interpretado) {
   if (corregido) texto += `\n(interpreté "${interpretado.mm}" como ${mm}mm — avisame si no era eso)`;
   texto += `\nAcumulado: ${acumulado}mm`;
   if (falta !== null) texto += ` · Faltan ${falta}mm para el objetivo`;
+  if (costoTotal > 0) texto += `\nCosto: USD ${costoTotal.toFixed(0)}`;
   return texto;
 }
 
@@ -136,12 +169,13 @@ function manejarAplicacion(interpretado, tipo) {
   });
   const haReales = Number(interpretado.haReales) || 0;
   const haFacturadas = Number(interpretado.haFacturadas) || haReales;
-  const costoContratista = interpretado.tarifaContratista ? Number(interpretado.tarifaContratista) * haFacturadas : 0;
+  const tarifa = interpretado.tarifaContratista ? Number(interpretado.tarifaContratista) : tarifaAutomatica(data, tipo, interpretado.metodo);
+  const costoContratista = tarifa ? tarifa * haFacturadas : 0;
   const costoTotal = costoInsumos + costoContratista;
   data.actividades.push({
     id: uid(), loteId: lote.id, cicloId: cicloActivo(data, lote.id)?.id || null, tipo,
     fecha: fechaDe(interpretado), metodo: interpretado.metodo || '', haReales: interpretado.haReales || '', haFacturadas: interpretado.haFacturadas || '',
-    tarifaContratista: interpretado.tarifaContratista || '', items, costoInsumos, costoContratista, costoTotal, notas: '',
+    tarifaContratista: tarifa || '', items, costoInsumos, costoContratista, costoTotal, notas: '',
   });
   save(data);
   let texto = `✅ ${tipo} cargada: ${nombreConCampo(data, lote)}${interpretado.metodo ? ` (${interpretado.metodo})` : ''}`;
@@ -171,11 +205,12 @@ function manejarSiembra(interpretado) {
   const lote = buscarLotes(data, interpretado.lote, interpretado.campo)[0];
   const haReales = Number(interpretado.haReales) || 0;
   const haFacturadas = Number(interpretado.haFacturadas) || haReales;
-  const costoContratista = interpretado.tarifaContratista ? Number(interpretado.tarifaContratista) * haFacturadas : 0;
+  const tarifa = interpretado.tarifaContratista ? Number(interpretado.tarifaContratista) : tarifaAutomatica(data, 'Siembra', interpretado.metodo);
+  const costoContratista = tarifa ? tarifa * haFacturadas : 0;
   data.actividades.push({
     id: uid(), loteId: lote.id, cicloId: null, tipo: 'Siembra', fecha: fechaDe(interpretado), metodo: interpretado.metodo || '',
     cultivo: interpretado.cultivo, variedad: interpretado.variedad || '', densidad: interpretado.densidad || '',
-    haReales: interpretado.haReales || '', haFacturadas: interpretado.haFacturadas || '', tarifaContratista: interpretado.tarifaContratista || '',
+    haReales: interpretado.haReales || '', haFacturadas: interpretado.haFacturadas || '', tarifaContratista: tarifa || '',
     items: [], costoInsumos: 0, costoContratista, costoTotal: costoContratista, notas: '',
   });
   // Abre un ciclo nuevo para el lote (cierra el anterior si había uno abierto), igual que hace el panel
@@ -325,6 +360,47 @@ async function manejarConsulta(interpretado, contacto) {
   return await responderConsulta(interpretado.pregunta, contexto);
 }
 
+function manejarAporteInsumo(interpretado) {
+  const data = load();
+  const lote = buscarLotes(data, interpretado.lote, interpretado.campo)[0];
+  const campoDelLote = data.campos.find(c => c.id === lote.campoId);
+
+  // Resolver el cliente aportante: primero entre los participantes de ese campo, si no entre todos los clientes
+  const normalizar = (s) => (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+  const buscado = normalizar(interpretado.clienteAportante);
+  const participantesCampo = campoDelLote?.participantes || [];
+  let cliente = participantesCampo.map(p => data.clientes.find(c => c.id === p.clienteId)).find(c => c && normalizar(c.nombre).includes(buscado));
+  if (!cliente) cliente = data.clientes.find(c => normalizar(c.nombre).includes(buscado));
+  if (!cliente) {
+    cliente = { id: uid(), nombre: interpretado.clienteAportante };
+    data.clientes.push(cliente);
+  }
+
+  // Resolver o crear el insumo
+  let insumo = data.insumos.find(i => i.nombre.toLowerCase().includes(interpretado.producto.toLowerCase()));
+  if (!insumo) {
+    const esSemilla = /maiz|maíz|soja|trigo|garbanzo|semilla/i.test(interpretado.producto);
+    insumo = { id: uid(), nombre: interpretado.producto, categoria: esSemilla ? 'Semilla' : 'Otro', especificar: '', unidad: interpretado.unidad || 'kg', stock: 0, stockMinimo: 0, costoUnitario: interpretado.precioUnitario || 0, clienteId: null };
+    data.insumos.push(insumo);
+  }
+  const cantidad = Number(interpretado.cantidad);
+  const precioUnitario = interpretado.precioUnitario ? Number(interpretado.precioUnitario) : (Number(insumo.costoUnitario) || 0);
+  insumo.stock = (Number(insumo.stock) || 0) + cantidad; // el aporte suma al stock disponible
+  const costoTotal = cantidad * precioUnitario;
+
+  data.actividades.push({
+    id: uid(), loteId: lote.id, cicloId: cicloActivo(data, lote.id)?.id || null, tipo: 'Aporte', fecha: fechaDe(interpretado),
+    items: [{ insumoId: insumo.id, cantidad }], costoInsumos: costoTotal, costoContratista: 0, costoTotal,
+    paraClienteId: cliente.id, notas: `Aporte de ${cliente.nombre}`,
+  });
+  save(data);
+
+  let texto = `✅ Aporte cargado: ${cliente.nombre} — ${cantidad}${insumo.unidad} de ${insumo.nombre} — ${nombreConCampo(data, lote)}`;
+  if (precioUnitario > 0) texto += `\nValor: USD ${costoTotal.toFixed(0)} (a USD ${precioUnitario.toFixed(2)}/${insumo.unidad})`;
+  texto += `\nQueda cargado a la cuenta de ${cliente.nombre} en este campo.`;
+  return texto;
+}
+
 function manejarNota(interpretado) {
   const data = load();
   const candidatos = interpretado.lote ? buscarLotes(data, interpretado.lote, interpretado.campo) : [];
@@ -344,6 +420,7 @@ async function procesar(interpretado, contacto) {
     case 'compra': return manejarCompra(interpretado);
     case 'analisis_agua': return manejarAnalisisAgua(interpretado);
     case 'analisis_suelo': return manejarAnalisisSuelo(interpretado);
+    case 'aporte_insumo': return manejarAporteInsumo(interpretado);
     case 'nota': return manejarNota(interpretado);
     case 'consulta': return manejarConsulta(interpretado, contacto);
     default: return '✅ Guardado.';
