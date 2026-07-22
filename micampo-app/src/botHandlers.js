@@ -1,4 +1,5 @@
 const { load, save, uid, buscarLotes, precioPromedio, cicloActivo } = require('./db');
+const { responderConsulta } = require('./claudeParser');
 
 function hoy() {
   return new Date().toISOString().slice(0, 10);
@@ -82,6 +83,8 @@ function validar(interpretado) {
       return { ok: true };
     }
     case 'nota':
+      return { ok: true };
+    case 'consulta':
       return { ok: true };
     default:
       return { ok: false, pregunta: `No entendí bien de qué se trata${interpretado.motivo ? ` (${interpretado.motivo})` : ''}. Contame con más detalle: qué pasó, en qué lote y cuándo.`, campoFaltante: null };
@@ -245,6 +248,77 @@ function manejarCompra(interpretado) {
   return texto;
 }
 
+async function manejarConsulta(interpretado, contacto) {
+  const data = load();
+  const clienteId = contacto && contacto.clienteId ? contacto.clienteId : null;
+  const contexto = {};
+
+  const lote = interpretado.lote ? buscarLotes(data, interpretado.lote, interpretado.campo)[0] : null;
+  const campo = interpretado.campo ? data.campos.find(c => (c.nombre || '').toLowerCase().includes((interpretado.campo || '').toLowerCase())) : null;
+
+  if (lote) {
+    const campoDelLote = data.campos.find(c => c.id === lote.campoId);
+    if (clienteId && campoDelLote?.clienteId !== clienteId) {
+      return '🚫 Ese lote no es de tus campos, no tengo permitido darte esa información.';
+    }
+    const actividadesLote = data.actividades.filter(a => a.loteId === lote.id).sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''));
+    const riegos = actividadesLote.filter(a => a.tipo === 'Riego' && a.mm);
+    const gastoTotalUSD = actividadesLote.reduce((s, a) => s + (a.costoTotal || 0), 0);
+    const ciclo = cicloActivo(data, lote.id);
+    contexto.lote = {
+      nombre: `${campoDelLote?.nombre || ''} — ${lote.nombre}`, hectareas: lote.hectareas, modo: lote.modo,
+      cultivoActual: ciclo ? ciclo.cultivo : null,
+      riegoAcumuladoMm: riegos.reduce((s, a) => s + Number(a.mm), 0), objetivoRiegoMm: lote.objetivoRiego || 0,
+      gastoTotalUSD, costoPorHaUSD: lote.hectareas > 0 ? Math.round(gastoTotalUSD / lote.hectareas) : null,
+      cosechas: actividadesLote.filter(a => a.tipo === 'Cosecha' || a.rendimiento).map(a => ({ fecha: a.fecha, rendimientoQqHa: a.rendimiento })),
+      ultimasActividades: actividadesLote.slice(0, 10).map(a => ({
+        tipo: a.tipo, fecha: a.fecha, metodo: a.metodo || undefined, mm: a.mm || undefined,
+        cultivo: a.cultivo || undefined, variedad: a.variedad || undefined, densidad: a.densidad || undefined,
+        haReales: a.haReales || undefined,
+        insumosUsados: a.items && a.items.length > 0 ? a.items.map(it => { const ins = data.insumos.find(i => i.id === it.insumoId); return `${it.cantidad}${ins?.unidad || ''} de ${ins?.nombre || '?'}`; }) : undefined,
+        costoTotalUSD: a.costoTotal || 0,
+      })),
+    };
+  } else if (campo) {
+    if (clienteId && campo.clienteId !== clienteId) {
+      return '🚫 Ese campo no es tuyo, no tengo permitido darte esa información.';
+    }
+    const lotesCampo = data.lotes.filter(l => l.campoId === campo.id);
+    const actividadesCampo = data.actividades.filter(a => lotesCampo.some(l => l.id === a.loteId));
+    const haTotalCampo = lotesCampo.reduce((s, l) => s + (Number(l.hectareas) || 0), 0);
+    const gastoTotalCampo = actividadesCampo.reduce((s, a) => s + (a.costoTotal || 0), 0);
+    contexto.campo = {
+      nombre: campo.nombre, hectareasTotal: haTotalCampo,
+      lotes: lotesCampo.map(l => l.nombre), gastoTotalUSD: gastoTotalCampo,
+      costoPorHaUSD: haTotalCampo > 0 ? Math.round(gastoTotalCampo / haTotalCampo) : null,
+    };
+  } else if (interpretado.insumo) {
+    const insumo = data.insumos.find(i => i.nombre.toLowerCase().includes(interpretado.insumo.toLowerCase()));
+    if (insumo && clienteId && insumo.clienteId && insumo.clienteId !== clienteId) {
+      return '🚫 Ese insumo no es tuyo, no tengo permitido darte esa información.';
+    }
+    contexto.insumo = insumo ? { nombre: insumo.nombre, stock: insumo.stock, unidad: insumo.unidad, stockMinimo: insumo.stockMinimo, precioPromedio: precioPromedio(data, insumo.id) } : { error: `No encontré ningún insumo llamado "${interpretado.insumo}"` };
+  } else {
+    // Sin lote/campo/insumo especifico: resumen general, restringido a los campos del cliente si corresponde
+    const camposPermitidos = clienteId ? data.campos.filter(c => c.clienteId === clienteId) : data.campos;
+    const lotesPermitidos = data.lotes.filter(l => camposPermitidos.some(c => c.id === l.campoId));
+    const actividadesPermitidas = data.actividades.filter(a => lotesPermitidos.some(l => l.id === a.loteId));
+    if (clienteId && camposPermitidos.length === 0) return '🚫 No tenés campos asignados todavía, pedile al administrador que te vincule a uno.';
+    contexto.resumenGeneral = {
+      cantidadCampos: camposPermitidos.length, hectareasTotales: lotesPermitidos.reduce((s, l) => s + (Number(l.hectareas) || 0), 0),
+      gastoTotalUSD: actividadesPermitidas.reduce((s, a) => s + (a.costoTotal || 0), 0),
+      insumosConStockBajo: clienteId ? [] : data.insumos.filter(i => Number(i.stock) <= Number(i.stockMinimo) && Number(i.stockMinimo) > 0).map(i => ({ nombre: i.nombre, stock: i.stock, stockMinimo: i.stockMinimo, unidad: i.unidad })),
+      ultimasActividades: [...actividadesPermitidas].sort((a, b) => (b.fecha || '').localeCompare(a.fecha || '')).slice(0, 10).map(a => {
+        const l = data.lotes.find(x => x.id === a.loteId);
+        const c = l ? data.campos.find(x => x.id === l.campoId) : null;
+        return { tipo: a.tipo, fecha: a.fecha, lote: l ? `${c?.nombre || ''} — ${l.nombre}` : null };
+      }),
+    };
+  }
+
+  return await responderConsulta(interpretado.pregunta, contexto);
+}
+
 function manejarNota(interpretado) {
   const data = load();
   const candidatos = interpretado.lote ? buscarLotes(data, interpretado.lote, interpretado.campo) : [];
@@ -254,7 +328,7 @@ function manejarNota(interpretado) {
   return `✅ Nota guardada${lote ? ` en ${nombreConCampo(data, lote)}` : ''}.`;
 }
 
-function procesar(interpretado) {
+async function procesar(interpretado, contacto) {
   switch (interpretado.tipo) {
     case 'riego': return manejarRiego(interpretado);
     case 'pulverizacion': return manejarPulverizacion(interpretado);
@@ -265,6 +339,7 @@ function procesar(interpretado) {
     case 'analisis_agua': return manejarAnalisisAgua(interpretado);
     case 'analisis_suelo': return manejarAnalisisSuelo(interpretado);
     case 'nota': return manejarNota(interpretado);
+    case 'consulta': return manejarConsulta(interpretado, contacto);
     default: return '✅ Guardado.';
   }
 }
