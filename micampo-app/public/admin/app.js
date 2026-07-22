@@ -1409,6 +1409,273 @@ function CalculoFertilizacion() {
 }
 
 /* ---------- DETALLE DE LOTE ---------- */
+const TIPOS_ACUERDO = ['Alquiler fijo', 'Servicio + costos + reparto', 'Participación libre', 'Otro'];
+function AcuerdosLote({
+  lote,
+  data,
+  update
+}) {
+  const acuerdos = lote.acuerdos || [];
+  const [nuevo, setNuevo] = useState({
+    hectareas: '',
+    clienteId: '',
+    tipo: 'Alquiler fijo',
+    valorFijo: '',
+    unidadValor: 'qq/ha',
+    detalle: ''
+  });
+  const haConAcuerdo = acuerdos.reduce((s, a) => s + (Number(a.hectareas) || 0), 0);
+  const haSinAcuerdo = Math.max(0, (Number(lote.hectareas) || 0) - haConAcuerdo);
+  const agregar = () => {
+    if (!nuevo.hectareas) return;
+    update('lotes', ls => ls.map(l => l.id === lote.id ? {
+      ...l,
+      acuerdos: [...(l.acuerdos || []), {
+        id: uid(),
+        ...nuevo,
+        hectareas: Number(nuevo.hectareas),
+        valorFijo: nuevo.valorFijo ? Number(nuevo.valorFijo) : null
+      }]
+    } : l));
+    setNuevo({
+      hectareas: '',
+      clienteId: '',
+      tipo: 'Alquiler fijo',
+      valorFijo: '',
+      unidadValor: 'qq/ha',
+      detalle: ''
+    });
+  };
+  const quitar = aid => update('lotes', ls => ls.map(l => l.id === lote.id ? {
+    ...l,
+    acuerdos: (l.acuerdos || []).filter(a => a.id !== aid)
+  } : l));
+  const editar = (aid, campoObj) => update('lotes', ls => ls.map(l => l.id === lote.id ? {
+    ...l,
+    acuerdos: (l.acuerdos || []).map(a => a.id === aid ? {
+      ...a,
+      ...campoObj
+    } : a)
+  } : l));
+  return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: 500,
+      fontSize: 13,
+      marginBottom: 8
+    }
+  }, "Acuerdos dentro del lote"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: '#888780',
+      marginBottom: 8
+    }
+  }, "Para cuando un mismo lote tiene partes con arreglos distintos (ej: parte alquilada a valor fijo, parte donde vos ponés todo y después cobrás un fijo + costos y se reparte el resto)."), acuerdos.map(a => {
+    return /*#__PURE__*/React.createElement("div", {
+      key: a.id,
+      style: {
+        padding: '8px 10px',
+        background: '#fff',
+        borderRadius: 6,
+        marginBottom: 6,
+        border: '1px solid #e3e1d8'
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))',
+        gap: 6,
+        alignItems: 'end'
+      }
+    }, /*#__PURE__*/React.createElement(Field, {
+      label: "Ha"
+    }, /*#__PURE__*/React.createElement("input", {
+      style: {
+        ...inputStyle,
+        padding: '4px 6px'
+      },
+      type: "number",
+      value: a.hectareas,
+      onChange: e => editar(a.id, {
+        hectareas: Number(e.target.value) || 0
+      })
+    })), /*#__PURE__*/React.createElement(Field, {
+      label: "Con quién"
+    }, /*#__PURE__*/React.createElement("select", {
+      style: {
+        ...inputStyle,
+        padding: '4px 6px'
+      },
+      value: a.clienteId || '',
+      onChange: e => editar(a.id, {
+        clienteId: e.target.value
+      })
+    }, /*#__PURE__*/React.createElement("option", {
+      value: ""
+    }, "Elegir…"), data.clientes.map(c => /*#__PURE__*/React.createElement("option", {
+      key: c.id,
+      value: c.id
+    }, c.nombre)))), /*#__PURE__*/React.createElement(Field, {
+      label: "Tipo"
+    }, /*#__PURE__*/React.createElement("select", {
+      style: {
+        ...inputStyle,
+        padding: '4px 6px'
+      },
+      value: a.tipo,
+      onChange: e => editar(a.id, {
+        tipo: e.target.value
+      })
+    }, TIPOS_ACUERDO.map(t => /*#__PURE__*/React.createElement("option", {
+      key: t
+    }, t)))), /*#__PURE__*/React.createElement(Field, {
+      label: "Valor fijo"
+    }, /*#__PURE__*/React.createElement("input", {
+      style: {
+        ...inputStyle,
+        padding: '4px 6px'
+      },
+      type: "number",
+      value: a.valorFijo ?? '',
+      onChange: e => editar(a.id, {
+        valorFijo: e.target.value ? Number(e.target.value) : null
+      })
+    })), /*#__PURE__*/React.createElement(Field, {
+      label: "Unidad"
+    }, /*#__PURE__*/React.createElement("input", {
+      style: {
+        ...inputStyle,
+        padding: '4px 6px'
+      },
+      placeholder: "qq/ha, USD/ha…",
+      value: a.unidadValor || '',
+      onChange: e => editar(a.id, {
+        unidadValor: e.target.value
+      })
+    })), /*#__PURE__*/React.createElement("button", {
+      onClick: () => quitar(a.id),
+      style: {
+        ...btnGhost,
+        height: 32
+      }
+    }, "✕")), /*#__PURE__*/React.createElement("div", {
+      style: {
+        marginTop: 6
+      }
+    }, /*#__PURE__*/React.createElement("textarea", {
+      style: {
+        ...inputStyle,
+        width: '100%',
+        minHeight: 40,
+        resize: 'vertical',
+        fontSize: 12
+      },
+      placeholder: "Detalle del acuerdo (reparto, condiciones, etc)",
+      value: a.detalle || '',
+      onChange: e => editar(a.id, {
+        detalle: e.target.value
+      })
+    })));
+  }), haSinAcuerdo > 0 && acuerdos.length > 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: '#854F0B',
+      marginBottom: 8
+    }
+  }, "⚠️ ", haSinAcuerdo, " ha del lote todavía no tienen un acuerdo asignado."), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: '#888780',
+      marginTop: 10,
+      marginBottom: 4
+    }
+  }, "Nuevo acuerdo:"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'grid',
+      gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))',
+      gap: 8
+    }
+  }, /*#__PURE__*/React.createElement(Field, {
+    label: "Hectáreas"
+  }, /*#__PURE__*/React.createElement("input", {
+    style: inputStyle,
+    type: "number",
+    value: nuevo.hectareas,
+    onChange: e => setNuevo({
+      ...nuevo,
+      hectareas: e.target.value
+    })
+  })), /*#__PURE__*/React.createElement(Field, {
+    label: "Con quién"
+  }, /*#__PURE__*/React.createElement("select", {
+    style: inputStyle,
+    value: nuevo.clienteId,
+    onChange: e => setNuevo({
+      ...nuevo,
+      clienteId: e.target.value
+    })
+  }, /*#__PURE__*/React.createElement("option", {
+    value: ""
+  }, "Elegir…"), data.clientes.map(c => /*#__PURE__*/React.createElement("option", {
+    key: c.id,
+    value: c.id
+  }, c.nombre)))), /*#__PURE__*/React.createElement(Field, {
+    label: "Tipo"
+  }, /*#__PURE__*/React.createElement("select", {
+    style: inputStyle,
+    value: nuevo.tipo,
+    onChange: e => setNuevo({
+      ...nuevo,
+      tipo: e.target.value
+    })
+  }, TIPOS_ACUERDO.map(t => /*#__PURE__*/React.createElement("option", {
+    key: t
+  }, t)))), /*#__PURE__*/React.createElement(Field, {
+    label: "Valor fijo"
+  }, /*#__PURE__*/React.createElement("input", {
+    style: inputStyle,
+    type: "number",
+    value: nuevo.valorFijo,
+    onChange: e => setNuevo({
+      ...nuevo,
+      valorFijo: e.target.value
+    })
+  })), /*#__PURE__*/React.createElement(Field, {
+    label: "Unidad"
+  }, /*#__PURE__*/React.createElement("input", {
+    style: inputStyle,
+    placeholder: "qq/ha, USD/ha…",
+    value: nuevo.unidadValor,
+    onChange: e => setNuevo({
+      ...nuevo,
+      unidadValor: e.target.value
+    })
+  }))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 8
+    }
+  }, /*#__PURE__*/React.createElement(Field, {
+    label: "Detalle del acuerdo (opcional)"
+  }, /*#__PURE__*/React.createElement("textarea", {
+    style: {
+      ...inputStyle,
+      width: '100%',
+      minHeight: 50,
+      resize: 'vertical'
+    },
+    placeholder: "Ej: \"el resto de la producción, después del fijo y los costos, se reparte 50/50\"",
+    value: nuevo.detalle,
+    onChange: e => setNuevo({
+      ...nuevo,
+      detalle: e.target.value
+    })
+  }))), /*#__PURE__*/React.createElement("button", {
+    onClick: agregar,
+    style: {
+      ...btnSecondary,
+      marginTop: 8
+    }
+  }, "+ Agregar acuerdo"));
+}
 function LoteDetalle({
   lote,
   data,
@@ -1474,7 +1741,15 @@ function LoteDetalle({
       flexDirection: 'column',
       gap: 14
     }
-  }, /*#__PURE__*/React.createElement(Ciclos, {
+  }, /*#__PURE__*/React.createElement(AcuerdosLote, {
+    lote: lote,
+    data: data,
+    update: update
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      borderTop: '1px solid #e3e1d8'
+    }
+  }), /*#__PURE__*/React.createElement(Ciclos, {
     lote: lote,
     data: data,
     update: update
