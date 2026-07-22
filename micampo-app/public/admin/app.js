@@ -4,16 +4,36 @@ const {
   useMemo
 } = React;
 const uid = () => Math.random().toString(36).slice(2, 10);
-const TIPOS_ACTIVIDAD = ['Siembra', 'Fertilización', 'Pulverización', 'Riego', 'Cosecha'];
+const TIPOS_ACTIVIDAD = ['Siembra', 'Fertilización', 'Pulverización', 'Riego', 'Cosecha', 'Aporte'];
 const METODOS_POR_TIPO = {
   Siembra: ['Sembradora', 'Drone'],
   Fertilización: ['Voleo', 'Drone', 'Con siembra'],
-  Pulverización: ['Terrestre', 'Drone']
+  Pulverización: ['Terrestre', 'Drone', 'Aéreo (avión)']
 };
-const TIPOS_CON_APLICACION = Object.keys(METODOS_POR_TIPO);
+const TIPOS_CON_APLICACION = [...Object.keys(METODOS_POR_TIPO), 'Cosecha'];
+function laborKey(tipo, metodo) {
+  if (tipo === 'Cosecha') return 'Cosecha';
+  if (tipo === 'Siembra') {
+    if (metodo === 'Drone') return 'Siembra con drone';
+    return 'Siembra';
+  }
+  if (tipo === 'Fertilización') {
+    if (metodo === 'Voleo') return 'Fertilización voleo';
+    if (metodo === 'Drone') return 'Fertilización drone';
+    if (metodo === 'Con siembra') return 'Siembra con fertilización';
+    return null;
+  }
+  if (tipo === 'Pulverización') {
+    if (metodo === 'Terrestre') return 'Pulverización terrestre';
+    if (metodo === 'Drone') return 'Pulverización drone';
+    if (metodo === 'Aéreo (avión)') return 'Pulverización avión';
+    return null;
+  }
+  return null;
+}
 const CATEGORIAS_INSUMO = ['Insecticida', 'Herbicida', 'Fungicida', 'Fertilizante', 'Semilla', 'Cebo', 'Otro'];
 const CULTIVOS_SIEMBRA = ['Soja', 'Trigo', 'Garbanzo', 'Maíz'];
-const TIPOS_BOT = [['riego', 'Riego'], ['siembra', 'Siembra'], ['fertilizacion', 'Fertilización'], ['pulverizacion', 'Pulverización'], ['cosecha', 'Cosecha'], ['compra', 'Compra de insumo'], ['analisis_agua', 'Análisis de agua'], ['analisis_suelo', 'Análisis de suelo'], ['nota', 'Nota'], ['consulta', 'Consultas / preguntas']];
+const TIPOS_BOT = [['riego', 'Riego'], ['siembra', 'Siembra'], ['fertilizacion', 'Fertilización'], ['pulverizacion', 'Pulverización'], ['cosecha', 'Cosecha'], ['compra', 'Compra de insumo'], ['aporte_insumo', 'Aporte de insumo'], ['analisis_agua', 'Análisis de agua'], ['analisis_suelo', 'Análisis de suelo'], ['nota', 'Nota'], ['consulta', 'Consultas / preguntas']];
 const inputStyle = {
   padding: '8px 10px',
   borderRadius: 6,
@@ -138,7 +158,7 @@ function App() {
       color: '#888780'
     }
   }, "Cargando MI CAMPO…");
-  const tabs = [['resumen', 'Resumen'], ['campos', 'Campos y lotes'], ['riego', 'Riego'], ['insumos', 'Insumos'], ['proveedores', 'Proveedores'], ['actividades', 'Actividades'], ['clientes', 'Clientes'], ['usuarios', 'Usuarios'], ['whatsapp', 'WhatsApp'], ['consultas', 'Consultas']];
+  const tabs = [['resumen', 'Resumen'], ['campos', 'Campos y lotes'], ['riego', 'Riego'], ['insumos', 'Insumos'], ['proveedores', 'Proveedores'], ['actividades', 'Actividades'], ['tarifario', 'Tarifario'], ['clientes', 'Clientes'], ['usuarios', 'Usuarios'], ['whatsapp', 'WhatsApp'], ['consultas', 'Consultas']];
   return /*#__PURE__*/React.createElement("div", {
     style: {
       maxWidth: 1000,
@@ -224,6 +244,9 @@ function App() {
     data: data,
     update: update
   }), tab === 'actividades' && /*#__PURE__*/React.createElement(Actividades, {
+    data: data,
+    update: update
+  }), tab === 'tarifario' && /*#__PURE__*/React.createElement(Tarifario, {
     data: data,
     update: update
   }), tab === 'clientes' && /*#__PURE__*/React.createElement(Clientes, {
@@ -420,7 +443,12 @@ function Resumen({
 }
 
 /* ---------- CAMPOS Y LOTES ---------- */
-const TIPOS_APORTE = ['Insumos', 'Servicios/Labores', 'Alquiler', 'Riego/Infraestructura', 'Extraordinario', 'Otro'];
+const GRUPOS_APORTE = {
+  'Insumos': ['Herbicidas', 'Fungicidas', 'Insecticidas', 'Coadyuvantes', 'Semilla', 'Fertilizante'],
+  'Labores': ['Siembra', 'Siembra con fertilización', 'Siembra con drone', 'Fertilización voleo', 'Fertilización drone', 'Pulverización terrestre', 'Pulverización avión', 'Pulverización drone', 'Cosecha'],
+  'Otros rubros': ['Alquiler', 'Riego']
+};
+const TIPOS_APORTE = Object.values(GRUPOS_APORTE).flat();
 function AportesParticipante({
   campo,
   participante,
@@ -457,15 +485,9 @@ function AportesParticipante({
       color: '#888780',
       marginBottom: 4
     }
-  }, "Qué aporta:"), /*#__PURE__*/React.createElement("div", {
+  }, "Qué aporta:"), /*#__PURE__*/React.createElement("label", {
     style: {
-      display: 'flex',
-      gap: 8,
-      flexWrap: 'wrap'
-    }
-  }, /*#__PURE__*/React.createElement("label", {
-    style: {
-      display: 'flex',
+      display: 'inline-flex',
       gap: 4,
       alignItems: 'center',
       fontSize: 12,
@@ -473,13 +495,32 @@ function AportesParticipante({
       padding: '3px 8px',
       borderRadius: 6,
       cursor: 'pointer',
-      fontWeight: 500
+      fontWeight: 500,
+      marginBottom: 6
     }
   }, /*#__PURE__*/React.createElement("input", {
     type: "checkbox",
     checked: todoTildado,
     onChange: () => toggle('Todo')
-  }), "Todo"), TIPOS_APORTE.map(cat => /*#__PURE__*/React.createElement("label", {
+  }), "Todo"), Object.entries(GRUPOS_APORTE).map(([grupo, items]) => /*#__PURE__*/React.createElement("div", {
+    key: grupo,
+    style: {
+      marginBottom: 4
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 10,
+      color: '#aaa89f',
+      textTransform: 'uppercase',
+      marginBottom: 2
+    }
+  }, grupo), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      gap: 6,
+      flexWrap: 'wrap'
+    }
+  }, items.map(cat => /*#__PURE__*/React.createElement("label", {
     key: cat,
     style: {
       display: 'flex',
@@ -495,7 +536,7 @@ function AportesParticipante({
     type: "checkbox",
     checked: categorias.includes(cat),
     onChange: () => toggle(cat)
-  }), cat))));
+  }), cat))))));
 }
 function ParticipacionCampo({
   campo,
@@ -2561,6 +2602,111 @@ function Proveedores({
 }
 
 /* ---------- ACTIVIDADES ---------- */
+function Tarifario({
+  data,
+  update
+}) {
+  const tarifario = data.tarifario || {};
+  const setValor = (labor, val) => update('tarifario', t => ({
+    ...(t || {}),
+    [labor]: val ? Number(val) : null
+  }));
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 14
+    }
+  }, /*#__PURE__*/React.createElement(Card, null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: 500,
+      marginBottom: 4
+    }
+  }, "Riego"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: '#888780',
+      marginBottom: 10
+    }
+  }, "El riego se cobra por mm aplicado, no por ha fija — el costo final sale de multiplicar esta tarifa × los mm regados × las hectáreas del lote."), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      padding: '8px 0',
+      borderTop: '1px solid #f1efe8'
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 14
+    }
+  }, "mm de riego"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: 6
+    }
+  }, /*#__PURE__*/React.createElement("input", {
+    style: {
+      ...inputStyle,
+      width: 100
+    },
+    type: "number",
+    step: "0.01",
+    placeholder: "0",
+    value: tarifario['Riego'] ?? '',
+    onChange: e => setValor('Riego', e.target.value)
+  }), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 12,
+      color: '#888780'
+    }
+  }, "USD/mm/ha")))), /*#__PURE__*/React.createElement(Card, null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: 500,
+      marginBottom: 4
+    }
+  }, "Tarifario de labores"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: '#888780',
+      marginBottom: 10
+    }
+  }, "Cargá acá el valor USD/ha de cada labor. Cuando registrés una actividad de ese tipo, el campo \"Tarifa contratista\" se va a completar solo con este valor (siempre lo podés cambiar en el momento si esa vez fue distinto)."), GRUPOS_APORTE['Labores'].map(labor => /*#__PURE__*/React.createElement("div", {
+    key: labor,
+    style: {
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      padding: '8px 0',
+      borderTop: '1px solid #f1efe8'
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 14
+    }
+  }, labor), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: 6
+    }
+  }, /*#__PURE__*/React.createElement("input", {
+    style: {
+      ...inputStyle,
+      width: 100
+    },
+    type: "number",
+    placeholder: "0",
+    value: tarifario[labor] ?? '',
+    onChange: e => setValor(labor, e.target.value)
+  }), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 12,
+      color: '#888780'
+    }
+  }, "USD/ha"))))));
+}
 function Actividades({
   data,
   update
@@ -2609,7 +2755,11 @@ function Actividades({
       costoInsumos += Number(it.cantidad) * precioPromedio(data, it.insumoId);
     });
     const haFact = Number(form.haFacturadas) || Number(form.haReales) || 0;
-    const costoContratista = esAplicacion && form.tarifaContratista ? Number(form.tarifaContratista) * haFact : 0;
+    let costoContratista = esAplicacion && form.tarifaContratista ? Number(form.tarifaContratista) * haFact : 0;
+    if (form.tipo === 'Riego' && data.tarifario?.Riego && form.mm) {
+      const loteRiego = data.lotes.find(l => l.id === form.loteId);
+      costoContratista = Number(data.tarifario.Riego) * Number(form.mm) * (Number(loteRiego?.hectareas) || 0);
+    }
     const costoTotal = costoInsumos + costoContratista;
     if (editandoId) {
       const actVieja = data.actividades.find(a => a.id === editandoId);
@@ -2734,10 +2884,17 @@ function Actividades({
   }, /*#__PURE__*/React.createElement("select", {
     style: inputStyle,
     value: form.tipo,
-    onChange: e => setForm({
-      ...form,
-      tipo: e.target.value
-    })
+    onChange: e => {
+      const nuevoTipo = e.target.value;
+      const key = laborKey(nuevoTipo, '');
+      const tarifaAuto = key && data.tarifario && data.tarifario[key] ? data.tarifario[key] : form.tarifaContratista;
+      setForm({
+        ...form,
+        tipo: nuevoTipo,
+        metodo: '',
+        tarifaContratista: tarifaAuto
+      });
+    }
   }, TIPOS_ACTIVIDAD.map(t => /*#__PURE__*/React.createElement("option", {
     key: t
   }, t)))), /*#__PURE__*/React.createElement(Field, {
@@ -2783,7 +2940,18 @@ function Actividades({
       ...form,
       fuente: e.target.value
     })
-  }))), form.tipo === 'Cosecha' && /*#__PURE__*/React.createElement(Field, {
+  })), data.tarifario?.Riego && form.mm && form.loteId && (() => {
+    const loteRiegoPreview = data.lotes.find(l => l.id === form.loteId);
+    const costoPreview = Number(data.tarifario.Riego) * Number(form.mm) * (Number(loteRiegoPreview?.hectareas) || 0);
+    return /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12,
+        color: '#888780',
+        alignSelf: 'end',
+        paddingBottom: 6
+      }
+    }, "Costo estimado: ", fmtMoney(costoPreview), " (", data.tarifario.Riego, " USD/mm/ha × ", form.mm, "mm × ", loteRiegoPreview?.hectareas || 0, "ha)");
+  })()), form.tipo === 'Cosecha' && /*#__PURE__*/React.createElement(Field, {
     label: "Rendimiento qq/ha"
   }, /*#__PURE__*/React.createElement("input", {
     style: inputStyle,
@@ -2830,10 +2998,16 @@ function Actividades({
   }, /*#__PURE__*/React.createElement("select", {
     style: inputStyle,
     value: form.metodo,
-    onChange: e => setForm({
-      ...form,
-      metodo: e.target.value
-    })
+    onChange: e => {
+      const nuevoMetodo = e.target.value;
+      const key = laborKey(form.tipo, nuevoMetodo);
+      const tarifaAuto = key && data.tarifario && data.tarifario[key] ? data.tarifario[key] : form.tarifaContratista;
+      setForm({
+        ...form,
+        metodo: nuevoMetodo,
+        tarifaContratista: tarifaAuto
+      });
+    }
   }, /*#__PURE__*/React.createElement("option", {
     value: ""
   }, "Elegir…"), (METODOS_POR_TIPO[form.tipo] || []).map(m => /*#__PURE__*/React.createElement("option", {
