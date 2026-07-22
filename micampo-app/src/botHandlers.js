@@ -248,6 +248,12 @@ function manejarCompra(interpretado) {
   return texto;
 }
 
+function tieneAccesoCampo(campo, clienteId) {
+  if (!clienteId) return true; // sin restriccion (Fran/encargados)
+  if (campo?.clienteId === clienteId) return true;
+  return (campo?.participantes || []).some(p => p.clienteId === clienteId);
+}
+
 async function manejarConsulta(interpretado, contacto) {
   const data = load();
   const clienteId = contacto && contacto.clienteId ? contacto.clienteId : null;
@@ -258,7 +264,7 @@ async function manejarConsulta(interpretado, contacto) {
 
   if (lote) {
     const campoDelLote = data.campos.find(c => c.id === lote.campoId);
-    if (clienteId && campoDelLote?.clienteId !== clienteId) {
+    if (!tieneAccesoCampo(campoDelLote, clienteId)) {
       return '🚫 Ese lote no es de tus campos, no tengo permitido darte esa información.';
     }
     const actividadesLote = data.actividades.filter(a => a.loteId === lote.id).sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''));
@@ -280,7 +286,7 @@ async function manejarConsulta(interpretado, contacto) {
       })),
     };
   } else if (campo) {
-    if (clienteId && campo.clienteId !== clienteId) {
+    if (!tieneAccesoCampo(campo, clienteId)) {
       return '🚫 Ese campo no es tuyo, no tengo permitido darte esa información.';
     }
     const lotesCampo = data.lotes.filter(l => l.campoId === campo.id);
@@ -300,7 +306,7 @@ async function manejarConsulta(interpretado, contacto) {
     contexto.insumo = insumo ? { nombre: insumo.nombre, stock: insumo.stock, unidad: insumo.unidad, stockMinimo: insumo.stockMinimo, precioPromedio: precioPromedio(data, insumo.id) } : { error: `No encontré ningún insumo llamado "${interpretado.insumo}"` };
   } else {
     // Sin lote/campo/insumo especifico: resumen general, restringido a los campos del cliente si corresponde
-    const camposPermitidos = clienteId ? data.campos.filter(c => c.clienteId === clienteId) : data.campos;
+    const camposPermitidos = clienteId ? data.campos.filter(c => tieneAccesoCampo(c, clienteId)) : data.campos;
     const lotesPermitidos = data.lotes.filter(l => camposPermitidos.some(c => c.id === l.campoId));
     const actividadesPermitidas = data.actividades.filter(a => lotesPermitidos.some(l => l.id === a.loteId));
     if (clienteId && camposPermitidos.length === 0) return '🚫 No tenés campos asignados todavía, pedile al administrador que te vincule a uno.';
