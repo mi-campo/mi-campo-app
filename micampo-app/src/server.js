@@ -6,7 +6,25 @@ const { configurarSesion, requireLogin } = require('./auth');
 const apiRoutes = require('./api');
 const { interpretarMensaje } = require('./claudeParser');
 const { validar, procesar } = require('./botHandlers');
-const { sacarPendiente, guardarPendiente } = require('./db');
+const { sacarPendiente, guardarPendiente, load } = require('./db');
+
+const ETIQUETAS_TIPO = {
+  riego: 'Riego', siembra: 'Siembra', fertilizacion: 'Fertilización', pulverizacion: 'Pulverización',
+  cosecha: 'Cosecha', compra: 'Compra de insumo', analisis_agua: 'Análisis de agua', analisis_suelo: 'Análisis de suelo', nota: 'Nota',
+};
+
+function normalizarNumero(n) {
+  return (n || '').replace(/\D/g, '').replace(/^549/, '54');
+}
+
+function verificarPermiso(numero, tipo) {
+  const data = load();
+  const buscado = normalizarNumero(numero);
+  const contacto = (data.contactosBot || []).find(c => normalizarNumero(c.numero) === buscado);
+  if (!contacto) return { ok: false, motivo: 'no_registrado' };
+  if (tipo && tipo !== 'desconocido' && !(contacto.tipos || []).includes(tipo)) return { ok: false, motivo: 'tipo_no_permitido', contacto };
+  return { ok: true, contacto };
+}
 
 const app = express();
 app.use(express.json());
@@ -75,6 +93,17 @@ app.post('/webhook', async (req, res) => {
       interpretado = await interpretarMensaje(textoRecibido);
     }
 
+    const permiso = verificarPermiso(numeroRemitente, interpretado.tipo);
+    if (!permiso.ok) {
+      if (permiso.motivo === 'no_registrado') {
+        await enviarMensajeWA(numeroRemitente, '🚫 Tu número no está autorizado para usar este sistema. Pedile al administrador que te registre desde el panel (pestaña WhatsApp).');
+      } else {
+        const permitidos = (permiso.contacto.tipos || []).map(t => ETIQUETAS_TIPO[t] || t).join(', ') || '(ninguno)';
+        await enviarMensajeWA(numeroRemitente, `🚫 Tu número solo está autorizado a reportar: ${permitidos}.`);
+      }
+      return;
+    }
+
     const chequeo = validar(interpretado);
     if (!chequeo.ok) {
       if (chequeo.campoFaltante) guardarPendiente(numeroRemitente, { interpretado, campoFaltante: chequeo.campoFaltante });
@@ -89,7 +118,7 @@ app.post('/webhook', async (req, res) => {
   }
 });
 
-const CAMPOS_NUMERICOS = ['mm', 'cantidadTotal', 'kgCampo', 'cantidad', 'precioUnitario', 'aguaUtilMm'];
+const CAMPOS_NUMERICOS = ['mm', 'cantidadTotal', 'kgCampo', 'cantidad', 'precioUnitario', 'aguaUtilMm', 'haReales', 'densidad'];
 function parsearRespuesta(campo, texto) {
   if (CAMPOS_NUMERICOS.includes(campo)) {
     const match = texto.replace(',', '.').match(/[\d.]+/);
