@@ -64,10 +64,12 @@ function validar(interpretado) {
       return { ok: true };
     }
     case 'pulverizacion': {
-      const r = resolverLote(data, interpretado.lote, interpretado.campo);
-      if (!r.ok) return r;
+      if (!interpretado.lotes || interpretado.lotes.length === 0) return { ok: false, pregunta: '¿De qué lote(s) es esta pulverización? Decime el campo y el lote de cada uno.', campoFaltante: null };
+      for (const l of interpretado.lotes) {
+        const r = resolverLote(data, l.lote, l.campo);
+        if (!r.ok) return r;
+      }
       if (!interpretado.items || interpretado.items.length === 0 || !interpretado.items[0].producto) return { ok: false, pregunta: '¿Qué producto(s) se aplicó y cuánto de cada uno? Mandá el mensaje de nuevo con esos datos.', campoFaltante: null };
-      if (!interpretado.haReales) return { ok: false, pregunta: '¿Cuántas hectáreas reales se aplicaron? (para calcular la dosis)', campoFaltante: 'haReales' };
       return { ok: true };
     }
     case 'siembra': {
@@ -193,7 +195,56 @@ function manejarAplicacion(interpretado, tipo) {
 }
 
 function manejarPulverizacion(interpretado) {
-  return manejarAplicacion(interpretado, 'Pulverización');
+  const data = load();
+  const lotesResueltos = interpretado.lotes.map(l => {
+    const lote = buscarLotes(data, l.lote, l.campo)[0];
+    const haReales = l.haReales != null ? Number(l.haReales) : (Number(lote.hectareas) || 0);
+    return { lote, haReales };
+  });
+  const totalHaReales = lotesResueltos.reduce((s, l) => s + l.haReales, 0);
+  const resueltosInsumos = resolverInsumos(data, interpretado.items);
+  const haFacturadasTotal = Number(interpretado.haFacturadas) || totalHaReales;
+  const tarifa = interpretado.tarifaContratista ? Number(interpretado.tarifaContratista) : tarifaAutomatica(data, 'Pulverización', interpretado.metodo);
+
+  let textoLotes = '';
+  let costoInsumosGlobal = 0, costoContratistaGlobal = 0;
+
+  lotesResueltos.forEach(({ lote, haReales }) => {
+    const proporcion = totalHaReales > 0 ? haReales / totalHaReales : 1 / lotesResueltos.length;
+    const haFacturadasLote = haFacturadasTotal * proporcion;
+    let costoInsumosLote = 0;
+    const itemsLote = resueltosInsumos.map(({ insumo, cantidad }) => {
+      const cantidadLote = Math.round(cantidad * proporcion * 100) / 100;
+      const precio = precioPromedio(data, insumo.id);
+      costoInsumosLote += cantidadLote * precio;
+      insumo.stock = (Number(insumo.stock) || 0) - cantidadLote;
+      return { insumoId: insumo.id, cantidad: cantidadLote };
+    });
+    const costoContratistaLote = tarifa ? tarifa * haFacturadasLote : 0;
+    const costoTotalLote = costoInsumosLote + costoContratistaLote;
+    costoInsumosGlobal += costoInsumosLote;
+    costoContratistaGlobal += costoContratistaLote;
+
+    data.actividades.push({
+      id: uid(), loteId: lote.id, cicloId: cicloActivo(data, lote.id)?.id || null, tipo: 'Pulverización',
+      fecha: fechaDe(interpretado), metodo: interpretado.metodo || '', haReales: Math.round(haReales * 100) / 100, haFacturadas: Math.round(haFacturadasLote * 100) / 100,
+      tarifaContratista: tarifa || '', items: itemsLote, costoInsumos: Math.round(costoInsumosLote), costoContratista: Math.round(costoContratistaLote), costoTotal: Math.round(costoTotalLote),
+      notas: lotesResueltos.length > 1 ? `Aplicación conjunta con ${lotesResueltos.length - 1} lote(s) más — ${haReales}ha de ${totalHaReales}ha reales totales (${(proporcion * 100).toFixed(0)}%)` : '',
+    });
+    textoLotes += `\n· ${nombreConCampo(data, lote)}: ${haReales}ha (${(proporcion * 100).toFixed(0)}%) — USD ${costoTotalLote.toFixed(0)}`;
+  });
+  save(data);
+
+  let texto = `✅ Pulverización cargada${interpretado.metodo ? ` (${interpretado.metodo})` : ''}${lotesResueltos.length > 1 ? ` — repartida en ${lotesResueltos.length} lotes` : ''}:${textoLotes}`;
+  resueltosInsumos.forEach(({ insumo, cantidad }) => {
+    const dosis = totalHaReales > 0 ? (cantidad / totalHaReales).toFixed(2) : null;
+    texto += `\n${insumo.nombre}: ${cantidad}${insumo.unidad} total${dosis ? ` (${dosis}${insumo.unidad}/ha)` : ''}`;
+  });
+  const costoTotalGlobal = costoInsumosGlobal + costoContratistaGlobal;
+  texto += `\nTotal: ${totalHaReales}ha reales`;
+  if (haFacturadasTotal !== totalHaReales) texto += ` / ${haFacturadasTotal}ha facturadas`;
+  if (costoTotalGlobal > 0) texto += ` — USD ${costoTotalGlobal.toFixed(0)}`;
+  return texto;
 }
 
 function manejarFertilizacion(interpretado) {
