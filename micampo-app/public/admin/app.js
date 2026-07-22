@@ -420,6 +420,141 @@ function Resumen({
 }
 
 /* ---------- CAMPOS Y LOTES ---------- */
+const TIPOS_APORTE = ['Insumos', 'Servicios/Labores', 'Alquiler', 'Riego/Infraestructura', 'Extraordinario', 'Otro'];
+function AportesParticipante({
+  campo,
+  participante,
+  update
+}) {
+  const aportes = participante.aportes || [];
+  const [nuevo, setNuevo] = useState({
+    tipo: 'Alquiler',
+    descripcion: '',
+    valorUSD: ''
+  });
+  const totalUSD = aportes.reduce((s, a) => s + (Number(a.valorUSD) || 0), 0);
+  const agregar = () => {
+    if (!nuevo.descripcion.trim() && !nuevo.valorUSD) return;
+    update('campos', cs => cs.map(c => c.id !== campo.id ? c : {
+      ...c,
+      participantes: c.participantes.map(p => p.id !== participante.id ? p : {
+        ...p,
+        aportes: [...(p.aportes || []), {
+          id: uid(),
+          ...nuevo,
+          valorUSD: nuevo.valorUSD ? Number(nuevo.valorUSD) : null,
+          fecha: new Date().toISOString().slice(0, 10)
+        }]
+      })
+    }));
+    setNuevo({
+      tipo: 'Alquiler',
+      descripcion: '',
+      valorUSD: ''
+    });
+  };
+  const quitarAporte = aid => update('campos', cs => cs.map(c => c.id !== campo.id ? c : {
+    ...c,
+    participantes: c.participantes.map(p => p.id !== participante.id ? p : {
+      ...p,
+      aportes: (p.aportes || []).filter(a => a.id !== aid)
+    })
+  }));
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 4,
+      marginLeft: 12,
+      paddingLeft: 10,
+      borderLeft: '2px solid #e3e1d8'
+    }
+  }, aportes.map(a => /*#__PURE__*/React.createElement("div", {
+    key: a.id,
+    style: {
+      display: 'flex',
+      gap: 6,
+      alignItems: 'center',
+      fontSize: 12,
+      color: '#5f5e5a',
+      marginBottom: 3
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontWeight: 500,
+      minWidth: 110
+    }
+  }, a.tipo), /*#__PURE__*/React.createElement("span", {
+    style: {
+      flex: 1
+    }
+  }, a.descripcion), a.valorUSD != null && /*#__PURE__*/React.createElement("span", null, fmtMoney(a.valorUSD)), /*#__PURE__*/React.createElement("button", {
+    onClick: () => quitarAporte(a.id),
+    style: {
+      ...btnGhost,
+      padding: '2px 6px'
+    }
+  }, "✕"))), aportes.length > 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      fontWeight: 500,
+      marginBottom: 4
+    }
+  }, "Total aportado: ", fmtMoney(totalUSD)), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      gap: 6,
+      alignItems: 'center',
+      flexWrap: 'wrap'
+    }
+  }, /*#__PURE__*/React.createElement("select", {
+    style: {
+      ...inputStyle,
+      padding: '3px 6px',
+      fontSize: 12
+    },
+    value: nuevo.tipo,
+    onChange: e => setNuevo({
+      ...nuevo,
+      tipo: e.target.value
+    })
+  }, TIPOS_APORTE.map(t => /*#__PURE__*/React.createElement("option", {
+    key: t
+  }, t))), /*#__PURE__*/React.createElement("input", {
+    style: {
+      ...inputStyle,
+      flex: 1,
+      minWidth: 140,
+      padding: '3px 6px',
+      fontSize: 12
+    },
+    placeholder: "Descripción (ej: bolsas de maíz)",
+    value: nuevo.descripcion,
+    onChange: e => setNuevo({
+      ...nuevo,
+      descripcion: e.target.value
+    })
+  }), /*#__PURE__*/React.createElement("input", {
+    style: {
+      ...inputStyle,
+      width: 90,
+      padding: '3px 6px',
+      fontSize: 12
+    },
+    type: "number",
+    placeholder: "USD (opcional)",
+    value: nuevo.valorUSD,
+    onChange: e => setNuevo({
+      ...nuevo,
+      valorUSD: e.target.value
+    })
+  }), /*#__PURE__*/React.createElement("button", {
+    onClick: agregar,
+    style: {
+      ...btnGhost,
+      fontSize: 11,
+      padding: '3px 8px'
+    }
+  }, "+ Aporte")));
+}
 function ParticipacionCampo({
   campo,
   data,
@@ -428,7 +563,6 @@ function ParticipacionCampo({
   const participantes = campo.participantes || [];
   const [nuevo, setNuevo] = useState({
     clienteId: '',
-    aporte: '',
     porcentaje: ''
   });
   const agregar = () => {
@@ -438,13 +572,12 @@ function ParticipacionCampo({
       participantes: [...(c.participantes || []), {
         id: uid(),
         clienteId: nuevo.clienteId,
-        aporte: nuevo.aporte.trim(),
-        porcentaje: nuevo.porcentaje ? Number(nuevo.porcentaje) : null
+        porcentaje: nuevo.porcentaje ? Number(nuevo.porcentaje) : null,
+        aportes: []
       }]
     } : c));
     setNuevo({
       clienteId: '',
-      aporte: '',
       porcentaje: ''
     });
   };
@@ -487,10 +620,15 @@ function ParticipacionCampo({
     return /*#__PURE__*/React.createElement("div", {
       key: p.id,
       style: {
+        marginBottom: 10,
+        paddingBottom: 8,
+        borderBottom: '1px solid #e3e1d8'
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
         display: 'flex',
         gap: 6,
         alignItems: 'center',
-        marginBottom: 4,
         flexWrap: 'wrap'
       }
     }, /*#__PURE__*/React.createElement("span", {
@@ -500,19 +638,6 @@ function ParticipacionCampo({
         minWidth: 100
       }
     }, cliente?.nombre || '?'), /*#__PURE__*/React.createElement("input", {
-      style: {
-        ...inputStyle,
-        flex: 1,
-        minWidth: 160,
-        padding: '3px 6px',
-        fontSize: 12
-      },
-      placeholder: "Tipo de aporte (ej: riego y campo en alquiler)",
-      value: p.aporte,
-      onChange: e => editarCampo(p.id, {
-        aporte: e.target.value
-      })
-    }), /*#__PURE__*/React.createElement("input", {
       style: {
         ...inputStyle,
         width: 70,
@@ -525,10 +650,22 @@ function ParticipacionCampo({
       onChange: e => editarCampo(p.id, {
         porcentaje: e.target.value ? Number(e.target.value) : null
       })
-    }), /*#__PURE__*/React.createElement("button", {
+    }), /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 11,
+        color: '#888780'
+      }
+    }, "% de la división final"), /*#__PURE__*/React.createElement("button", {
       onClick: () => quitar(p.id),
-      style: btnGhost
-    }, "✕"));
+      style: {
+        ...btnGhost,
+        marginLeft: 'auto'
+      }
+    }, "✕ Quitar participante")), /*#__PURE__*/React.createElement(AportesParticipante, {
+      campo: campo,
+      participante: p,
+      update: update
+    }));
   }), participantes.length > 0 && sumaPorcentajes !== 100 && sumaPorcentajes > 0 && /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,
@@ -559,20 +696,6 @@ function ParticipacionCampo({
     key: c.id,
     value: c.id
   }, c.nombre))), /*#__PURE__*/React.createElement("input", {
-    style: {
-      ...inputStyle,
-      flex: 1,
-      minWidth: 160,
-      padding: '3px 6px',
-      fontSize: 12
-    },
-    placeholder: "Tipo de aporte",
-    value: nuevo.aporte,
-    onChange: e => setNuevo({
-      ...nuevo,
-      aporte: e.target.value
-    })
-  }), /*#__PURE__*/React.createElement("input", {
     style: {
       ...inputStyle,
       width: 70,
