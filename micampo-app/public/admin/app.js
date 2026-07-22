@@ -13,7 +13,7 @@ const METODOS_POR_TIPO = {
 const TIPOS_CON_APLICACION = Object.keys(METODOS_POR_TIPO);
 const CATEGORIAS_INSUMO = ['Insecticida', 'Herbicida', 'Fungicida', 'Fertilizante', 'Semilla', 'Cebo', 'Otro'];
 const CULTIVOS_SIEMBRA = ['Soja', 'Trigo', 'Garbanzo', 'Maíz'];
-const TIPOS_BOT = [['riego', 'Riego'], ['siembra', 'Siembra'], ['fertilizacion', 'Fertilización'], ['pulverizacion', 'Pulverización'], ['cosecha', 'Cosecha'], ['compra', 'Compra de insumo'], ['analisis_agua', 'Análisis de agua'], ['analisis_suelo', 'Análisis de suelo'], ['nota', 'Nota']];
+const TIPOS_BOT = [['riego', 'Riego'], ['siembra', 'Siembra'], ['fertilizacion', 'Fertilización'], ['pulverizacion', 'Pulverización'], ['cosecha', 'Cosecha'], ['compra', 'Compra de insumo'], ['analisis_agua', 'Análisis de agua'], ['analisis_suelo', 'Análisis de suelo'], ['nota', 'Nota'], ['consulta', 'Consultas / preguntas']];
 const inputStyle = {
   padding: '8px 10px',
   borderRadius: 6,
@@ -1910,7 +1910,18 @@ function Actividades({
     insumoId: '',
     cantidad: ''
   }]);
+  const [editandoId, setEditandoId] = useState(null);
   const esAplicacion = TIPOS_CON_APLICACION.includes(form.tipo);
+  const revertirStock = act => {
+    if (!act.items || act.items.length === 0) return;
+    update('insumos', ins => ins.map(i => {
+      const u = act.items.find(x => x.insumoId === i.id);
+      return u ? {
+        ...i,
+        stock: (Number(i.stock) || 0) + Number(u.cantidad)
+      } : i;
+    }));
+  };
   const guardar = () => {
     if (!form.loteId || !form.fecha) return;
     const usados = items.filter(it => it.insumoId && Number(it.cantidad) > 0);
@@ -1921,23 +1932,44 @@ function Actividades({
     const haFact = Number(form.haFacturadas) || Number(form.haReales) || 0;
     const costoContratista = esAplicacion && form.tarifaContratista ? Number(form.tarifaContratista) * haFact : 0;
     const costoTotal = costoInsumos + costoContratista;
-    const ciclo = cicloActivo(data, form.loteId);
-    update('actividades', a => [...a, {
-      id: uid(),
-      ...form,
-      cicloId: ciclo ? ciclo.id : null,
-      items: usados,
-      costoInsumos,
-      costoContratista,
-      costoTotal
-    }]);
-    update('insumos', ins => ins.map(i => {
-      const u = usados.find(x => x.insumoId === i.id);
-      return u ? {
-        ...i,
-        stock: (Number(i.stock) || 0) - Number(u.cantidad)
-      } : i;
-    }));
+    if (editandoId) {
+      const actVieja = data.actividades.find(a => a.id === editandoId);
+      if (actVieja) revertirStock(actVieja);
+      update('actividades', a => a.map(x => x.id === editandoId ? {
+        ...x,
+        ...form,
+        items: usados,
+        costoInsumos,
+        costoContratista,
+        costoTotal
+      } : x));
+      update('insumos', ins => ins.map(i => {
+        const u = usados.find(x => x.insumoId === i.id);
+        return u ? {
+          ...i,
+          stock: (Number(i.stock) || 0) - Number(u.cantidad)
+        } : i;
+      }));
+      setEditandoId(null);
+    } else {
+      const ciclo = cicloActivo(data, form.loteId);
+      update('actividades', a => [...a, {
+        id: uid(),
+        ...form,
+        cicloId: ciclo ? ciclo.id : null,
+        items: usados,
+        costoInsumos,
+        costoContratista,
+        costoTotal
+      }]);
+      update('insumos', ins => ins.map(i => {
+        const u = usados.find(x => x.insumoId === i.id);
+        return u ? {
+          ...i,
+          stock: (Number(i.stock) || 0) - Number(u.cantidad)
+        } : i;
+      }));
+    }
     setForm({
       ...formInicial,
       loteId: form.loteId,
@@ -1947,6 +1979,38 @@ function Actividades({
       insumoId: '',
       cantidad: ''
     }]);
+  };
+  const editar = act => {
+    setEditandoId(act.id);
+    setForm({
+      ...formInicial,
+      ...act
+    });
+    setItems(act.items && act.items.length > 0 ? act.items.map(it => ({
+      insumoId: it.insumoId,
+      cantidad: String(it.cantidad)
+    })) : [{
+      insumoId: '',
+      cantidad: ''
+    }]);
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth'
+    });
+  };
+  const cancelarEdicion = () => {
+    setEditandoId(null);
+    setForm(formInicial);
+    setItems([{
+      insumoId: '',
+      cantidad: ''
+    }]);
+  };
+  const borrar = act => {
+    if (!confirm(`¿Borrar esta actividad (${act.tipo} — ${act.fecha})? Esto no se puede deshacer.`)) return;
+    revertirStock(act);
+    update('actividades', a => a.filter(x => x.id !== act.id));
+    if (editandoId === act.id) cancelarEdicion();
   };
   const lotesConCampo = data.lotes.map(l => ({
     ...l,
@@ -1963,7 +2027,7 @@ function Actividades({
       fontWeight: 500,
       marginBottom: 10
     }
-  }, "Registrar actividad"), /*#__PURE__*/React.createElement("div", {
+  }, editandoId ? 'Editando actividad' : 'Registrar actividad'), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'grid',
       gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
@@ -2196,7 +2260,14 @@ function Actividades({
       ...btnPrimary,
       marginTop: 14
     }
-  }, "+ Guardar")), /*#__PURE__*/React.createElement(Card, null, /*#__PURE__*/React.createElement("div", {
+  }, editandoId ? '✓ Guardar cambios' : '+ Guardar'), editandoId && /*#__PURE__*/React.createElement("button", {
+    onClick: cancelarEdicion,
+    style: {
+      ...btnGhost,
+      marginTop: 14,
+      marginLeft: 8
+    }
+  }, "Cancelar edición")), /*#__PURE__*/React.createElement(Card, null, /*#__PURE__*/React.createElement("div", {
     style: {
       fontWeight: 500,
       marginBottom: 10
@@ -2205,6 +2276,7 @@ function Actividades({
     const lote = data.lotes.find(l => l.id === act.loteId);
     const haInfo = act.haReales ? ` · ${act.haReales}ha` + (act.haFacturadas && act.haFacturadas != act.haReales ? ` (${act.haFacturadas}ha facturadas)` : '') : '';
     const siembraInfo = act.tipo === 'Siembra' && act.cultivo ? ` — ${act.cultivo}${act.variedad ? ' ' + act.variedad : ''}${act.densidad ? ` (${act.densidad} kg/ha)` : ''}` : '';
+    const riegoInfo = act.tipo === 'Riego' && act.mm ? ` — ${act.mm}mm${act.fuente ? ` (${act.fuente})` : ''}` : '';
     return /*#__PURE__*/React.createElement("div", {
       key: act.id,
       style: {
@@ -2212,7 +2284,13 @@ function Actividades({
         borderTop: '1px solid #f1efe8',
         fontSize: 14
       }
-    }, /*#__PURE__*/React.createElement("strong", null, act.tipo), act.metodo ? ` (${act.metodo})` : '', " — ", lote?.nombre, " — ", act.fecha, haInfo, siembraInfo, " — ", fmtMoney(act.costoTotal), act.costoContratista > 0 && /*#__PURE__*/React.createElement("div", {
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'flex-start'
+      }
+    }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("strong", null, act.tipo), act.metodo ? ` (${act.metodo})` : '', " — ", lote?.nombre, " — ", act.fecha, riegoInfo, haInfo, siembraInfo, " — ", fmtMoney(act.costoTotal), act.costoContratista > 0 && /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 12,
         color: '#888780'
@@ -2228,7 +2306,18 @@ function Actividades({
         color: '#5f5e5a',
         fontStyle: 'italic'
       }
-    }, act.notas));
+    }, act.notas)), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: 'flex',
+        gap: 4
+      }
+    }, /*#__PURE__*/React.createElement("button", {
+      onClick: () => editar(act),
+      style: btnGhost
+    }, "✏️"), /*#__PURE__*/React.createElement("button", {
+      onClick: () => borrar(act),
+      style: btnGhost
+    }, "🗑"))));
   })));
 }
 
@@ -2528,7 +2617,8 @@ function ContactosWA({
   const [form, setForm] = useState({
     nombre: '',
     numero: '',
-    tipos: []
+    tipos: [],
+    clienteId: ''
   });
   const contactos = data.contactosBot || [];
   const toggleTipo = t => setForm(f => ({
@@ -2541,18 +2631,24 @@ function ContactosWA({
       id: uid(),
       nombre: form.nombre.trim(),
       numero: form.numero.trim(),
-      tipos: form.tipos
+      tipos: form.tipos,
+      clienteId: form.clienteId || null
     }]);
     setForm({
       nombre: '',
       numero: '',
-      tipos: []
+      tipos: [],
+      clienteId: ''
     });
   };
   const del = id => update('contactosBot', c => c.filter(x => x.id !== id));
   const toggleTipoExistente = (id, t) => update('contactosBot', c => c.map(x => x.id === id ? {
     ...x,
     tipos: x.tipos.includes(t) ? x.tipos.filter(y => y !== t) : [...x.tipos, t]
+  } : x));
+  const setClienteExistente = (id, clienteId) => update('contactosBot', c => c.map(x => x.id === id ? {
+    ...x,
+    clienteId: clienteId || null
   } : x));
   return /*#__PURE__*/React.createElement("div", {
     style: {
@@ -2600,7 +2696,27 @@ function ContactosWA({
       ...form,
       numero: e.target.value
     })
-  }))), /*#__PURE__*/React.createElement("div", {
+  })), /*#__PURE__*/React.createElement(Field, {
+    label: "Cliente/productor (opcional)"
+  }, /*#__PURE__*/React.createElement("select", {
+    style: inputStyle,
+    value: form.clienteId,
+    onChange: e => setForm({
+      ...form,
+      clienteId: e.target.value
+    })
+  }, /*#__PURE__*/React.createElement("option", {
+    value: ""
+  }, "Sin restringir (acceso a todo)"), data.clientes.map(cl => /*#__PURE__*/React.createElement("option", {
+    key: cl.id,
+    value: cl.id
+  }, cl.nombre))))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: '#888780',
+      marginTop: 4
+    }
+  }, "Si le asignás un cliente, sus consultas y reportes van a quedar limitados solo a los campos de ese cliente."), /*#__PURE__*/React.createElement("div", {
     style: {
       marginTop: 10
     }
@@ -2669,6 +2785,23 @@ function ContactosWA({
     onClick: () => del(c.id),
     style: btnGhost
   }, "🗑")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      margin: '6px 0'
+    }
+  }, /*#__PURE__*/React.createElement("select", {
+    style: {
+      ...inputStyle,
+      fontSize: 12,
+      padding: '4px 8px'
+    },
+    value: c.clienteId || '',
+    onChange: e => setClienteExistente(c.id, e.target.value)
+  }, /*#__PURE__*/React.createElement("option", {
+    value: ""
+  }, "Sin restringir (acceso a todo)"), data.clientes.map(cl => /*#__PURE__*/React.createElement("option", {
+    key: cl.id,
+    value: cl.id
+  }, cl.nombre)))), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       gap: 8,
