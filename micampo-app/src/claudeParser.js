@@ -35,6 +35,9 @@ Si es un ANÁLISIS DE SUELO / pedido de recomendación de fertilización (mencio
 Si es una PREGUNTA / PEDIDO DE INFORMACIÓN (quiere saber algo: cuánto se regó, qué actividades hubo, cuánto stock queda de un insumo, cuánto se gastó en un lote o campo, un resumen general — típicamente empieza con "cuánto", "qué", "cómo va", "cuándo fue", o termina con "?"):
 {"tipo":"consulta","pregunta":"<la pregunta, tal cual o resumida>","campo":"<nombre del campo si lo menciona, o null>","lote":"<nombre/código del lote si lo menciona, o null>","insumo":"<nombre del insumo si pregunta por stock de algo puntual, o null>"}
 
+Si es un APORTE DE INSUMO por parte de un participante/socio (menciona que alguien "aportó", "puso", "trajo" cierta cantidad de un insumo, con o sin precio — típicamente semillas, fertilizante, etc que un socio pone de su parte, no una compra normal a un proveedor):
+{"tipo":"aporte_insumo","fecha":"<fecha del mensaje en formato YYYY-MM-DD si la mencionan, o null si no la dicen>","campo":"<nombre del campo si lo menciona, o null>","lote":"<nombre/código del lote>","clienteAportante":"<nombre de la persona/socio que aportó>","producto":"<nombre del insumo, ej 'Maíz DEKALB 7220'>","cantidad":<numero>,"unidad":"<bolsas, kg, L, etc>","precioUnitario":<numero o null si no lo menciona>}
+
 Si no encaja en ninguno de los anteriores pero parece información relevante para recordar (una observación, algo que salió bien o mal):
 {"tipo":"nota","fecha":"<fecha del mensaje en formato YYYY-MM-DD si la mencionan, o null si no la dicen>","campo":"<nombre del campo si lo menciona, o null>","lote":"<nombre/código del lote o null>","texto":"<el mensaje resumido>"}
 
