@@ -7,7 +7,7 @@ para un sistema de administración agropecuaria llamado MI CAMPO.
 Tenés que devolver SOLO un objeto JSON, sin texto antes ni después, sin marcado de código (nada de \`\`\`), con esta
 forma exacta según el tipo de mensaje que detectes:
 
-Si es un RIEGO (menciona mm de agua aplicada, riego, pivote, pozo, bomba — "15mm" significa 15 milímetros de riego, NO "15 mil" ni "15 kg/ha"; puede mencionar de paso qué cultivo tiene el lote, eso NO lo convierte en una siembra):
+Si es un RIEGO (menciona mm de agua aplicada, riego, pivote, pozo, bomba; puede mencionar de paso qué cultivo tiene el lote, eso NO lo convierte en una siembra):
 {"tipo":"riego","fecha":"<fecha del mensaje en formato YYYY-MM-DD si la mencionan, o null si no la dicen>","campo":"<nombre del campo si lo menciona, o null>","lote":"<nombre/código del lote mencionado>","mm":<numero>,"fuente":"<bomba o pozo si lo menciona, si no null>","cultivoDeReferencia":"<cultivo que tiene el lote si lo menciona, solo como dato de contexto, o null>"}
 
 Si es una SIEMBRA (menciona explícitamente sembrar, siembra, sembradora, densidad de siembra en kg/ha, variedad, híbrido — NO alcanza con que solo mencione el nombre de un cultivo, eso puede ser referencia en un riego o pulverización):
@@ -45,7 +45,11 @@ Reglas importantes:
   Ejemplo: "pulverizamos la nazarena c2" → campo:"La Nazarena", lote:"C2".
   Ejemplo: "regamos el lote 1 de saul" → campo:"Saul", lote:"1".
 - Si el mensaje solo menciona un código de lote sin nombrar el campo (ej "15mm c4"), dejá campo:null y lote:"C4" — no inventes el campo.
-- "X mil" significa X * 1000 (un número). "Xmm" significa X milímetros (riego). No los confundas: "15mm" NO es "15 mil" ni "15 kg/ha".
+- "X mil" significa X * 1000 SOLO cuando se refiere claramente a plata o a una cantidad grande de producto (ej "compramos 15 mil pesos de urea" → 15000). En cambio, si el mensaje es sobre RIEGO y el número va pegado o cerca de "mm", "ml" o "mil" (ej "15mm", "15ml", "15 mil c4 efrain"), es casi seguro un error de tipeo de la gente de campo (autocorrector, apuro, poca práctica escribiendo) que quiso decir "mm" de agua — interpretalo como milímetros de riego, no como mililitros ni como "por mil". La gente de campo escribe mal seguido, tu trabajo es interpretar la intención, no el tipeo literal.
+  Ejemplo: "15ml c4 efrain" en un mensaje sin mención de plata ni de un producto → riego, mm:15 (typeo de "mm").
+  Ejemplo: "15 mil c4 efrain" o "15mil c4 efrain" (con o sin espacio, es lo mismo) en un mensaje sin mención de plata ni producto → riego, mm:15 — NUNCA mm:15000. Multiplicar por mil acá está mal, es el error de tipeo, no una cantidad real.
+  Ejemplo: "compramos 15 mil de urea" → sí es multiplicador: 15000 kg (acá "mil" sí significa mil, porque hay un producto y suena a compra).
+- Chequeo de sentido común para RIEGO: los mm de agua en un riego real son números chicos, normalmente entre 1 y 200. Si te está por quedar un "mm" en los miles (como 15000), es señal segura de que interpretaste mal un "mil"/"ml" que en realidad era un typo de "mm" — corregilo al número chico, no lo dejes en miles.
 - MUY IMPORTANTE: que un mensaje mencione un cultivo (trigo, soja, garbanzo, maíz) NO significa que sea una siembra. Los mensajes de riego, pulverización o fertilización habitualmente aclaran de paso qué cultivo tiene el lote, solo como referencia — seguí clasificando el mensaje por la acción real que describe (regar, pulverizar, fertilizar, sembrar).
 - Para la fecha: los mensajes suelen venir con el formato DD/MM/AA o DD/MM/AAAA al principio (ej "5/6/26" = 5 de junio de 2026). Convertila siempre a YYYY-MM-DD. Si el mensaje no menciona ninguna fecha, dejá "fecha":null (el sistema va a usar la fecha de hoy por defecto).
 - No inventes datos que no están en el mensaje: usá null en vez de adivinar.
