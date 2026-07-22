@@ -9,14 +9,14 @@ function nombreConCampo(data, lote) {
   return campo ? `${campo.nombre} — ${lote.nombre}` : lote.nombre;
 }
 
-function resolverLote(data, nombreBuscado, obligatorio = true) {
+function resolverLote(data, nombreBuscado, nombreCampo, obligatorio = true) {
   if (!nombreBuscado) {
     if (!obligatorio) return { ok: true, lote: null };
-    return { ok: false, pregunta: '¿De qué lote es? Decime el nombre.', campoFaltante: 'lote' };
+    return { ok: false, pregunta: '¿De qué lote es? Decime el campo y el nombre del lote.', campoFaltante: 'lote' };
   }
-  const candidatos = buscarLotes(data, nombreBuscado);
+  const candidatos = buscarLotes(data, nombreBuscado, nombreCampo);
   if (candidatos.length === 0) {
-    return { ok: false, pregunta: `No encontré ningún lote parecido a "${nombreBuscado}". ¿Cuál es el nombre correcto? (Decime también el campo, ej "C4 Efrain")`, campoFaltante: 'lote' };
+    return { ok: false, pregunta: `No encontré ningún lote parecido a "${nombreBuscado}"${nombreCampo ? ` en ${nombreCampo}` : ''}. ¿Cuál es el nombre correcto? (Decime también el campo, ej "C4 Efrain")`, campoFaltante: 'lote' };
   }
   if (candidatos.length > 1) {
     const nombres = candidatos.map(l => nombreConCampo(data, l)).join(' / ');
@@ -29,26 +29,26 @@ function validar(interpretado) {
   const data = load();
   switch (interpretado.tipo) {
     case 'riego': {
-      const r = resolverLote(data, interpretado.lote);
+      const r = resolverLote(data, interpretado.lote, interpretado.campo);
       if (!r.ok) return r;
       if (!interpretado.mm) return { ok: false, pregunta: '¿Cuántos mm se aplicaron?', campoFaltante: 'mm' };
       return { ok: true };
     }
     case 'pulverizacion': {
-      const r = resolverLote(data, interpretado.lote);
+      const r = resolverLote(data, interpretado.lote, interpretado.campo);
       if (!r.ok) return r;
       if (!interpretado.items || interpretado.items.length === 0 || !interpretado.items[0].producto) return { ok: false, pregunta: '¿Qué producto(s) se aplicó y cuánto de cada uno? Mandá el mensaje de nuevo con esos datos.', campoFaltante: null };
       if (!interpretado.haReales) return { ok: false, pregunta: '¿Cuántas hectáreas reales se aplicaron? (para calcular la dosis)', campoFaltante: 'haReales' };
       return { ok: true };
     }
     case 'siembra': {
-      const r = resolverLote(data, interpretado.lote);
+      const r = resolverLote(data, interpretado.lote, interpretado.campo);
       if (!r.ok) return r;
       if (!interpretado.cultivo) return { ok: false, pregunta: '¿Qué cultivo se sembró? (soja, trigo, garbanzo o maíz)', campoFaltante: 'cultivo' };
       return { ok: true };
     }
     case 'fertilizacion': {
-      const r = resolverLote(data, interpretado.lote);
+      const r = resolverLote(data, interpretado.lote, interpretado.campo);
       if (!r.ok) return r;
       if (!interpretado.items || interpretado.items.length === 0 || !interpretado.items[0].producto) return { ok: false, pregunta: '¿Qué fertilizante y cuánto en total? Mandá el mensaje de nuevo con esos datos.', campoFaltante: null };
       return { ok: true };
@@ -66,13 +66,13 @@ function validar(interpretado) {
       return { ok: true };
     }
     case 'analisis_agua': {
-      const r = resolverLote(data, interpretado.lote);
+      const r = resolverLote(data, interpretado.lote, interpretado.campo);
       if (!r.ok) return r;
       if (!interpretado.aguaUtilMm) return { ok: false, pregunta: '¿Cuántos mm de agua útil midió?', campoFaltante: 'aguaUtilMm' };
       return { ok: true };
     }
     case 'analisis_suelo': {
-      const r = resolverLote(data, interpretado.lote);
+      const r = resolverLote(data, interpretado.lote, interpretado.campo);
       if (!r.ok) return r;
       return { ok: true };
     }
@@ -85,7 +85,7 @@ function validar(interpretado) {
 
 function manejarRiego(interpretado) {
   const data = load();
-  const lote = buscarLotes(data, interpretado.lote)[0];
+  const lote = buscarLotes(data, interpretado.lote, interpretado.campo)[0];
   data.actividades.push({ id: uid(), loteId: lote.id, cicloId: cicloActivo(data, lote.id)?.id || null, tipo: 'Riego', fecha: hoy(), mm: interpretado.mm, fuente: interpretado.fuente || undefined, items: [], costoTotal: 0, notas: '' });
   save(data);
   const acumulado = data.actividades.filter(a => a.loteId === lote.id && a.tipo === 'Riego' && a.mm).reduce((s, a) => s + Number(a.mm), 0);
@@ -111,7 +111,7 @@ function resolverInsumos(data, items) {
 
 function manejarAplicacion(interpretado, tipo) {
   const data = load();
-  const lote = buscarLotes(data, interpretado.lote)[0];
+  const lote = buscarLotes(data, interpretado.lote, interpretado.campo)[0];
   const resueltos = resolverInsumos(data, interpretado.items);
   let costoInsumos = 0;
   const items = resueltos.map(({ insumo, cantidad }) => {
@@ -154,7 +154,7 @@ function manejarFertilizacion(interpretado) {
 
 function manejarSiembra(interpretado) {
   const data = load();
-  const lote = buscarLotes(data, interpretado.lote)[0];
+  const lote = buscarLotes(data, interpretado.lote, interpretado.campo)[0];
   const haReales = Number(interpretado.haReales) || 0;
   const haFacturadas = Number(interpretado.haFacturadas) || haReales;
   const costoContratista = interpretado.tarifaContratista ? Number(interpretado.tarifaContratista) * haFacturadas : 0;
@@ -178,7 +178,7 @@ function manejarSiembra(interpretado) {
 
 function manejarCosecha(interpretado) {
   const data = load();
-  const candidatos = interpretado.lote ? buscarLotes(data, interpretado.lote) : [];
+  const candidatos = interpretado.lote ? buscarLotes(data, interpretado.lote, interpretado.campo) : [];
   const lote = candidatos.length === 1 ? candidatos[0] : null;
   data.cargas.push({ id: uid(), loteId: lote ? lote.id : null, cicloId: lote ? cicloActivo(data, lote.id)?.id || null : null, fecha: hoy(), identificador: interpretado.identificador, kgCampo: Number(interpretado.kgCampo), kgDestino: '' });
   save(data);
@@ -188,7 +188,7 @@ function manejarCosecha(interpretado) {
 
 function manejarAnalisisAgua(interpretado) {
   const data = load();
-  const lote = buscarLotes(data, interpretado.lote)[0];
+  const lote = buscarLotes(data, interpretado.lote, interpretado.campo)[0];
   data.analisis.push({ id: uid(), loteId: lote.id, cicloId: cicloActivo(data, lote.id)?.id || null, tipo: 'Agua útil', fecha: hoy(), aguaUtilMm: interpretado.aguaUtilMm, profundidad: interpretado.profundidad, notas: '' });
   save(data);
   const objetivo = Number(lote.objetivoRiego) || 0;
@@ -202,7 +202,7 @@ function manejarAnalisisAgua(interpretado) {
 
 function manejarAnalisisSuelo(interpretado) {
   const data = load();
-  const lote = buscarLotes(data, interpretado.lote)[0];
+  const lote = buscarLotes(data, interpretado.lote, interpretado.campo)[0];
   data.analisis.push({ id: uid(), loteId: lote.id, cicloId: cicloActivo(data, lote.id)?.id || null, tipo: 'Fertilidad', fecha: hoy(), nNo3: interpretado.nNo3_0_20, p: null, mo: interpretado.mo, ph: null, notas: '' });
   save(data);
   return `✅ Análisis de suelo cargado en ${nombreConCampo(data, lote)}. Entrá al panel para correr la calculadora Peralta-DISA con estos datos y confirmar la dosis de urea.`;
@@ -236,7 +236,7 @@ function manejarCompra(interpretado) {
 
 function manejarNota(interpretado) {
   const data = load();
-  const candidatos = interpretado.lote ? buscarLotes(data, interpretado.lote) : [];
+  const candidatos = interpretado.lote ? buscarLotes(data, interpretado.lote, interpretado.campo) : [];
   const lote = candidatos.length === 1 ? candidatos[0] : null;
   data.notas.push({ id: uid(), loteId: lote ? lote.id : null, fecha: hoy(), tipo: 'Observación', texto: interpretado.texto });
   save(data);
