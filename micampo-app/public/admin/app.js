@@ -420,6 +420,181 @@ function Resumen({
 }
 
 /* ---------- CAMPOS Y LOTES ---------- */
+function ParticipacionCampo({
+  campo,
+  data,
+  update
+}) {
+  const participantes = campo.participantes || [];
+  const [nuevo, setNuevo] = useState({
+    clienteId: '',
+    aporte: '',
+    porcentaje: ''
+  });
+  const agregar = () => {
+    if (!nuevo.clienteId) return;
+    update('campos', cs => cs.map(c => c.id === campo.id ? {
+      ...c,
+      participantes: [...(c.participantes || []), {
+        id: uid(),
+        clienteId: nuevo.clienteId,
+        aporte: nuevo.aporte.trim(),
+        porcentaje: nuevo.porcentaje ? Number(nuevo.porcentaje) : null
+      }]
+    } : c));
+    setNuevo({
+      clienteId: '',
+      aporte: '',
+      porcentaje: ''
+    });
+  };
+  const quitar = pid => update('campos', cs => cs.map(c => c.id === campo.id ? {
+    ...c,
+    participantes: (c.participantes || []).filter(p => p.id !== pid)
+  } : c));
+  const editarCampo = (pid, campoObj) => update('campos', cs => cs.map(c => c.id === campo.id ? {
+    ...c,
+    participantes: (c.participantes || []).map(p => p.id === pid ? {
+      ...p,
+      ...campoObj
+    } : p)
+  } : c));
+  const sumaPorcentajes = participantes.reduce((s, p) => s + (Number(p.porcentaje) || 0), 0);
+
+  // Compatibilidad: si el campo todavia usa el modelo viejo (un solo cliente) y no tiene participantes cargados, se muestra como referencia
+  const clienteViejo = !participantes.length && campo.clienteId ? data.clientes.find(c => c.id === campo.clienteId) : null;
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      margin: '8px 0',
+      padding: '8px 10px',
+      background: '#faf9f5',
+      borderRadius: 8
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: '#888780',
+      marginBottom: 6
+    }
+  }, "Participación / propietarios"), clienteViejo && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 13,
+      color: '#993C1D',
+      marginBottom: 6
+    }
+  }, "Cliente (modelo simple): ", clienteViejo.nombre, " (", campo.porcentajeProductor || 0, "%) — agregá participantes abajo para pasar al modelo detallado."), participantes.map(p => {
+    const cliente = data.clientes.find(c => c.id === p.clienteId);
+    return /*#__PURE__*/React.createElement("div", {
+      key: p.id,
+      style: {
+        display: 'flex',
+        gap: 6,
+        alignItems: 'center',
+        marginBottom: 4,
+        flexWrap: 'wrap'
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 13,
+        fontWeight: 500,
+        minWidth: 100
+      }
+    }, cliente?.nombre || '?'), /*#__PURE__*/React.createElement("input", {
+      style: {
+        ...inputStyle,
+        flex: 1,
+        minWidth: 160,
+        padding: '3px 6px',
+        fontSize: 12
+      },
+      placeholder: "Tipo de aporte (ej: riego y campo en alquiler)",
+      value: p.aporte,
+      onChange: e => editarCampo(p.id, {
+        aporte: e.target.value
+      })
+    }), /*#__PURE__*/React.createElement("input", {
+      style: {
+        ...inputStyle,
+        width: 70,
+        padding: '3px 6px',
+        fontSize: 12
+      },
+      type: "number",
+      placeholder: "%",
+      value: p.porcentaje ?? '',
+      onChange: e => editarCampo(p.id, {
+        porcentaje: e.target.value ? Number(e.target.value) : null
+      })
+    }), /*#__PURE__*/React.createElement("button", {
+      onClick: () => quitar(p.id),
+      style: btnGhost
+    }, "✕"));
+  }), participantes.length > 0 && sumaPorcentajes !== 100 && sumaPorcentajes > 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: '#854F0B'
+    }
+  }, "⚠️ Los porcentajes suman ", sumaPorcentajes, "%, no 100%."), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      gap: 6,
+      alignItems: 'center',
+      marginTop: 6,
+      flexWrap: 'wrap'
+    }
+  }, /*#__PURE__*/React.createElement("select", {
+    style: {
+      ...inputStyle,
+      padding: '3px 6px',
+      fontSize: 12
+    },
+    value: nuevo.clienteId,
+    onChange: e => setNuevo({
+      ...nuevo,
+      clienteId: e.target.value
+    })
+  }, /*#__PURE__*/React.createElement("option", {
+    value: ""
+  }, "+ Agregar participante…"), data.clientes.map(c => /*#__PURE__*/React.createElement("option", {
+    key: c.id,
+    value: c.id
+  }, c.nombre))), /*#__PURE__*/React.createElement("input", {
+    style: {
+      ...inputStyle,
+      flex: 1,
+      minWidth: 160,
+      padding: '3px 6px',
+      fontSize: 12
+    },
+    placeholder: "Tipo de aporte",
+    value: nuevo.aporte,
+    onChange: e => setNuevo({
+      ...nuevo,
+      aporte: e.target.value
+    })
+  }), /*#__PURE__*/React.createElement("input", {
+    style: {
+      ...inputStyle,
+      width: 70,
+      padding: '3px 6px',
+      fontSize: 12
+    },
+    type: "number",
+    placeholder: "%",
+    value: nuevo.porcentaje,
+    onChange: e => setNuevo({
+      ...nuevo,
+      porcentaje: e.target.value
+    })
+  }), /*#__PURE__*/React.createElement("button", {
+    onClick: agregar,
+    style: {
+      ...btnSecondary,
+      fontSize: 12,
+      padding: '4px 10px'
+    }
+  }, "Agregar")));
+}
 function Campos({
   data,
   update
@@ -543,26 +718,38 @@ function Campos({
         justifyContent: 'space-between',
         alignItems: 'center'
       }
-    }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", {
+    }, /*#__PURE__*/React.createElement("div", {
       style: {
-        fontWeight: 500
+        flex: 1
       }
-    }, campo.nombre), /*#__PURE__*/React.createElement("span", {
+    }, /*#__PURE__*/React.createElement("input", {
+      style: {
+        fontWeight: 500,
+        fontSize: 15,
+        border: 'none',
+        background: 'transparent',
+        padding: '2px 4px',
+        width: 200
+      },
+      value: campo.nombre,
+      onChange: e => update('campos', cs => cs.map(c => c.id === campo.id ? {
+        ...c,
+        nombre: e.target.value
+      } : c))
+    }), /*#__PURE__*/React.createElement("span", {
       style: {
         fontSize: 12,
         color: '#888780',
         marginLeft: 8
       }
-    }, haTotalCampo, " ha · ", lotes.length, " lote(s)", gastoTotalCampo > 0 ? ` · Gasto: ${fmtMoney(gastoTotalCampo)}` : ''), cliente && /*#__PURE__*/React.createElement("span", {
-      style: {
-        fontSize: 12,
-        color: '#993C1D',
-        marginLeft: 8
-      }
-    }, "Cliente: ", cliente.nombre, " (", campo.porcentajeProductor || 0, "%)")), /*#__PURE__*/React.createElement("button", {
+    }, haTotalCampo, " ha · ", lotes.length, " lote(s)", gastoTotalCampo > 0 ? ` · Gasto: ${fmtMoney(gastoTotalCampo)}` : '')), /*#__PURE__*/React.createElement("button", {
       onClick: () => delCampo(campo.id),
       style: btnGhost
-    }, "🗑")), /*#__PURE__*/React.createElement("div", {
+    }, "🗑")), /*#__PURE__*/React.createElement(ParticipacionCampo, {
+      campo: campo,
+      data: data,
+      update: update
+    }), /*#__PURE__*/React.createElement("div", {
       style: {
         marginTop: 10,
         display: 'flex',
@@ -584,9 +771,50 @@ function Campos({
         style: {
           display: 'flex',
           justifyContent: 'space-between',
-          fontSize: 14
+          fontSize: 14,
+          alignItems: 'center'
         }
-      }, /*#__PURE__*/React.createElement("span", null, l.nombre, " — ", l.hectareas, " ha (", l.modo || 'Riego', ")"), /*#__PURE__*/React.createElement("div", {
+      }, /*#__PURE__*/React.createElement("div", {
+        style: {
+          display: 'flex',
+          gap: 6,
+          alignItems: 'center',
+          flexWrap: 'wrap'
+        }
+      }, /*#__PURE__*/React.createElement("input", {
+        style: {
+          ...inputStyle,
+          width: 130,
+          padding: '3px 6px'
+        },
+        value: l.nombre,
+        onChange: e => update('lotes', ls => ls.map(x => x.id === l.id ? {
+          ...x,
+          nombre: e.target.value
+        } : x))
+      }), /*#__PURE__*/React.createElement("input", {
+        style: {
+          ...inputStyle,
+          width: 70,
+          padding: '3px 6px'
+        },
+        type: "number",
+        value: l.hectareas,
+        onChange: e => update('lotes', ls => ls.map(x => x.id === l.id ? {
+          ...x,
+          hectareas: Number(e.target.value) || 0
+        } : x))
+      }), " ha", /*#__PURE__*/React.createElement("select", {
+        style: {
+          ...inputStyle,
+          padding: '3px 6px'
+        },
+        value: l.modo || 'Riego',
+        onChange: e => update('lotes', ls => ls.map(x => x.id === l.id ? {
+          ...x,
+          modo: e.target.value
+        } : x))
+      }, /*#__PURE__*/React.createElement("option", null, "Riego"), /*#__PURE__*/React.createElement("option", null, "Secano"))), /*#__PURE__*/React.createElement("div", {
         style: {
           display: 'flex',
           gap: 10
@@ -2441,7 +2669,7 @@ function Clientes({
     onClick: add,
     style: btnPrimary
   }, "+ Agregar"))), data.clientes.map(cli => {
-    const campos = data.campos.filter(c => c.clienteId === cli.id);
+    const campos = data.campos.filter(c => c.clienteId === cli.id || (c.participantes || []).some(p => p.clienteId === cli.id));
     return /*#__PURE__*/React.createElement(Card, {
       key: cli.id
     }, /*#__PURE__*/React.createElement("strong", null, cli.nombre), /*#__PURE__*/React.createElement("div", {
