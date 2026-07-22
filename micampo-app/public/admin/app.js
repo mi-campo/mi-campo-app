@@ -13,6 +13,7 @@ const METODOS_POR_TIPO = {
 const TIPOS_CON_APLICACION = Object.keys(METODOS_POR_TIPO);
 const CATEGORIAS_INSUMO = ['Insecticida', 'Herbicida', 'Fungicida', 'Fertilizante', 'Semilla', 'Cebo', 'Otro'];
 const CULTIVOS_SIEMBRA = ['Soja', 'Trigo', 'Garbanzo', 'Maíz'];
+const TIPOS_BOT = [['riego', 'Riego'], ['siembra', 'Siembra'], ['fertilizacion', 'Fertilización'], ['pulverizacion', 'Pulverización'], ['cosecha', 'Cosecha'], ['compra', 'Compra de insumo'], ['analisis_agua', 'Análisis de agua'], ['analisis_suelo', 'Análisis de suelo'], ['nota', 'Nota']];
 const inputStyle = {
   padding: '8px 10px',
   borderRadius: 6,
@@ -137,7 +138,7 @@ function App() {
       color: '#888780'
     }
   }, "Cargando MI CAMPO…");
-  const tabs = [['resumen', 'Resumen'], ['campos', 'Campos y lotes'], ['riego', 'Riego'], ['insumos', 'Insumos'], ['proveedores', 'Proveedores'], ['actividades', 'Actividades'], ['clientes', 'Clientes'], ['usuarios', 'Usuarios'], ['consultas', 'Consultas']];
+  const tabs = [['resumen', 'Resumen'], ['campos', 'Campos y lotes'], ['riego', 'Riego'], ['insumos', 'Insumos'], ['proveedores', 'Proveedores'], ['actividades', 'Actividades'], ['clientes', 'Clientes'], ['usuarios', 'Usuarios'], ['whatsapp', 'WhatsApp'], ['consultas', 'Consultas']];
   return /*#__PURE__*/React.createElement("div", {
     style: {
       maxWidth: 1000,
@@ -230,6 +231,9 @@ function App() {
     update: update
   }), tab === 'usuarios' && /*#__PURE__*/React.createElement(Usuarios, {
     data: data
+  }), tab === 'whatsapp' && /*#__PURE__*/React.createElement(ContactosWA, {
+    data: data,
+    update: update
   }), tab === 'consultas' && /*#__PURE__*/React.createElement(Consultas, {
     data: data,
     update: update
@@ -2514,5 +2518,179 @@ function Consultas({
       style: btnPrimary
     }, "Responder")));
   }));
+}
+
+/* ---------- WHATSAPP: números autorizados y sus permisos ---------- */
+function ContactosWA({
+  data,
+  update
+}) {
+  const [form, setForm] = useState({
+    nombre: '',
+    numero: '',
+    tipos: []
+  });
+  const contactos = data.contactosBot || [];
+  const toggleTipo = t => setForm(f => ({
+    ...f,
+    tipos: f.tipos.includes(t) ? f.tipos.filter(x => x !== t) : [...f.tipos, t]
+  }));
+  const add = () => {
+    if (!form.nombre.trim() || !form.numero.trim() || form.tipos.length === 0) return;
+    update('contactosBot', c => [...c, {
+      id: uid(),
+      nombre: form.nombre.trim(),
+      numero: form.numero.trim(),
+      tipos: form.tipos
+    }]);
+    setForm({
+      nombre: '',
+      numero: '',
+      tipos: []
+    });
+  };
+  const del = id => update('contactosBot', c => c.filter(x => x.id !== id));
+  const toggleTipoExistente = (id, t) => update('contactosBot', c => c.map(x => x.id === id ? {
+    ...x,
+    tipos: x.tipos.includes(t) ? x.tipos.filter(y => y !== t) : [...x.tipos, t]
+  } : x));
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 14
+    }
+  }, /*#__PURE__*/React.createElement(Card, null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: 500,
+      marginBottom: 4
+    }
+  }, "Números autorizados para el bot de WhatsApp"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 13,
+      color: '#993C1D',
+      marginBottom: 10
+    }
+  }, "⚠️ Cualquier número que NO esté en esta lista queda bloqueado — incluido el tuyo. Registrate a vos mismo con todos los tipos si todavía no lo hiciste.")), /*#__PURE__*/React.createElement(Card, null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: 500,
+      marginBottom: 10
+    }
+  }, "Nuevo contacto"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'grid',
+      gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+      gap: 10
+    }
+  }, /*#__PURE__*/React.createElement(Field, {
+    label: "Nombre"
+  }, /*#__PURE__*/React.createElement("input", {
+    style: inputStyle,
+    value: form.nombre,
+    onChange: e => setForm({
+      ...form,
+      nombre: e.target.value
+    })
+  })), /*#__PURE__*/React.createElement(Field, {
+    label: "Número (con código país, ej 549351...)"
+  }, /*#__PURE__*/React.createElement("input", {
+    style: inputStyle,
+    value: form.numero,
+    onChange: e => setForm({
+      ...form,
+      numero: e.target.value
+    })
+  }))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 10
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: '#888780',
+      marginBottom: 6
+    }
+  }, "Puede reportar:"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      gap: 10,
+      flexWrap: 'wrap'
+    }
+  }, TIPOS_BOT.map(([t, label]) => /*#__PURE__*/React.createElement("label", {
+    key: t,
+    style: {
+      display: 'flex',
+      gap: 4,
+      alignItems: 'center',
+      fontSize: 13,
+      background: form.tipos.includes(t) ? '#EAF3DE' : '#f4f2ea',
+      padding: '4px 8px',
+      borderRadius: 6,
+      cursor: 'pointer'
+    }
+  }, /*#__PURE__*/React.createElement("input", {
+    type: "checkbox",
+    checked: form.tipos.includes(t),
+    onChange: () => toggleTipo(t)
+  }), label)))), /*#__PURE__*/React.createElement("button", {
+    onClick: add,
+    style: {
+      ...btnPrimary,
+      marginTop: 12
+    }
+  }, "+ Agregar")), /*#__PURE__*/React.createElement(Card, null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: 500,
+      marginBottom: 10
+    }
+  }, "Contactos (", contactos.length, ")"), contactos.length === 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      color: '#888780',
+      fontSize: 13
+    }
+  }, "Sin contactos autorizados todavía — el bot va a rechazar todos los mensajes hasta que agregues al menos uno."), contactos.map(c => /*#__PURE__*/React.createElement("div", {
+    key: c.id,
+    style: {
+      padding: '10px 0',
+      borderTop: '1px solid #f1efe8'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'center'
+    }
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("strong", null, c.nombre), " ", /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 12,
+      color: '#888780'
+    }
+  }, c.numero)), /*#__PURE__*/React.createElement("button", {
+    onClick: () => del(c.id),
+    style: btnGhost
+  }, "🗑")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      gap: 8,
+      flexWrap: 'wrap',
+      marginTop: 6
+    }
+  }, TIPOS_BOT.map(([t, label]) => /*#__PURE__*/React.createElement("label", {
+    key: t,
+    style: {
+      display: 'flex',
+      gap: 4,
+      alignItems: 'center',
+      fontSize: 12,
+      background: c.tipos.includes(t) ? '#EAF3DE' : '#f4f2ea',
+      padding: '3px 7px',
+      borderRadius: 5,
+      cursor: 'pointer'
+    }
+  }, /*#__PURE__*/React.createElement("input", {
+    type: "checkbox",
+    checked: c.tipos.includes(t),
+    onChange: () => toggleTipoExistente(c.id, t)
+  }), label)))))));
 }
 ReactDOM.createRoot(document.getElementById('root')).render(/*#__PURE__*/React.createElement(App, null));
