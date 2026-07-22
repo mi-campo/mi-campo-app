@@ -4,6 +4,11 @@ function hoy() {
   return new Date().toISOString().slice(0, 10);
 }
 
+function fechaDe(interpretado) {
+  if (interpretado.fecha && /^\d{4}-\d{2}-\d{2}$/.test(interpretado.fecha)) return interpretado.fecha;
+  return hoy();
+}
+
 function nombreConCampo(data, lote) {
   const campo = data.campos.find(c => c.id === lote.campoId);
   return campo ? `${campo.nombre} — ${lote.nombre}` : lote.nombre;
@@ -86,7 +91,7 @@ function validar(interpretado) {
 function manejarRiego(interpretado) {
   const data = load();
   const lote = buscarLotes(data, interpretado.lote, interpretado.campo)[0];
-  data.actividades.push({ id: uid(), loteId: lote.id, cicloId: cicloActivo(data, lote.id)?.id || null, tipo: 'Riego', fecha: hoy(), mm: interpretado.mm, fuente: interpretado.fuente || undefined, items: [], costoTotal: 0, notas: '' });
+  data.actividades.push({ id: uid(), loteId: lote.id, cicloId: cicloActivo(data, lote.id)?.id || null, tipo: 'Riego', fecha: fechaDe(interpretado), mm: interpretado.mm, fuente: interpretado.fuente || undefined, items: [], costoTotal: 0, notas: '' });
   save(data);
   const acumulado = data.actividades.filter(a => a.loteId === lote.id && a.tipo === 'Riego' && a.mm).reduce((s, a) => s + Number(a.mm), 0);
   const objetivo = Number(lote.objetivoRiego) || 0;
@@ -126,7 +131,7 @@ function manejarAplicacion(interpretado, tipo) {
   const costoTotal = costoInsumos + costoContratista;
   data.actividades.push({
     id: uid(), loteId: lote.id, cicloId: cicloActivo(data, lote.id)?.id || null, tipo,
-    fecha: hoy(), metodo: interpretado.metodo || '', haReales: interpretado.haReales || '', haFacturadas: interpretado.haFacturadas || '',
+    fecha: fechaDe(interpretado), metodo: interpretado.metodo || '', haReales: interpretado.haReales || '', haFacturadas: interpretado.haFacturadas || '',
     tarifaContratista: interpretado.tarifaContratista || '', items, costoInsumos, costoContratista, costoTotal, notas: '',
   });
   save(data);
@@ -159,7 +164,7 @@ function manejarSiembra(interpretado) {
   const haFacturadas = Number(interpretado.haFacturadas) || haReales;
   const costoContratista = interpretado.tarifaContratista ? Number(interpretado.tarifaContratista) * haFacturadas : 0;
   data.actividades.push({
-    id: uid(), loteId: lote.id, cicloId: null, tipo: 'Siembra', fecha: hoy(), metodo: interpretado.metodo || '',
+    id: uid(), loteId: lote.id, cicloId: null, tipo: 'Siembra', fecha: fechaDe(interpretado), metodo: interpretado.metodo || '',
     cultivo: interpretado.cultivo, variedad: interpretado.variedad || '', densidad: interpretado.densidad || '',
     haReales: interpretado.haReales || '', haFacturadas: interpretado.haFacturadas || '', tarifaContratista: interpretado.tarifaContratista || '',
     items: [], costoInsumos: 0, costoContratista, costoTotal: costoContratista, notas: '',
@@ -180,7 +185,7 @@ function manejarCosecha(interpretado) {
   const data = load();
   const candidatos = interpretado.lote ? buscarLotes(data, interpretado.lote, interpretado.campo) : [];
   const lote = candidatos.length === 1 ? candidatos[0] : null;
-  data.cargas.push({ id: uid(), loteId: lote ? lote.id : null, cicloId: lote ? cicloActivo(data, lote.id)?.id || null : null, fecha: hoy(), identificador: interpretado.identificador, kgCampo: Number(interpretado.kgCampo), kgDestino: '' });
+  data.cargas.push({ id: uid(), loteId: lote ? lote.id : null, cicloId: lote ? cicloActivo(data, lote.id)?.id || null : null, fecha: fechaDe(interpretado), identificador: interpretado.identificador, kgCampo: Number(interpretado.kgCampo), kgDestino: '' });
   save(data);
   if (!lote) return `✅ Carga registrada (${interpretado.identificador} — ${interpretado.kgCampo}kg), sin lote asignado todavía. Avisale al administrador para que la asigne a mano.`;
   return `✅ Carga registrada: ${nombreConCampo(data, lote)} — ${interpretado.identificador} — ${interpretado.kgCampo}kg`;
@@ -189,7 +194,7 @@ function manejarCosecha(interpretado) {
 function manejarAnalisisAgua(interpretado) {
   const data = load();
   const lote = buscarLotes(data, interpretado.lote, interpretado.campo)[0];
-  data.analisis.push({ id: uid(), loteId: lote.id, cicloId: cicloActivo(data, lote.id)?.id || null, tipo: 'Agua útil', fecha: hoy(), aguaUtilMm: interpretado.aguaUtilMm, profundidad: interpretado.profundidad, notas: '' });
+  data.analisis.push({ id: uid(), loteId: lote.id, cicloId: cicloActivo(data, lote.id)?.id || null, tipo: 'Agua útil', fecha: fechaDe(interpretado), aguaUtilMm: interpretado.aguaUtilMm, profundidad: interpretado.profundidad, notas: '' });
   save(data);
   const objetivo = Number(lote.objetivoRiego) || 0;
   let texto = `✅ Análisis de agua útil cargado: ${nombreConCampo(data, lote)} — ${interpretado.aguaUtilMm}mm a ${interpretado.profundidad}cm`;
@@ -203,7 +208,7 @@ function manejarAnalisisAgua(interpretado) {
 function manejarAnalisisSuelo(interpretado) {
   const data = load();
   const lote = buscarLotes(data, interpretado.lote, interpretado.campo)[0];
-  data.analisis.push({ id: uid(), loteId: lote.id, cicloId: cicloActivo(data, lote.id)?.id || null, tipo: 'Fertilidad', fecha: hoy(), nNo3: interpretado.nNo3_0_20, p: null, mo: interpretado.mo, ph: null, notas: '' });
+  data.analisis.push({ id: uid(), loteId: lote.id, cicloId: cicloActivo(data, lote.id)?.id || null, tipo: 'Fertilidad', fecha: fechaDe(interpretado), nNo3: interpretado.nNo3_0_20, p: null, mo: interpretado.mo, ph: null, notas: '' });
   save(data);
   return `✅ Análisis de suelo cargado en ${nombreConCampo(data, lote)}. Entrá al panel para correr la calculadora Peralta-DISA con estos datos y confirmar la dosis de urea.`;
 }
@@ -223,7 +228,7 @@ function manejarCompra(interpretado) {
   const cantidad = Number(interpretado.cantidad);
   const precioUnitario = Number(interpretado.precioUnitario);
   const retirado = !!interpretado.retirado;
-  data.compras.push({ id: uid(), proveedorId: proveedor.id, insumoId: insumo.id, cantidad, precioUnitario, montoTotal: cantidad * precioUnitario, condicion: interpretado.condicion || '', fecha: hoy(), ubicacion: interpretado.ubicacion || '', retirado, vencimiento: interpretado.vencimiento || '' });
+  data.compras.push({ id: uid(), proveedorId: proveedor.id, insumoId: insumo.id, cantidad, precioUnitario, montoTotal: cantidad * precioUnitario, condicion: interpretado.condicion || '', fecha: fechaDe(interpretado), ubicacion: interpretado.ubicacion || '', retirado, vencimiento: interpretado.vencimiento || '' });
   if (retirado) insumo.stock = (Number(insumo.stock) || 0) + cantidad;
   insumo.costoUnitario = precioUnitario || insumo.costoUnitario;
   save(data);
@@ -238,7 +243,7 @@ function manejarNota(interpretado) {
   const data = load();
   const candidatos = interpretado.lote ? buscarLotes(data, interpretado.lote, interpretado.campo) : [];
   const lote = candidatos.length === 1 ? candidatos[0] : null;
-  data.notas.push({ id: uid(), loteId: lote ? lote.id : null, fecha: hoy(), tipo: 'Observación', texto: interpretado.texto });
+  data.notas.push({ id: uid(), loteId: lote ? lote.id : null, fecha: fechaDe(interpretado), tipo: 'Observación', texto: interpretado.texto });
   save(data);
   return `✅ Nota guardada${lote ? ` en ${nombreConCampo(data, lote)}` : ''}.`;
 }
