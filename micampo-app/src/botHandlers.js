@@ -63,6 +63,12 @@ function validar(interpretado) {
       if (!interpretado.mm) return { ok: false, pregunta: '¿Cuántos mm se aplicaron?', campoFaltante: 'mm' };
       return { ok: true };
     }
+    case 'precipitacion': {
+      const r = resolverLote(data, interpretado.lote, interpretado.campo);
+      if (!r.ok) return r;
+      if (!interpretado.mm) return { ok: false, pregunta: '¿Cuántos mm de lluvia cayeron?', campoFaltante: 'mm' };
+      return { ok: true };
+    }
     case 'pulverizacion': {
       if (!interpretado.lotes || interpretado.lotes.length === 0) return { ok: false, pregunta: '¿De qué lote(s) es esta pulverización? Decime el campo y el lote de cada uno.', campoFaltante: null };
       const lotesResueltosVal = [];
@@ -134,6 +140,18 @@ function validar(interpretado) {
   }
 }
 
+function balanceRiego(data, lote) {
+  const registros = data.actividades.filter(a => a.loteId === lote.id && a.tipo === 'Riego' && a.mm);
+  const esLluvia = (r) => (r.fuente || '').toLowerCase().includes('lluvia');
+  const acumuladoRiego = registros.filter(r => !esLluvia(r)).reduce((s, a) => s + Number(a.mm), 0);
+  const acumuladoLluvia = registros.filter(esLluvia).reduce((s, a) => s + Number(a.mm), 0);
+  const aguaUtil = data.analisis.filter(a => a.loteId === lote.id && a.tipo === 'Agua útil').sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''))[0];
+  const aguaUtilMm = aguaUtil ? Number(aguaUtil.aguaUtilMm) || 0 : 0;
+  const objetivo = Number(lote.objetivoRiego) || 0;
+  const disponible = aguaUtilMm + acumuladoRiego + acumuladoLluvia;
+  return { acumuladoRiego, acumuladoLluvia, aguaUtilMm, objetivo, disponible, balance: objetivo > 0 ? objetivo - disponible : null };
+}
+
 function manejarRiego(interpretado) {
   const data = load();
   const lote = buscarLotes(data, interpretado.lote, interpretado.campo)[0];
@@ -145,14 +163,29 @@ function manejarRiego(interpretado) {
   const costoTotal = tarifaMm * mm * (Number(lote.hectareas) || 0);
   data.actividades.push({ id: uid(), loteId: lote.id, cicloId: cicloActivo(data, lote.id)?.id || null, tipo: 'Riego', fecha: fechaDe(interpretado), mm, fuente: interpretado.fuente || undefined, items: [], costoTotal, notas: '' });
   save(data);
-  const acumulado = data.actividades.filter(a => a.loteId === lote.id && a.tipo === 'Riego' && a.mm).reduce((s, a) => s + Number(a.mm), 0);
-  const objetivo = Number(lote.objetivoRiego) || 0;
-  const falta = objetivo > 0 ? Math.max(0, objetivo - acumulado) : null;
+  const bal = balanceRiego(data, lote);
   let texto = `✅ Riego cargado: ${nombreConCampo(data, lote)} — ${mm}mm${interpretado.fuente ? ` (${interpretado.fuente})` : ''}`;
   if (corregido) texto += `\n(interpreté "${interpretado.mm}" como ${mm}mm — avisame si no era eso)`;
-  texto += `\nAcumulado: ${acumulado}mm`;
-  if (falta !== null) texto += ` · Faltan ${falta}mm para el objetivo`;
+  texto += `\nRiego acumulado: ${bal.acumuladoRiego}mm`;
+  if (bal.acumuladoLluvia > 0) texto += ` · Lluvia acumulada: ${bal.acumuladoLluvia}mm`;
+  if (bal.balance !== null) texto += bal.balance >= 0 ? ` · Faltan ${bal.balance}mm para el objetivo` : ` · Sobran ${Math.abs(bal.balance)}mm sobre el objetivo`;
   if (costoTotal > 0) texto += `\nCosto: USD ${costoTotal.toFixed(0)}`;
+  return texto;
+}
+
+function manejarPrecipitacion(interpretado) {
+  const data = load();
+  const lote = buscarLotes(data, interpretado.lote, interpretado.campo)[0];
+  let mm = Number(interpretado.mm);
+  let corregido = false;
+  if (mm > 500 && mm % 1000 === 0) { mm = mm / 1000; corregido = true; }
+  data.actividades.push({ id: uid(), loteId: lote.id, cicloId: cicloActivo(data, lote.id)?.id || null, tipo: 'Riego', fecha: fechaDe(interpretado), mm, fuente: 'Lluvia', items: [], costoTotal: 0, notas: '' });
+  save(data);
+  const bal = balanceRiego(data, lote);
+  let texto = `✅ Lluvia registrada: ${nombreConCampo(data, lote)} — ${mm}mm`;
+  if (corregido) texto += `\n(interpreté "${interpretado.mm}" como ${mm}mm — avisame si no era eso)`;
+  texto += `\nPrecipitaciones acumuladas: ${bal.acumuladoLluvia}mm · Riego acumulado: ${bal.acumuladoRiego}mm`;
+  if (bal.balance !== null) texto += bal.balance >= 0 ? ` · Faltan ${bal.balance}mm para el objetivo` : ` · Sobran ${Math.abs(bal.balance)}mm sobre el objetivo`;
   return texto;
 }
 
@@ -262,6 +295,8 @@ function manejarFertilizacion(interpretado) {
   return manejarAplicacion(interpretado, 'Fertilización');
 }
 
+const OBJETIVO_RIEGO_POR_CULTIVO = { 'Garbanzo': 400, 'Trigo': 550, 'Soja': 120, 'Maíz': 200 };
+
 function manejarSiembra(interpretado) {
   const data = load();
   const lote = buscarLotes(data, interpretado.lote, interpretado.campo)[0];
@@ -279,11 +314,17 @@ function manejarSiembra(interpretado) {
   const esVerano = ['Soja', 'Maíz'].includes(interpretado.cultivo);
   data.ciclos = (data.ciclos || []).map(c => (c.loteId === lote.id && !c.fechaFin) ? { ...c, fechaFin: hoy() } : c);
   data.ciclos.push({ id: uid(), loteId: lote.id, cultivo: interpretado.cultivo, tipo: esVerano ? 'Verano' : 'Invierno', campaña: String(new Date().getFullYear()), alquiler: 0, fechaInicio: hoy(), fechaFin: null });
+  // Autocompleta el objetivo de riego del lote segun el cultivo (agua útil a 2m + riego/lluvia)
+  const objetivoAuto = OBJETIVO_RIEGO_POR_CULTIVO[interpretado.cultivo];
+  if (objetivoAuto && (lote.modo || 'Riego') === 'Riego') {
+    data.lotes = data.lotes.map(l => l.id === lote.id ? { ...l, objetivoRiego: objetivoAuto } : l);
+  }
   save(data);
   let texto = `✅ Siembra cargada: ${nombreConCampo(data, lote)} — ${interpretado.cultivo}${interpretado.variedad ? ` ${interpretado.variedad}` : ''}${interpretado.metodo ? ` (${interpretado.metodo})` : ''}`;
   if (interpretado.densidad) texto += `\nDensidad: ${interpretado.densidad} kg/ha`;
   if (haReales) texto += `\n${haReales}ha` + (haFacturadas !== haReales ? ` reales / ${haFacturadas}ha facturadas` : '');
   if (costoContratista > 0) texto += `\nCosto contratista: USD ${costoContratista.toFixed(0)}`;
+  if (objetivoAuto && (lote.modo || 'Riego') === 'Riego') texto += `\nObjetivo de riego seteado en ${objetivoAuto}mm (agua útil a 2m + riego + lluvia)`;
   return texto;
 }
 
@@ -485,6 +526,7 @@ function manejarNota(interpretado) {
 async function procesar(interpretado, contacto) {
   switch (interpretado.tipo) {
     case 'riego': return manejarRiego(interpretado);
+    case 'precipitacion': return manejarPrecipitacion(interpretado);
     case 'pulverizacion': return manejarPulverizacion(interpretado);
     case 'siembra': return manejarSiembra(interpretado);
     case 'fertilizacion': return manejarFertilizacion(interpretado);
