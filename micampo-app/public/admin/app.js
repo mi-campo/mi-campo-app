@@ -456,6 +456,7 @@ function AportesParticipante({
 }) {
   const categorias = participante.categoriasAporte || [];
   const todoTildado = categorias.includes('Todo');
+  const [abierto, setAbierto] = useState(false);
   const toggle = cat => {
     let nuevas;
     if (cat === 'Todo') {
@@ -472,6 +473,7 @@ function AportesParticipante({
       })
     }));
   };
+  const resumen = todoTildado ? 'Todo' : categorias.length > 0 ? categorias.join(', ') : 'nada tildado';
   return /*#__PURE__*/React.createElement("div", {
     style: {
       marginTop: 4,
@@ -479,13 +481,26 @@ function AportesParticipante({
       paddingLeft: 10,
       borderLeft: '2px solid #e3e1d8'
     }
-  }, /*#__PURE__*/React.createElement("div", {
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: () => setAbierto(!abierto),
     style: {
+      ...btnGhost,
       fontSize: 11,
-      color: '#888780',
-      marginBottom: 4
+      padding: '2px 6px',
+      display: 'flex',
+      alignItems: 'center',
+      gap: 4
     }
-  }, "Qué aporta:"), /*#__PURE__*/React.createElement("label", {
+  }, abierto ? '▾' : '▸', " Qué aporta: ", /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: '#5f5e5a',
+      fontWeight: 400
+    }
+  }, resumen)), abierto && /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 6
+    }
+  }, /*#__PURE__*/React.createElement("label", {
     style: {
       display: 'inline-flex',
       gap: 4,
@@ -536,7 +551,7 @@ function AportesParticipante({
     type: "checkbox",
     checked: categorias.includes(cat),
     onChange: () => toggle(cat)
-  }), cat))))));
+  }), cat)))))));
 }
 function ParticipacionCampo({
   campo,
@@ -548,6 +563,7 @@ function ParticipacionCampo({
     clienteId: '',
     porcentaje: ''
   });
+  const [abierto, setAbierto] = useState(false);
   const agregar = () => {
     if (!nuevo.clienteId) return;
     update('campos', cs => cs.map(c => c.id === campo.id ? {
@@ -579,6 +595,10 @@ function ParticipacionCampo({
 
   // Compatibilidad: si el campo todavia usa el modelo viejo (un solo cliente) y no tiene participantes cargados, se muestra como referencia
   const clienteViejo = !participantes.length && campo.clienteId ? data.clientes.find(c => c.id === campo.clienteId) : null;
+  const resumenCompacto = participantes.map(p => {
+    const cliente = data.clientes.find(c => c.id === p.clienteId);
+    return `${cliente?.nombre || '?'}${p.porcentaje != null ? ` (${p.porcentaje}%)` : ''}`;
+  }).join(' · ');
   return /*#__PURE__*/React.createElement("div", {
     style: {
       margin: '8px 0',
@@ -586,13 +606,32 @@ function ParticipacionCampo({
       background: '#faf9f5',
       borderRadius: 8
     }
-  }, /*#__PURE__*/React.createElement("div", {
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: () => setAbierto(!abierto),
     style: {
+      ...btnGhost,
       fontSize: 12,
-      color: '#888780',
-      marginBottom: 6
+      padding: '3px 6px',
+      display: 'flex',
+      alignItems: 'center',
+      gap: 6,
+      width: '100%',
+      justifyContent: 'flex-start'
     }
-  }, "Participación / propietarios"), clienteViejo && /*#__PURE__*/React.createElement("div", {
+  }, abierto ? '▾' : '▸', " ", /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: '#888780'
+    }
+  }, "Participación / propietarios"), !abierto && resumenCompacto && /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: '#5f5e5a',
+      fontWeight: 400
+    }
+  }, "— ", resumenCompacto)), abierto && /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 8
+    }
+  }, clienteViejo && /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 13,
       color: '#993C1D',
@@ -703,7 +742,7 @@ function ParticipacionCampo({
     campo: campo,
     participantes: participantes,
     data: data
-  }));
+  })));
 }
 function ResumenGastosCampo({
   campo,
