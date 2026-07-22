@@ -1441,6 +1441,11 @@ function Riego({
     ...l,
     objetivoRiego: Number(val) || 0
   } : l));
+  const [expandidos, setExpandidos] = useState({});
+  const toggle = id => setExpandidos(e => ({
+    ...e,
+    [id]: !e[id]
+  }));
   return /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
@@ -1520,7 +1525,35 @@ function Riego({
       style: {
         fontSize: 14
       }
-    }, aguaUtil ? `${aguaUtil.aguaUtilMm}mm (${aguaUtil.fecha})` : 'Sin datos'))));
+    }, aguaUtil ? `${aguaUtil.aguaUtilMm}mm (${aguaUtil.fecha})` : 'Sin datos'))), riegosLote.length > 0 && /*#__PURE__*/React.createElement("div", {
+      style: {
+        marginTop: 10
+      }
+    }, /*#__PURE__*/React.createElement("button", {
+      onClick: () => toggle(l.id),
+      style: {
+        ...btnGhost,
+        fontSize: 12
+      }
+    }, expandidos[l.id] ? '▲ Ocultar detalle' : `▼ Ver ${riegosLote.length} riego(s) individuales`), expandidos[l.id] && /*#__PURE__*/React.createElement("div", {
+      style: {
+        marginTop: 6
+      }
+    }, riegosLote.map(r => /*#__PURE__*/React.createElement("div", {
+      key: r.id,
+      style: {
+        fontSize: 13,
+        padding: '4px 0',
+        borderTop: '1px solid #f1efe8',
+        color: '#5f5e5a'
+      }
+    }, r.fecha, " — ", r.mm, "mm", r.fuente ? ` (${r.fuente})` : '')), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 11,
+        color: '#888780',
+        marginTop: 4
+      }
+    }, "Para editar o borrar un registro, andá a la pestaña Actividades y filtrá por este lote."))));
   }));
 }
 
@@ -1911,6 +1944,8 @@ function Actividades({
     cantidad: ''
   }]);
   const [editandoId, setEditandoId] = useState(null);
+  const [filtroTipo, setFiltroTipo] = useState('');
+  const [filtroLote, setFiltroLote] = useState('');
   const esAplicacion = TIPOS_CON_APLICACION.includes(form.tipo);
   const revertirStock = act => {
     if (!act.items || act.items.length === 0) return;
@@ -2269,10 +2304,54 @@ function Actividades({
     }
   }, "Cancelar edición")), /*#__PURE__*/React.createElement(Card, null, /*#__PURE__*/React.createElement("div", {
     style: {
-      fontWeight: 500,
-      marginBottom: 10
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 10,
+      flexWrap: 'wrap',
+      gap: 8
     }
-  }, "Historial"), [...data.actividades].sort((a, b) => (b.fecha || '').localeCompare(a.fecha || '')).slice(0, 30).map(act => {
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: 500
+    }
+  }, "Historial"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      gap: 8
+    }
+  }, /*#__PURE__*/React.createElement("select", {
+    style: {
+      ...inputStyle,
+      fontSize: 13,
+      padding: '5px 8px'
+    },
+    value: filtroTipo,
+    onChange: e => setFiltroTipo(e.target.value)
+  }, /*#__PURE__*/React.createElement("option", {
+    value: ""
+  }, "Todos los tipos"), TIPOS_ACTIVIDAD.map(t => /*#__PURE__*/React.createElement("option", {
+    key: t,
+    value: t
+  }, t))), /*#__PURE__*/React.createElement("select", {
+    style: {
+      ...inputStyle,
+      fontSize: 13,
+      padding: '5px 8px'
+    },
+    value: filtroLote,
+    onChange: e => setFiltroLote(e.target.value)
+  }, /*#__PURE__*/React.createElement("option", {
+    value: ""
+  }, "Todos los lotes"), lotesConCampo.map(l => /*#__PURE__*/React.createElement("option", {
+    key: l.id,
+    value: l.id
+  }, l.campoNombre, " — ", l.nombre))))), data.actividades.filter(a => (!filtroTipo || a.tipo === filtroTipo) && (!filtroLote || a.loteId === filtroLote)).length === 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      color: '#888780',
+      fontSize: 13
+    }
+  }, "Sin actividades que coincidan con el filtro."), [...data.actividades].filter(a => (!filtroTipo || a.tipo === filtroTipo) && (!filtroLote || a.loteId === filtroLote)).sort((a, b) => (b.fecha || '').localeCompare(a.fecha || '')).slice(0, 30).map(act => {
     const lote = data.lotes.find(l => l.id === act.loteId);
     const haInfo = act.haReales ? ` · ${act.haReales}ha` + (act.haFacturadas && act.haFacturadas != act.haReales ? ` (${act.haFacturadas}ha facturadas)` : '') : '';
     const siembraInfo = act.tipo === 'Siembra' && act.cultivo ? ` — ${act.cultivo}${act.variedad ? ' ' + act.variedad : ''}${act.densidad ? ` (${act.densidad} kg/ha)` : ''}` : '';
