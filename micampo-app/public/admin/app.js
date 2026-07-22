@@ -444,7 +444,7 @@ function Resumen({
 
 /* ---------- CAMPOS Y LOTES ---------- */
 const GRUPOS_APORTE = {
-  'Insumos': ['Herbicidas', 'Fungicidas', 'Insecticidas', 'Coadyuvantes', 'Semilla', 'Fertilizante'],
+  'Insumos': ['Insumos'],
   'Labores': ['Siembra', 'Siembra con fertilización', 'Siembra con drone', 'Fertilización voleo', 'Fertilización drone', 'Pulverización terrestre', 'Pulverización avión', 'Pulverización drone', 'Cosecha'],
   'Otros rubros': ['Alquiler', 'Riego']
 };
