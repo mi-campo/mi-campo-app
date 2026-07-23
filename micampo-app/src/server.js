@@ -4,14 +4,14 @@ const path = require('path');
 const fetch = require('node-fetch');
 const { configurarSesion, requireLogin } = require('./auth');
 const apiRoutes = require('./api');
-const { interpretarMensaje } = require('./claudeParser');
-const { validar, procesar } = require('./botHandlers');
+const { interpretarMensaje, interpretarAnalisisDocumento } = require('./claudeParser');
+const { validar, procesar, manejarAnalisisDocumento } = require('./botHandlers');
 const { sacarPendiente, guardarPendiente, load } = require('./db');
 
 const ETIQUETAS_TIPO = {
   riego: 'Riego', precipitacion: 'Lluvia', siembra: 'Siembra', fertilizacion: 'Fertilización', pulverizacion: 'Pulverización',
   cosecha: 'Cosecha', compra: 'Compra de insumo', analisis_agua: 'Análisis de agua', analisis_suelo: 'Análisis de suelo',
-  nota: 'Nota', consulta: 'Consultas / preguntas', aporte_insumo: 'Aporte de insumo',
+  nota: 'Nota', consulta: 'Consultas / preguntas', aporte_insumo: 'Aporte de insumo', analisis_foto: 'Análisis por foto/PDF',
 };
 
 function normalizarNumero(n) {
@@ -75,10 +75,39 @@ app.post('/webhook', async (req, res) => {
     const entry = req.body.entry?.[0];
     const change = entry?.changes?.[0];
     const mensaje = change?.value?.messages?.[0];
-    if (!mensaje || mensaje.type !== 'text') return;
+    if (!mensaje) return;
+
+    const numeroRemitente = mensaje.from;
+
+    // Documento (PDF) o foto de un análisis
+    if (mensaje.type === 'document' || mensaje.type === 'image') {
+      const permisoDoc = verificarPermiso(numeroRemitente, 'analisis_foto');
+      if (!permisoDoc.ok) {
+        if (permisoDoc.motivo === 'no_registrado') {
+          await enviarMensajeWA(numeroRemitente, '🚫 Tu número no está autorizado para usar este sistema.');
+        } else {
+          await enviarMensajeWA(numeroRemitente, '🚫 Tu número no está autorizado a mandar análisis por foto.');
+        }
+        return;
+      }
+      const media = mensaje.type === 'document' ? mensaje.document : mensaje.image;
+      const caption = media.caption || '';
+      console.log(`Documento/foto de ${numeroRemitente}, caption: "${caption}"`);
+      try {
+        const { base64, mimeType } = await descargarMediaWhatsApp(media.id);
+        const resultado = await interpretarAnalisisDocumento(base64, mimeType, caption);
+        const textoRespuesta = await manejarAnalisisDocumento(resultado, permisoDoc.contacto);
+        await enviarMensajeWA(numeroRemitente, textoRespuesta);
+      } catch (err) {
+        console.error('Error procesando documento de WhatsApp:', err);
+        await enviarMensajeWA(numeroRemitente, '⚠️ Hubo un error leyendo ese archivo. Probá de nuevo, o mandalo como foto en vez de PDF (o al revés).');
+      }
+      return;
+    }
+
+    if (mensaje.type !== 'text') return;
 
     const textoRecibido = mensaje.text.body.trim();
-    const numeroRemitente = mensaje.from;
     console.log(`Mensaje de ${numeroRemitente}: ${textoRecibido}`);
 
     const pendiente = sacarPendiente(numeroRemitente);
@@ -118,6 +147,16 @@ app.post('/webhook', async (req, res) => {
     console.error('Error procesando mensaje:', err);
   }
 });
+
+async function descargarMediaWhatsApp(mediaId) {
+  const metaRes = await fetch(`https://graph.facebook.com/v21.0/${mediaId}`, {
+    headers: { Authorization: `Bearer ${process.env.WHATSAPP_TOKEN}` },
+  });
+  const meta = await metaRes.json();
+  const fileRes = await fetch(meta.url, { headers: { Authorization: `Bearer ${process.env.WHATSAPP_TOKEN}` } });
+  const buffer = await fileRes.buffer();
+  return { base64: buffer.toString('base64'), mimeType: meta.mime_type };
+}
 
 const CAMPOS_NUMERICOS = ['mm', 'cantidadTotal', 'kgCampo', 'cantidad', 'precioUnitario', 'aguaUtilMm', 'haReales', 'densidad'];
 function parsearRespuesta(campo, texto) {
