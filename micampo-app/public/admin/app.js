@@ -2066,6 +2066,18 @@ function CalculoFertilizacion({
       fontSize: 12,
       color: '#8A6D00'
     }
+  }, "Promedio a aplicar"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 18,
+      fontWeight: 500,
+      color: '#8A6D00',
+      marginBottom: 8
+    }
+  }, (ureaTotalLote / (Number(lote.hectareas) || 1)).toFixed(0), " kg urea/ha"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: '#8A6D00'
+    }
   }, "Total urea a comprar/aplicar en todo el lote (", lote.hectareas, "ha)"), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 24,
