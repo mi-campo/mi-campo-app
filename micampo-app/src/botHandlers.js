@@ -548,4 +548,36 @@ async function procesar(interpretado, contacto) {
   }
 }
 
-module.exports = { validar, procesar };
+const ETIQUETAS_ESTADO = { ok: '🟢 OK', alerta: '🟡 ALERTA', critico: '🔴 CRÍTICO' };
+
+async function manejarAnalisisDocumento(resultado, contacto) {
+  const data = load();
+  if (!resultado) return '⚠️ No pude leer el análisis de esa foto/PDF. Probá con una foto más clara, o mandalo de nuevo.';
+
+  const r = resolverLote(data, resultado.lote, resultado.campo);
+  if (!r.ok) {
+    return `${r.pregunta}\n\n(Mandá el análisis de nuevo con el campo y el lote en el texto del mensaje, ej: "Efraín — C4")`;
+  }
+  const lote = r.lote;
+  const campoDelLote = data.campos.find(c => c.id === lote.campoId);
+  if (contacto?.clienteId && !((campoDelLote?.clienteId === contacto.clienteId) || (campoDelLote?.participantes || []).some(p => p.clienteId === contacto.clienteId))) {
+    return '🚫 Ese lote no es de tus campos, no tengo permitido cargar ahí.';
+  }
+
+  if (resultado.nNo3_0_20 != null || resultado.nNo3_20_60 != null || resultado.mo != null || resultado.ph != null) {
+    data.analisis.push({
+      id: uid(), loteId: lote.id, tipo: 'Fertilidad', fecha: hoy(),
+      nNo3_0_20: resultado.nNo3_0_20 ?? '', nNo3_20_60: resultado.nNo3_20_60 ?? '', mo: resultado.mo ?? '', ph: resultado.ph ?? '',
+    });
+    save(data);
+  }
+
+  let texto = `📋 Análisis de ${nombreConCampo(data, lote)} — ${ETIQUETAS_ESTADO[resultado.resumenGeneral] || '🟢 OK'}`;
+  (resultado.parametros || []).forEach(p => {
+    texto += `\n${ETIQUETAS_ESTADO[p.estado] || '🟢'} ${p.nombre}: ${p.valor}${p.comentario ? ` — ${p.comentario}` : ''}`;
+  });
+  if (resultado.nNo3_0_20 != null || resultado.mo != null) texto += `\n\nDatos base guardados — ya los podés usar en la pestaña Fertilización para la recomendación.`;
+  return texto;
+}
+
+module.exports = { validar, procesar, manejarAnalisisDocumento };
