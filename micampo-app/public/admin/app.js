@@ -384,7 +384,11 @@ function Mercado() {
   const cargar = forzar => {
     setCargando(true);
     setError('');
-    fetch('/api/mercado' + (forzar ? '?forzar=1' : '')).then(r => r.ok ? r.json() : Promise.reject(r)).then(setMercado).catch(() => setError('No se pudo obtener la información de mercado ahora mismo.')).finally(() => setCargando(false));
+    fetch('/api/mercado' + (forzar ? '?forzar=1' : '')).then(async r => {
+      if (r.ok) return r.json();
+      const body = await r.json().catch(() => ({}));
+      throw new Error(body.error || `Error ${r.status}`);
+    }).then(setMercado).catch(err => setError(err.message || 'No se pudo obtener la información de mercado ahora mismo.')).finally(() => setCargando(false));
   };
   useEffect(() => {
     cargar(false);
@@ -425,7 +429,7 @@ function Mercado() {
       fontSize: 13,
       color: '#888780'
     }
-  }, "Buscando precios y noticias…")), error && !mercado && /*#__PURE__*/React.createElement(Card, null, /*#__PURE__*/React.createElement("div", {
+  }, "Buscando precios y noticias… puede tardar hasta 1 minuto, está buscando en la web en vivo.")), error && !mercado && /*#__PURE__*/React.createElement(Card, null, /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 13,
       color: '#A32D2D'
@@ -1973,7 +1977,11 @@ function CalculoFertilizacion({
     mo: '',
     ph: ''
   });
-  const [rendObj, setRendObj] = useState('');
+  const rendObj = lote.rendimientoObjetivo != null ? String(lote.rendimientoObjetivo) : '';
+  const setRendObj = val => update('lotes', ls => ls.map(l => l.id === lote.id ? {
+    ...l,
+    rendimientoObjetivo: val
+  } : l));
   const [calibracion, setCalibracion] = useState('original');
   const [pctZona1, setPctZona1] = useState('50');
   const guardarBase = () => {
@@ -2892,7 +2900,11 @@ function Riego({
   data,
   update
 }) {
-  const lotesRiego = data.lotes.filter(l => (l.modo || 'Riego') === 'Riego');
+  const lotesRiego = [...data.lotes.filter(l => (l.modo || 'Riego') === 'Riego')].sort((a, b) => {
+    const tieneA = cicloActivo(data, a.id) ? 0 : 1;
+    const tieneB = cicloActivo(data, b.id) ? 0 : 1;
+    return tieneA - tieneB;
+  });
   const setObjetivo = (loteId, val) => update('lotes', ls => ls.map(l => l.id === loteId ? {
     ...l,
     objetivoRiego: Number(val) || 0
