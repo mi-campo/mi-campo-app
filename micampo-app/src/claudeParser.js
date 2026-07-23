@@ -128,3 +128,48 @@ Usá números redondeados y unidades (mm, kg, ha, USD) donde corresponda. No use
 }
 
 module.exports.responderConsulta = responderConsulta;
+
+async function interpretarAnalisisDocumento(base64, mediaType, caption) {
+  const response = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': process.env.ANTHROPIC_API_KEY,
+      'anthropic-version': '2023-06-01',
+    },
+    body: JSON.stringify({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 1200,
+      system: `Sos un asistente agronómico que lee análisis de suelo o agua (fotos o PDF, de laboratorios de la zona de Córdoba, Argentina) y evalúa cada parámetro contra rangos normales para agricultura extensiva (trigo, soja, maíz, garbanzo).
+También te llega el texto que la persona escribió junto con el archivo (el "caption" de WhatsApp) — ahí generalmente aclaran de qué campo y lote es ese análisis.
+
+Devolvé SOLO un JSON, sin texto antes ni después, sin \`\`\`, con esta forma exacta:
+{"campo":"<nombre del campo si lo mencionan en el texto, o null>","lote":"<nombre/código del lote si lo mencionan, o null>","nNo3_0_20":<numero en ppm si el análisis lo trae, o null>,"nNo3_20_60":<numero en ppm si lo trae, o null>,"mo":<numero de materia orgánica en % si lo trae, o null>,"ph":<numero de pH si lo trae, o null>,"parametros":[{"nombre":"<nombre del parámetro>","valor":"<valor con unidad>","estado":"ok"|"alerta"|"critico","comentario":"<vacío si ok; si no, 1 frase corta explicando qué está fuera de lo normal>"}],"resumenGeneral":"ok"|"alerta"|"critico"}
+
+Reglas:
+- "ok" (verde): dentro de rango normal. "alerta" (amarillo): algo fuera de lo normal. "critico" (rojo): muy fuera de lo normal.
+- "resumenGeneral" es "critico" si cualquier parámetro es crítico, si no "alerta" si cualquiera es alerta, si no "ok".
+- Si no podés leer algún valor con claridad, no lo incluyas (mejor omitir que inventar).
+- Para nNo3_0_20, nNo3_20_60, mo y ph: completá el número si el análisis lo trae, aunque el estado de ese parámetro sea "alerta" o "critico" — siempre que puedas leerlo con confianza.
+- Ante la duda entre ok y alerta, elegí alerta.`,
+      messages: [{
+        role: 'user',
+        content: [
+          { type: mediaType === 'application/pdf' ? 'document' : 'image', source: { type: 'base64', media_type: mediaType, data: base64 } },
+          { type: 'text', text: `Texto que mandó la persona junto con el archivo: "${caption || '(sin texto)'}"\n\nAnalizá el archivo y devolveme el JSON pedido.` },
+        ],
+      }],
+    }),
+  });
+  if (!response.ok) return null;
+  const data = await response.json();
+  const textoRespuesta = data.content.map(b => b.text || '').join('');
+  const limpio = textoRespuesta.trim().replace(/^```(json)?\n?/, '').replace(/```$/, '').trim();
+  try {
+    return JSON.parse(limpio);
+  } catch (e) {
+    return null;
+  }
+}
+
+module.exports.interpretarAnalisisDocumento = interpretarAnalisisDocumento;
