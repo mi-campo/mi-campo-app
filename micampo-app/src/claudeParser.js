@@ -139,24 +139,52 @@ async function interpretarAnalisisDocumento(base64, mediaType, caption) {
     },
     body: JSON.stringify({
       model: 'claude-haiku-4-5-20251001',
-      max_tokens: 1200,
-      system: `Sos un asistente agronómico que lee análisis de suelo o agua (fotos o PDF, de laboratorios de la zona de Córdoba, Argentina) y evalúa cada parámetro contra rangos normales para agricultura extensiva (trigo, soja, maíz, garbanzo).
-También te llega el texto que la persona escribió junto con el archivo (el "caption" de WhatsApp) — ahí generalmente aclaran de qué campo y lote es ese análisis.
+      max_tokens: 3000,
+      system: `Sos un asistente agronómico que lee informes de análisis de suelo o agua (fotos o PDF) para agricultura extensiva en Córdoba, Argentina (trigo, soja, maíz, garbanzo).
+También te llega el texto que la persona escribió junto con el archivo (el "caption" de WhatsApp) — puede aclarar de qué campo/lote es cada muestra, pero si la tabla del informe ya trae esos datos, priorizá SIEMPRE lo que dice la tabla por sobre el texto.
+
+FORMATO TÍPICO DE INFORME (laboratorio AgLab u otros similares) — leelo así si el archivo tiene esta estructura:
+- Es una tabla con columnas: Oblea, Campo, Lote, Ref.Lote, Prof, pH, Cond, MO, P, N Total, N-NO3, S, K, Ca, Mg, Na, CIC, %SB, Ca/Mg, Zn, Cu, Mn, B, Co, Mo, Fe, DAP, PSI (puede haber más).
+- CADA MUESTRA/SITIO OCUPA DOS FILAS: una fila con Prof="20 cm" que trae TODOS los parámetros (pH, Cond, MO, P, N Total, N-NO3, S, K, Ca, Mg, Na, CIC, etc.), y la fila siguiente con Prof="60 cm" que trae SOLO un valor de N-NO3 (el nitrato a esa profundidad). Tratá cada PAR de filas (20cm + 60cm) como UNA sola muestra.
+- "nNo3_0_20" = el valor de N-NO3 de la fila de 20cm. "nNo3_20_60" = el valor (único) de la fila de 60cm.
+- Campo y Lote para cada muestra salen DIRECTAMENTE de las columnas "Campo" y "Lote" de esa fila de la tabla — leelas tal cual están escritas (ej "EL ROSARIO", "C1-1", "EFRAIN", "C4-1"). Si hay columna "Ref.Lote" con una aclaración (ej "SOBREPOSICION"), agregala al muestraLabel.
+- Si el archivo NO tiene este formato de tabla (es un análisis de otro tipo, una sola muestra, otro laboratorio), interpretalo igual con tu criterio general, usando el caption para campo/lote si la imagen no lo aclara.
+
+RANGOS DE REFERENCIA (los mismos que trae el informe AgLab, usalos tal cual salvo que el archivo traiga otros explícitos):
+- pH: <6.5 Ácido, 6.5-7.3 Neutro, >7.3 Básico. Neutro = ok. Ácido o Básico = alerta (crítico si <5.5 o >8).
+- Conductividad (dS/m): <0.2 Bajo(ok), 0.2-0.4 Medio(alerta), >0.4 Alto(crítico) — ACÁ ALTO ES MALO (riesgo de salinidad).
+- Materia orgánica (%): <1 Bajo(crítico), 1-2.5 Medio(alerta), >2.5 Alto(ok) — acá bajo es malo.
+- Fósforo/P (ppm): <10 Bajo(crítico), 10-18 Medio(alerta), >18 Alto(ok) — bajo es malo.
+- N-NO3 (ppm): <10 Bajo(alerta), 10-20 Medio(ok), >20 Alto(ok, buena disponibilidad).
+- Azufre/S (ppm): <10 Bajo(alerta), 10-20 Medio(ok), >20 Alto(ok).
+- Potasio/K (meq/100g): <0.4 Bajo(crítico), 0.4-0.8 Medio(alerta), >0.8 Alto(ok).
+- Calcio/Ca (meq/100g): <4 Bajo(alerta), 4-9 Medio(ok), >9 Alto(ok).
+- Magnesio/Mg (meq/100g): <1 Bajo(alerta), 1-3 Medio(ok), >3 Alto(ok).
+- Sodio/Na (meq/100g): <0.2 ok, 0.2-2 Medio(alerta si tira alto dentro del rango), >2 Alto(crítico) — acá alto es malo (sodicidad).
+- CIC (meq/100g): <12 Bajo(alerta), 12-20 Medio(ok), >20 Alto(ok).
+- Saturación de bases/%SB: <45 Bajo(alerta), 45-70 Medio(ok), >70 Alto(ok).
+- Relación Ca/Mg: <2 Bajo(alerta, exceso relativo de Mg), 2-7 Medio(ok), >7 Alto(alerta, exceso relativo de Ca).
+- Zinc/Zn, Cobre/Cu (ppm): <0.6 Bajo(alerta), 0.6-2 Medio(ok), >2 Alto(ok).
+- Manganeso/Mn (ppm): <35 Bajo(alerta), 35-120 Medio(ok), >120 Alto(ok).
+- Boro/B (ppm): <0.4 Bajo(alerta), 0.4-0.9 Medio(ok), >0.9 Alto(alerta, el boro en exceso es tóxico — a diferencia de otros micronutrientes, acá alto también es alerta).
+- Hierro/Fe (ppm): <60 Bajo(alerta), 60-90 Medio(ok), >90 Alto(ok).
+- PSI (%): <5 Bajo(ok), 5-15 Medio(alerta), >15 Alto(crítico) — acá alto es malo (sodicidad).
 
 Devolvé SOLO un JSON, sin texto antes ni después, sin \`\`\`, con esta forma exacta:
-{"campo":"<nombre del campo si lo mencionan en el texto, o null>","lote":"<nombre/código del lote si lo mencionan, o null>","nNo3_0_20":<numero en ppm si el análisis lo trae, o null>,"nNo3_20_60":<numero en ppm si lo trae, o null>,"mo":<numero de materia orgánica en % si lo trae, o null>,"ph":<numero de pH si lo trae, o null>,"parametros":[{"nombre":"<nombre del parámetro>","valor":"<valor con unidad>","estado":"ok"|"alerta"|"critico","comentario":"<vacío si ok; si no, 1 frase corta explicando qué está fuera de lo normal>"}],"resumenGeneral":"ok"|"alerta"|"critico"}
+{"muestras":[{"muestraLabel":"<ej 'El Rosario C1-1', o el campo+lote+ref si los hay, para identificar la fila>","campo":"<nombre del campo tal cual está en la tabla o en el texto, o null>","lote":"<nombre/código del lote tal cual está en la tabla o el texto, o null>","nNo3_0_20":<numero en ppm de la fila 20cm, o null>,"nNo3_20_60":<numero en ppm de la fila 60cm, o null>,"mo":<numero de materia orgánica en %, o null>,"ph":<numero de pH, o null>,"parametros":[{"nombre":"<nombre del parámetro>","valor":"<valor con unidad>","estado":"ok"|"alerta"|"critico","comentario":"<vacío si ok; si no, 1 frase corta>"}],"resumenGeneral":"ok"|"alerta"|"critico"}]}
 
 Reglas:
-- "ok" (verde): dentro de rango normal. "alerta" (amarillo): algo fuera de lo normal. "critico" (rojo): muy fuera de lo normal.
-- "resumenGeneral" es "critico" si cualquier parámetro es crítico, si no "alerta" si cualquiera es alerta, si no "ok".
+- "resumenGeneral" de cada muestra es "critico" si cualquier parámetro de esa muestra es crítico, si no "alerta" si cualquiera es alerta, si no "ok".
 - Si no podés leer algún valor con claridad, no lo incluyas (mejor omitir que inventar).
-- Para nNo3_0_20, nNo3_20_60, mo y ph: completá el número si el análisis lo trae, aunque el estado de ese parámetro sea "alerta" o "critico" — siempre que puedas leerlo con confianza.
+- Para nNo3_0_20, nNo3_20_60, mo y ph: completá el número si el informe lo trae, aunque el estado de ese parámetro sea "alerta" o "critico".
+- Incluí en "parametros" los que puedas leer con confianza: como mínimo pH, MO, P, N-NO3, S, K; si hay más (Ca, Mg, Na, CIC, %SB, Ca/Mg, Zn, Cu, Mn, B, Fe, PSI), inclúilos también.
+- Si el texto de la persona (caption) aclara algo que la tabla no deja claro (por ejemplo a qué campo pertenece si la tabla no lo trae), usalo. Si la tabla y el texto contradicen, priorizá la tabla.
 - Ante la duda entre ok y alerta, elegí alerta.`,
       messages: [{
         role: 'user',
         content: [
           { type: mediaType === 'application/pdf' ? 'document' : 'image', source: { type: 'base64', media_type: mediaType, data: base64 } },
-          { type: 'text', text: `Texto que mandó la persona junto con el archivo: "${caption || '(sin texto)'}"\n\nAnalizá el archivo y devolveme el JSON pedido.` },
+          { type: 'text', text: `Texto que mandó la persona junto con el archivo: "${caption || '(sin texto)'}"\n\nAnalizá el archivo y devolveme el JSON pedido, una muestra por cada par de filas (20cm+60cm) o por cada sitio si el formato es distinto.` },
         ],
       }],
     }),
@@ -166,10 +194,41 @@ Reglas:
   const textoRespuesta = data.content.map(b => b.text || '').join('');
   const limpio = textoRespuesta.trim().replace(/^```(json)?\n?/, '').replace(/```$/, '').trim();
   try {
-    return JSON.parse(limpio);
+    const parsed = JSON.parse(limpio);
+    return parsed.muestras ? parsed.muestras : (parsed.parametros ? [parsed] : null); // compatibilidad si viniera en formato viejo
   } catch (e) {
     return null;
   }
 }
 
 module.exports.interpretarAnalisisDocumento = interpretarAnalisisDocumento;
+
+async function resolverMuestrasPorTexto(muestras, textoAclaracion) {
+  const response = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': process.env.ANTHROPIC_API_KEY,
+      'anthropic-version': '2023-06-01',
+    },
+    body: JSON.stringify({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 800,
+      system: `Te paso una lista de muestras de un análisis (con su índice y etiqueta, sin campo/lote asignado todavía) y un mensaje de texto donde la persona aclara a qué campo y lote corresponde cada una.
+Devolvé SOLO un JSON, sin texto antes ni después, sin \`\`\`, con esta forma: {"asignaciones":[{"indice":<indice de la muestra, empezando en 0>,"campo":"<nombre del campo>","lote":"<nombre/código del lote>"}]}
+Si el texto no aclara alguna muestra, no la incluyas en la lista.`,
+      messages: [{ role: 'user', content: `Muestras:\n${muestras.map((m, i) => `${i}: ${m.muestraLabel || 'sin etiqueta'}`).join('\n')}\n\nAclaración de la persona: "${textoAclaracion}"` }],
+    }),
+  });
+  if (!response.ok) return [];
+  const data = await response.json();
+  const textoRespuesta = data.content.map(b => b.text || '').join('');
+  const limpio = textoRespuesta.trim().replace(/^```(json)?\n?/, '').replace(/```$/, '').trim();
+  try {
+    return JSON.parse(limpio).asignaciones || [];
+  } catch (e) {
+    return [];
+  }
+}
+
+module.exports.resolverMuestrasPorTexto = resolverMuestrasPorTexto;
