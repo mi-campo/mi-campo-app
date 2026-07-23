@@ -1,4 +1,4 @@
-const { load, save, uid, buscarLotes, precioPromedio, cicloActivo } = require('./db');
+const { load, save, uid, buscarLotes, buscarLotesExacto, precioPromedio, cicloActivo } = require('./db');
 const { responderConsulta } = require('./claudeParser');
 
 function hoy() {
@@ -583,20 +583,26 @@ async function manejarAnalisisDocumento(muestras, contacto) {
 
   muestras.forEach(muestra => {
     if (!muestra.lote) { pendientes.push(muestra); return; }
-    const candidatos = buscarLotes(data, muestra.lote, muestra.campo);
-    if (candidatos.length !== 1) { pendientes.push(muestra); return; }
-    const lote = candidatos[0];
-    if (!tieneAccesoLote(data, lote, contacto)) { textos.push(`🚫 ${muestra.muestraLabel || 'Una muestra'} es de un lote que no es tuyo, no la cargué.`); return; }
-    textos.push(guardarMuestraYArmarTexto(data, muestra, lote));
-    huboGuardado = true;
+    const exactos = buscarLotesExacto(data, muestra.lote, muestra.campo);
+    if (exactos.length === 1) {
+      const lote = exactos[0];
+      if (!tieneAccesoLote(data, lote, contacto)) { textos.push(`🚫 ${muestra.muestraLabel || 'Una muestra'} es de un lote que no es tuyo, no la cargué.`); return; }
+      textos.push(guardarMuestraYArmarTexto(data, muestra, lote));
+      huboGuardado = true;
+      return;
+    }
+    // No hubo match exacto: no cargar solo, pedir confirmacion. Si hay un parecido, sugerirlo.
+    const parecidos = buscarLotes(data, muestra.lote, muestra.campo);
+    if (parecidos.length === 1) muestra._sugerencia = nombreConCampo(data, parecidos[0]);
+    pendientes.push(muestra);
   });
 
   if (huboGuardado) save(data);
 
   let texto = textos.join('\n\n');
   if (pendientes.length > 0) {
-    const listado = pendientes.map((m, i) => `${i + 1}) ${m.muestraLabel || 'Sin identificar'}`).join('\n');
-    texto += `${texto ? '\n\n' : ''}Estas muestras no las pude asignar a un lote:\n${listado}\n\nRespondé aclarando el campo y lote de cada una (ej: "1 es Efraín C4, 2 es La Nazarena C2").`;
+    const listado = pendientes.map((m, i) => `${i + 1}) ${m.muestraLabel || 'Sin identificar'}${m._sugerencia ? ` → ¿es "${m._sugerencia}"?` : ''}`).join('\n');
+    texto += `${texto ? '\n\n' : ''}Estas muestras no las pude confirmar con un lote exacto:\n${listado}\n\nRespondé aclarando el campo y lote de cada una (ej: "1 es Efraín C4, 2 es La Nazarena C2"), o "sí" si la sugerencia está bien.`;
   }
   if (huboGuardado) texto += `\n\nLos datos base quedaron guardados — ya los podés usar en la pestaña Fertilización.`;
   return { texto, pendientes: pendientes.length > 0 ? pendientes : null };
