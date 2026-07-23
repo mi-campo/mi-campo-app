@@ -244,18 +244,22 @@ Si el texto no aclara alguna muestra, no la incluyas en la lista.`,
 module.exports.resolverMuestrasPorTexto = resolverMuestrasPorTexto;
 
 async function consultarMercado() {
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': process.env.ANTHROPIC_API_KEY,
-      'anthropic-version': '2023-06-01',
-    },
-    body: JSON.stringify({
-      model: 'claude-sonnet-5',
-      max_tokens: 2500,
-      tools: [{ type: 'web_search_20250305', name: 'web_search' }],
-      system: `Sos un analista de mercado de granos experimentado, con el estilo directo y sin vueltas de los analistas argentinos de bolsa de cereales (tipo Nóvitas/Enrique Erize): concreto, sin especular de más, sin adornos.
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 75000); // 75s de margen — el web search puede tardar
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': process.env.ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01',
+      },
+      signal: controller.signal,
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 3000,
+        tools: [{ type: 'web_search_20250305', name: 'web_search' }],
+        system: `Sos un analista de mercado de granos experimentado, con el estilo directo y sin vueltas de los analistas argentinos de bolsa de cereales (tipo Nóvitas/Enrique Erize): concreto, sin especular de más, sin adornos.
 
 Buscá en la web los precios ACTUALES de soja, maíz y trigo — preferentemente el precio pizarra/físico de Rosario, Argentina (en USD/tn) si lo encontrás actualizado, y como referencia también el futuro más cercano de Chicago (CBOT, en USD/tn). Compará cada uno contra el promedio de las últimas 2-4 semanas. Buscá también noticias recientes (últimos días) que puedan afectar estos precios: clima (El Niño/La Niña, sequías o excesos de humedad en el Corn Belt de EEUU, en Argentina o Brasil), geopolítica (conflictos, bloqueos, sanciones que afecten exportación/logística de granos), políticas comerciales (aranceles, retenciones, acuerdos).
 
@@ -267,22 +271,31 @@ Reglas:
 - No inventes precios ni noticias — si no encontrás algo confiable y reciente, omitilo antes que inventar.
 - "factores" son 2 a 5 eventos/noticias reales y recientes que puedan mover el mercado en el corto plazo, no explicaciones genéricas de manual.
 - Sé breve: los comentarios son de analista de mercado real, no un ensayo.`,
-      messages: [{ role: 'user', content: 'Dame el panorama de mercado de granos de hoy para un productor agropecuario argentino: precios de soja, maíz y trigo, comparación con el promedio reciente, y los factores de clima/geopolítica que puedan mover el mercado en el corto plazo.' }],
-    }),
-  });
-  if (!response.ok) {
-    const errText = await response.text();
-    console.error('Error de la API consultando mercado:', response.status, errText);
-    throw new Error('No se pudo consultar el mercado');
-  }
-  const data = await response.json();
-  const textoRespuesta = data.content.map(b => b.text || '').join('');
-  const limpio = textoRespuesta.trim().replace(/^```(json)?\n?/, '').replace(/```$/, '').trim();
-  try {
-    return JSON.parse(limpio);
+        messages: [{ role: 'user', content: 'Dame el panorama de mercado de granos de hoy para un productor agropecuario argentino: precios de soja, maíz y trigo, comparación con el promedio reciente, y los factores de clima/geopolítica que puedan mover el mercado en el corto plazo.' }],
+      }),
+    });
+    if (!response.ok) {
+      const errText = await response.text();
+      console.error('Error de la API consultando mercado:', response.status, errText);
+      throw new Error('No se pudo consultar el mercado');
+    }
+    const data = await response.json();
+    const textoRespuesta = data.content.map(b => b.text || '').join('');
+    const limpio = textoRespuesta.trim().replace(/^```(json)?\n?/, '').replace(/```$/, '').trim();
+    try {
+      return JSON.parse(limpio);
+    } catch (e) {
+      console.error('No se pudo parsear el JSON de mercado. Respuesta cruda:', textoRespuesta);
+      throw new Error('No se pudo interpretar la respuesta del mercado');
+    }
   } catch (e) {
-    console.error('No se pudo parsear el JSON de mercado. Respuesta cruda:', textoRespuesta);
-    throw new Error('No se pudo interpretar la respuesta del mercado');
+    if (e.name === 'AbortError') {
+      console.error('Timeout consultando mercado (75s)');
+      throw new Error('La consulta de mercado tardó demasiado, probá de nuevo en un rato');
+    }
+    throw e;
+  } finally {
+    clearTimeout(timeoutId);
   }
 }
 
