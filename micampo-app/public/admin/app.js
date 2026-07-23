@@ -1967,7 +1967,48 @@ function CalculoFertilizacion({
     type: "number",
     value: rendObj,
     onChange: e => setRendObj(e.target.value)
-  }))), resultadosPorZona.map((z, i) => z.resultado && /*#__PURE__*/React.createElement("div", {
+  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: '#888780',
+      marginBottom: 4
+    }
+  }, "Calibración"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      gap: 4
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: () => setAvanzado({
+      ...avanzado,
+      calibracion: 'original'
+    }),
+    style: {
+      padding: '8px 14px',
+      borderRadius: 6,
+      border: 'none',
+      cursor: 'pointer',
+      fontSize: 13,
+      background: avanzado.calibracion === 'original' ? '#EAF3DE' : '#f0efe8',
+      color: avanzado.calibracion === 'original' ? '#27500A' : '#5f5e5a',
+      fontWeight: avanzado.calibracion === 'original' ? 600 : 400
+    }
+  }, "Peralta"), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setAvanzado({
+      ...avanzado,
+      calibracion: 'calibrado'
+    }),
+    style: {
+      padding: '8px 14px',
+      borderRadius: 6,
+      border: 'none',
+      cursor: 'pointer',
+      fontSize: 13,
+      background: avanzado.calibracion === 'calibrado' ? '#EAF3DE' : '#f0efe8',
+      color: avanzado.calibracion === 'calibrado' ? '#27500A' : '#5f5e5a',
+      fontWeight: avanzado.calibracion === 'calibrado' ? 600 : 400
+    }
+  }, "Peralta −8%")))), resultadosPorZona.map((z, i) => z.resultado && /*#__PURE__*/React.createElement("div", {
     key: i,
     style: {
       marginTop: 8,
@@ -2038,20 +2079,7 @@ function CalculoFertilizacion({
       ...avanzado,
       antecesor: e.target.value
     })
-  })), /*#__PURE__*/React.createElement(Field, {
-    label: "Calibración"
-  }, /*#__PURE__*/React.createElement("select", {
-    style: inputStyle,
-    value: avanzado.calibracion,
-    onChange: e => setAvanzado({
-      ...avanzado,
-      calibracion: e.target.value
-    })
-  }, /*#__PURE__*/React.createElement("option", {
-    value: "original"
-  }, "Original"), /*#__PURE__*/React.createElement("option", {
-    value: "calibrado"
-  }, "−8% calibrado")))))), /*#__PURE__*/React.createElement("div", {
+  }))))), /*#__PURE__*/React.createElement("div", {
     style: {
       borderTop: '1px solid #e3e1d8',
       margin: '14px 0'
