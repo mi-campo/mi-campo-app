@@ -129,7 +129,7 @@ Usá números redondeados y unidades (mm, kg, ha, USD) donde corresponda. No use
 
 module.exports.responderConsulta = responderConsulta;
 
-async function interpretarAnalisisDocumento(base64, mediaType, caption) {
+async function interpretarAnalisisDocumento(base64, mediaType, caption, listaLotes) {
   const response = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
@@ -148,7 +148,10 @@ FORMATO TÍPICO DE INFORME (laboratorio AgLab u otros similares) — leelo así 
 - CADA MUESTRA/SITIO OCUPA DOS FILAS: una fila con Prof="20 cm" que trae TODOS los parámetros (pH, Cond, MO, P, N Total, N-NO3, S, K, Ca, Mg, Na, CIC, etc.), y la fila siguiente con Prof="60 cm" que trae SOLO un valor de N-NO3 (el nitrato a esa profundidad). Tratá cada PAR de filas (20cm + 60cm) como UNA sola muestra.
 - "nNo3_0_20" = el valor de N-NO3 de la fila de 20cm. "nNo3_20_60" = el valor (único) de la fila de 60cm.
 - Campo y Lote para cada muestra salen DIRECTAMENTE de las columnas "Campo" y "Lote" de esa fila de la tabla — leelas tal cual están escritas (ej "EL ROSARIO", "C1-1", "EFRAIN", "C4-1"). Si hay columna "Ref.Lote" con una aclaración (ej "SOBREPOSICION"), agregala al muestraLabel.
+- MUY IMPORTANTE — abajo te paso la LISTA REAL de campos y lotes que existen en el sistema. Para cada muestra, tenés que razonar cuál de esos lotes reales es (como lo haría un agrónomo que conoce el campo), no solo comparar el texto letra por letra. El nombre en la tabla del laboratorio y el nombre real en el sistema pueden diferir en formato (mayúsculas, guiones, con o sin sufijo, con o sin acento) y aun así ser CLARAMENTE el mismo lote — en esos casos, usá el nombre EXACTO tal cual figura en la lista real (no el que trae la tabla). Ejemplo: si la tabla dice "El Rosario C3-1" y "El Rosario C3-2", y en el sistema el lote real se llama simplemente "C3" dentro del campo "El Rosario", es razonable asumir que ambas muestras corresponden a ese mismo lote real "C3" (dos puntos de muestreo del mismo lote) — completá "lote":"C3" en las dos, con muestraLabel distinto para diferenciarlas (ej "C3-1" y "C3-2"). Solo dejá "lote" o "campo" en null cuando genuinamente no encuentres ningún lote real razonable al que corresponda (ambigüedad real, no una simple diferencia de formato).
 - El informe suele traer una línea "Fecha: DD/MM/AA" cerca del encabezado (junto al nombre del cliente) — esa es la fecha del muestreo/informe, usala para el campo "fecha" de CADA muestra de esa tabla (todas comparten la misma fecha salvo que se indique lo contrario). Convertila a YYYY-MM-DD (ej "16/06/26" → "2026-06-16"). Si no la encontrás, dejá fecha en null.
+- IMPORTANTE — el PDF puede tener el texto interno desordenado (por ejemplo, que los códigos de "Lote" aparezcan todos agrupados al final del documento, separados de su fila correspondiente, en vez de alineados visualmente). Si ves eso, mirá el documento como una imagen/tabla visual (cómo se ve renderizado, no cómo está ordenado el texto plano) y reconstruí cada fila usando el número de "Oblea" como ancla — las obleas van en orden correlativo (ej 122178, 122179, 122180…), cada par consecutivo (20cm + 60cm) es una muestra, y los códigos de Lote listados al final suelen mantener el mismo orden en que aparecen las muestras en la tabla, aunque el texto los haya separado. Hacé tu mejor esfuerzo para reconstruir la asociación correcta en vez de rendirte.
+- Devolvé SIEMPRE el JSON pedido, nunca una explicación en texto libre — incluso si la tabla está difícil de leer o parcialmente desordenada, hacé tu mejor esfuerzo con lo que puedas reconstruir (dejando en null lo que no puedas asegurar) en vez de responder con texto explicando el problema.
 - Si el archivo NO tiene este formato de tabla (es un análisis de otro tipo, una sola muestra, otro laboratorio), interpretalo igual con tu criterio general, usando el caption para campo/lote si la imagen no lo aclara.
 
 RANGOS DE REFERENCIA (los mismos que trae el informe AgLab, usalos tal cual salvo que el archivo traiga otros explícitos):
@@ -186,12 +189,16 @@ Reglas:
         role: 'user',
         content: [
           { type: mediaType === 'application/pdf' ? 'document' : 'image', source: { type: 'base64', media_type: mediaType, data: base64 } },
-          { type: 'text', text: `Texto que mandó la persona junto con el archivo: "${caption || '(sin texto)'}"\n\nAnalizá el archivo y devolveme el JSON pedido, una muestra por cada par de filas (20cm+60cm) o por cada sitio si el formato es distinto.` },
+          { type: 'text', text: `Lista real de campos y lotes que existen en el sistema (usala para razonar el match, devolviendo el nombre EXACTO tal cual figura acá cuando corresponda):\n${listaLotes || '(no hay lotes cargados todavía)'}\n\nTexto que mandó la persona junto con el archivo: "${caption || '(sin texto)'}"\n\nAnalizá el archivo y devolveme el JSON pedido, una muestra por cada par de filas (20cm+60cm) o por cada sitio si el formato es distinto.` },
         ],
       }],
     }),
   });
-  if (!response.ok) return null;
+  if (!response.ok) {
+    const errText = await response.text();
+    console.error('Error de la API leyendo analisis (documento):', response.status, errText);
+    return null;
+  }
   const data = await response.json();
   const textoRespuesta = data.content.map(b => b.text || '').join('');
   const limpio = textoRespuesta.trim().replace(/^```(json)?\n?/, '').replace(/```$/, '').trim();
@@ -199,6 +206,7 @@ Reglas:
     const parsed = JSON.parse(limpio);
     return parsed.muestras ? parsed.muestras : (parsed.parametros ? [parsed] : null); // compatibilidad si viniera en formato viejo
   } catch (e) {
+    console.error('No se pudo parsear el JSON de analisis de documento. Respuesta cruda de la IA:', textoRespuesta);
     return null;
   }
 }
@@ -234,3 +242,48 @@ Si el texto no aclara alguna muestra, no la incluyas en la lista.`,
 }
 
 module.exports.resolverMuestrasPorTexto = resolverMuestrasPorTexto;
+
+async function consultarMercado() {
+  const response = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': process.env.ANTHROPIC_API_KEY,
+      'anthropic-version': '2023-06-01',
+    },
+    body: JSON.stringify({
+      model: 'claude-sonnet-5',
+      max_tokens: 2500,
+      tools: [{ type: 'web_search_20250305', name: 'web_search' }],
+      system: `Sos un analista de mercado de granos experimentado, con el estilo directo y sin vueltas de los analistas argentinos de bolsa de cereales (tipo Nóvitas/Enrique Erize): concreto, sin especular de más, sin adornos.
+
+Buscá en la web los precios ACTUALES de soja, maíz y trigo — preferentemente el precio pizarra/físico de Rosario, Argentina (en USD/tn) si lo encontrás actualizado, y como referencia también el futuro más cercano de Chicago (CBOT, en USD/tn). Compará cada uno contra el promedio de las últimas 2-4 semanas. Buscá también noticias recientes (últimos días) que puedan afectar estos precios: clima (El Niño/La Niña, sequías o excesos de humedad en el Corn Belt de EEUU, en Argentina o Brasil), geopolítica (conflictos, bloqueos, sanciones que afecten exportación/logística de granos), políticas comerciales (aranceles, retenciones, acuerdos).
+
+Devolvé SOLO un JSON, sin texto antes ni después, sin \`\`\`, con esta forma exacta:
+{"granos":[{"nombre":"Soja","precioUSDtn":<numero>,"fuente":"<de donde sacaste el precio, ej 'Pizarra Rosario' o 'CBOT'>","vsPromedio":"por encima"|"por debajo"|"en línea","tendencia":"Alcista"|"Bajista"|"Neutral","comentario":"<1-2 frases breves, directas, tono de analista profesional>"}],"factores":[{"tema":"<ej 'Clima Corn Belt EEUU'>","detalle":"<1 frase concreta, con la fuente/hecho real que encontraste>","impacto":"alcista"|"bajista"}],"fechaConsulta":"<fecha de hoy en formato YYYY-MM-DD>"}
+
+Reglas:
+- Un grano por elemento: Soja, Maíz, Trigo (agregá Garbanzo solo si encontrás una referencia de precio confiable, si no omitilo).
+- No inventes precios ni noticias — si no encontrás algo confiable y reciente, omitilo antes que inventar.
+- "factores" son 2 a 5 eventos/noticias reales y recientes que puedan mover el mercado en el corto plazo, no explicaciones genéricas de manual.
+- Sé breve: los comentarios son de analista de mercado real, no un ensayo.`,
+      messages: [{ role: 'user', content: 'Dame el panorama de mercado de granos de hoy para un productor agropecuario argentino: precios de soja, maíz y trigo, comparación con el promedio reciente, y los factores de clima/geopolítica que puedan mover el mercado en el corto plazo.' }],
+    }),
+  });
+  if (!response.ok) {
+    const errText = await response.text();
+    console.error('Error de la API consultando mercado:', response.status, errText);
+    throw new Error('No se pudo consultar el mercado');
+  }
+  const data = await response.json();
+  const textoRespuesta = data.content.map(b => b.text || '').join('');
+  const limpio = textoRespuesta.trim().replace(/^```(json)?\n?/, '').replace(/```$/, '').trim();
+  try {
+    return JSON.parse(limpio);
+  } catch (e) {
+    console.error('No se pudo parsear el JSON de mercado. Respuesta cruda:', textoRespuesta);
+    throw new Error('No se pudo interpretar la respuesta del mercado');
+  }
+}
+
+module.exports.consultarMercado = consultarMercado;
