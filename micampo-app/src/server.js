@@ -95,7 +95,12 @@ app.post('/webhook', async (req, res) => {
       console.log(`Documento/foto de ${numeroRemitente}, caption: "${caption}"`);
       try {
         const { base64, mimeType } = await descargarMediaWhatsApp(media.id);
-        const muestras = await interpretarAnalisisDocumento(base64, mimeType, caption);
+        const dataActual = load();
+        const listaLotes = dataActual.campos.map(c => {
+          const lotesDelCampo = dataActual.lotes.filter(l => l.campoId === c.id).map(l => l.nombre).join(', ');
+          return `${c.nombre}: ${lotesDelCampo || '(sin lotes)'}`;
+        }).join('\n');
+        const muestras = await interpretarAnalisisDocumento(base64, mimeType, caption, listaLotes);
         const { texto, pendientes } = await manejarAnalisisDocumento(muestras, permisoDoc.contacto);
         if (pendientes) guardarPendiente(numeroRemitente, { tipoPendiente: 'analisis_doc', muestras: pendientes });
         await enviarMensajeWA(numeroRemitente, texto);
@@ -121,7 +126,14 @@ app.post('/webhook', async (req, res) => {
         return;
       }
       const permisoDoc = verificarPermiso(numeroRemitente, 'analisis_foto');
-      const asignaciones = await resolverMuestrasPorTexto(pendiente.muestras, textoRecibido);
+      let asignaciones;
+      const esAfirmacion = ['si', 'sí', 'dale', 'ok', 'correcto', 'confirmo'].includes(textoNormalizado);
+      if (esAfirmacion && pendiente.muestras.length === 1 && pendiente.muestras[0]._sugerencia) {
+        const [campoSug, loteSug] = pendiente.muestras[0]._sugerencia.split(' — ');
+        asignaciones = [{ indice: 0, campo: campoSug, lote: loteSug }];
+      } else {
+        asignaciones = await resolverMuestrasPorTexto(pendiente.muestras, textoRecibido);
+      }
       const { texto, pendientes } = await manejarAclaracionMuestras(pendiente.muestras, asignaciones, permisoDoc.contacto);
       if (pendientes) guardarPendiente(numeroRemitente, { tipoPendiente: 'analisis_doc', muestras: pendientes });
       await enviarMensajeWA(numeroRemitente, texto);
