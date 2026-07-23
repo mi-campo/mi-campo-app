@@ -20,6 +20,7 @@ const emptyData = {
   ciclos: [],
   contactosBot: [],
   tarifario: {},
+  mercado: null,
 };
 
 function uid() {
@@ -95,6 +96,23 @@ function buscarLotes(data, nombreBuscado, nombreCampo) {
   return data.lotes.filter(l => normalizar(l.nombre).includes(buscado) || buscado.includes(normalizar(l.nombre)));
 }
 
+// Version estricta: solo devuelve un lote si el nombre coincide EXACTO (y el campo, si se especifica, tambien exacto).
+// No adivina por parecido — se usa para decidir si hace falta pedir confirmacion antes de cargar algo automaticamente.
+function buscarLotesExacto(data, nombreBuscado, nombreCampo) {
+  if (!nombreBuscado) return [];
+  const normalizar = (s) => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+  const buscado = normalizar(nombreBuscado);
+  if (nombreCampo) {
+    const campoBuscado = normalizar(nombreCampo);
+    const camposCandidatos = data.campos.filter(c => normalizar(c.nombre) === campoBuscado);
+    if (camposCandidatos.length === 1) {
+      return data.lotes.filter(l => l.campoId === camposCandidatos[0].id && normalizar(l.nombre) === buscado);
+    }
+    return [];
+  }
+  return data.lotes.filter(l => normalizar(l.nombre) === buscado);
+}
+
 // Precio promedio ponderado de un insumo, calculado en base a TODAS sus compras históricas.
 // Ej: 120tn a 500 + 60tn a 550 → (120*500 + 60*550) / 180 = 516.67
 // Si no hay compras cargadas todavía, usa el costoUnitario manual del insumo como respaldo.
@@ -136,7 +154,7 @@ function cicloActivo(data, loteId) {
 }
 
 module.exports = {
-  load, save, uid, buscarLotes, precioPromedio, cicloActivo, emptyData,
+  load, save, uid, buscarLotes, buscarLotesExacto, precioPromedio, cicloActivo, emptyData,
   cargarPendientes, guardarPendiente, sacarPendiente,
   loadUsers, saveUsers,
 };
