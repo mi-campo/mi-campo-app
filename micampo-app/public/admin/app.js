@@ -180,6 +180,38 @@ function Field({
     }
   }, label), children);
 }
+function InputUnidad({
+  value,
+  onChange,
+  unidad,
+  placeholder
+}) {
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      position: 'relative'
+    }
+  }, /*#__PURE__*/React.createElement("input", {
+    style: {
+      ...inputStyle,
+      width: '100%',
+      paddingRight: 8 + unidad.length * 6.5
+    },
+    type: "number",
+    value: value,
+    onChange: onChange,
+    placeholder: placeholder
+  }), /*#__PURE__*/React.createElement("span", {
+    style: {
+      position: 'absolute',
+      right: 10,
+      top: '50%',
+      transform: 'translateY(-50%)',
+      fontSize: 12,
+      color: '#aaa89f',
+      pointerEvents: 'none'
+    }
+  }, unidad));
+}
 function App() {
   const [data, setData] = useState(null);
   const [me, setMe] = useState(null);
@@ -219,7 +251,7 @@ function App() {
       color: '#888780'
     }
   }, "Cargando MI CAMPO…");
-  const tabs = [['resumen', 'Resumen'], ['campos', 'Campos y lotes'], ['riego', 'Riego'], ['fertilizacion', 'Fertilización'], ['insumos', 'Insumos'], ['proveedores', 'Proveedores'], ['actividades', 'Actividades'], ['tarifario', 'Tarifario'], ['clientes', 'Clientes'], ['usuarios', 'Usuarios'], ['whatsapp', 'WhatsApp'], ['consultas', 'Consultas']];
+  const tabs = [['resumen', 'Resumen'], ['mercado', 'Mercado'], ['campos', 'Campos y lotes'], ['riego', 'Riego'], ['fertilizacion', 'Fertilización'], ['insumos', 'Insumos'], ['proveedores', 'Proveedores'], ['actividades', 'Actividades'], ['tarifario', 'Tarifario'], ['clientes', 'Clientes'], ['usuarios', 'Usuarios'], ['whatsapp', 'WhatsApp'], ['consultas', 'Consultas']];
   return /*#__PURE__*/React.createElement("div", {
     style: {
       maxWidth: 1000,
@@ -292,7 +324,7 @@ function App() {
     }
   }, tab === 'resumen' && /*#__PURE__*/React.createElement(Resumen, {
     data: data
-  }), tab === 'campos' && /*#__PURE__*/React.createElement(Campos, {
+  }), tab === 'mercado' && /*#__PURE__*/React.createElement(Mercado, null), tab === 'campos' && /*#__PURE__*/React.createElement(Campos, {
     data: data,
     update: update
   }), tab === 'riego' && /*#__PURE__*/React.createElement(Riego, {
@@ -328,6 +360,167 @@ function App() {
 }
 
 /* ---------- RESUMEN ---------- */
+const COLOR_TENDENCIA = {
+  'Alcista': {
+    texto: '#27500A',
+    fondo: '#EAF3DE',
+    borde: '#8FBF5E'
+  },
+  'Bajista': {
+    texto: '#A32D2D',
+    fondo: '#FBE7E4',
+    borde: '#E28A8A'
+  },
+  'Neutral': {
+    texto: '#5f5e5a',
+    fondo: '#f1efe8',
+    borde: '#c9c6bb'
+  }
+};
+function Mercado() {
+  const [mercado, setMercado] = useState(null);
+  const [cargando, setCargando] = useState(true);
+  const [error, setError] = useState('');
+  const cargar = forzar => {
+    setCargando(true);
+    setError('');
+    fetch('/api/mercado' + (forzar ? '?forzar=1' : '')).then(r => r.ok ? r.json() : Promise.reject(r)).then(setMercado).catch(() => setError('No se pudo obtener la información de mercado ahora mismo.')).finally(() => setCargando(false));
+  };
+  useEffect(() => {
+    cargar(false);
+  }, []);
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 14
+    }
+  }, /*#__PURE__*/React.createElement(Card, null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'center'
+    }
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: 500
+    }
+  }, "Panorama de mercado"), mercado?.fechaConsulta && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: '#888780'
+    }
+  }, "Actualizado: ", mercado.fechaConsulta)), /*#__PURE__*/React.createElement("button", {
+    onClick: () => cargar(true),
+    disabled: cargando,
+    style: btnSecondary
+  }, cargando ? 'Actualizando…' : '↻ Actualizar ahora')), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: '#aaa89f',
+      marginTop: 6
+    }
+  }, "Se actualiza solo cada 6 horas para no golpear de más — usá \"Actualizar ahora\" si necesitás el dato más fresco.")), cargando && !mercado && /*#__PURE__*/React.createElement(Card, null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 13,
+      color: '#888780'
+    }
+  }, "Buscando precios y noticias…")), error && !mercado && /*#__PURE__*/React.createElement(Card, null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 13,
+      color: '#A32D2D'
+    }
+  }, error)), mercado?.granos && /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'grid',
+      gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+      gap: 12
+    }
+  }, mercado.granos.map((g, i) => {
+    const col = COLOR_TENDENCIA[g.tendencia] || COLOR_TENDENCIA.Neutral;
+    return /*#__PURE__*/React.createElement(Card, {
+      key: i,
+      style: {
+        borderLeft: `4px solid ${col.borde}`
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'flex-start'
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontWeight: 500
+      }
+    }, g.nombre), /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 11,
+        fontWeight: 600,
+        color: col.texto,
+        background: col.fondo,
+        border: `1px solid ${col.borde}`,
+        borderRadius: 5,
+        padding: '2px 8px'
+      }
+    }, g.tendencia)), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 24,
+        fontWeight: 600,
+        marginTop: 6
+      }
+    }, "USD ", g.precioUSDtn, "/tn"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 11,
+        color: '#888780'
+      }
+    }, g.fuente, " · ", g.vsPromedio, " del promedio reciente"), g.comentario && /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 13,
+        color: '#5f5e5a',
+        marginTop: 8
+      }
+    }, g.comentario));
+  })), mercado?.factores && mercado.factores.length > 0 && /*#__PURE__*/React.createElement(Card, null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: 500,
+      marginBottom: 8
+    }
+  }, "Factores a seguir"), mercado.factores.map((f, i) => {
+    const col = f.impacto === 'alcista' ? COLOR_TENDENCIA.Alcista : f.impacto === 'bajista' ? COLOR_TENDENCIA.Bajista : COLOR_TENDENCIA.Neutral;
+    return /*#__PURE__*/React.createElement("div", {
+      key: i,
+      style: {
+        display: 'flex',
+        gap: 8,
+        alignItems: 'flex-start',
+        padding: '8px 0',
+        borderTop: '1px solid #f1efe8'
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 11,
+        fontWeight: 600,
+        color: col.texto,
+        background: col.fondo,
+        border: `1px solid ${col.borde}`,
+        borderRadius: 5,
+        padding: '2px 8px',
+        whiteSpace: 'nowrap'
+      }
+    }, f.impacto === 'alcista' ? '↑ Alcista' : f.impacto === 'bajista' ? '↓ Bajista' : '· Neutral'), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 13,
+        fontWeight: 500
+      }
+    }, f.tema), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12,
+        color: '#5f5e5a'
+      }
+    }, f.detalle)));
+  })));
+}
 function Resumen({
   data
 }) {
@@ -2704,17 +2897,7 @@ function Riego({
     ...l,
     objetivoRiego: Number(val) || 0
   } : l));
-  const [expandidos, setExpandidos] = useState({});
-  const toggle = id => setExpandidos(e => ({
-    ...e,
-    [id]: !e[id]
-  }));
   const [formAgua, setFormAgua] = useState({});
-  const [aguaAbierta, setAguaAbierta] = useState({});
-  const toggleAgua = id => setAguaAbierta(e => ({
-    ...e,
-    [id]: !e[id]
-  }));
   const guardarAgua = loteId => {
     const f = formAgua[loteId];
     if (!f || !f.fecha || f.aguaUtilMm === '' || f.aguaUtilMm == null) return;
@@ -2870,19 +3053,8 @@ function Riego({
       style: {
         marginTop: 10
       }
-    }, /*#__PURE__*/React.createElement("button", {
-      onClick: () => toggleAgua(l.id),
-      style: {
-        ...btnGhost,
-        fontSize: 12
-      }
-    }, aguaAbierta[l.id] ? '▲ Cerrar carga de agua útil' : '💧 Cargar lectura de agua útil'), aguaAbierta[l.id] && /*#__PURE__*/React.createElement("div", {
-      style: {
-        marginTop: 8,
-        padding: 10,
-        background: '#faf9f5',
-        borderRadius: 8
-      }
+    }, /*#__PURE__*/React.createElement(Seccion, {
+      titulo: "💧 Cargar lectura de agua útil"
     }, /*#__PURE__*/React.createElement("div", {
       style: {
         display: 'grid',
@@ -2950,16 +3122,8 @@ function Riego({
       style: {
         marginTop: 10
       }
-    }, /*#__PURE__*/React.createElement("button", {
-      onClick: () => toggle(l.id),
-      style: {
-        ...btnGhost,
-        fontSize: 12
-      }
-    }, expandidos[l.id] ? '▲ Ocultar detalle' : `▼ Ver ${registrosLote.length} registro(s) individuales`), expandidos[l.id] && /*#__PURE__*/React.createElement("div", {
-      style: {
-        marginTop: 6
-      }
+    }, /*#__PURE__*/React.createElement(Seccion, {
+      titulo: `Ver ${registrosLote.length} registro(s) individuales`
     }, registrosLote.map(r => /*#__PURE__*/React.createElement("div", {
       key: r.id,
       style: {
@@ -3887,9 +4051,17 @@ function Actividades({
     }
   }, editandoId ? 'Editando actividad' : 'Registrar actividad'), /*#__PURE__*/React.createElement("div", {
     style: {
+      fontSize: 11,
+      color: '#aaa89f',
+      textTransform: 'uppercase',
+      marginBottom: 6
+    }
+  }, "Qué se hizo"), /*#__PURE__*/React.createElement("div", {
+    style: {
       display: 'grid',
       gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
-      gap: 10
+      gap: 10,
+      marginBottom: 14
     }
   }, /*#__PURE__*/React.createElement(Field, {
     label: "Lote"
@@ -3938,7 +4110,48 @@ function Actividades({
       ...form,
       fecha: e.target.value
     })
-  })), participantesDelLote.length > 0 && /*#__PURE__*/React.createElement(Field, {
+  })), esAplicacion && /*#__PURE__*/React.createElement(Field, {
+    label: "Método"
+  }, /*#__PURE__*/React.createElement("select", {
+    style: inputStyle,
+    value: form.metodo,
+    onChange: e => {
+      const nuevoMetodo = e.target.value;
+      const key = laborKey(form.tipo, nuevoMetodo);
+      const tarifaAuto = key && data.tarifario && data.tarifario[key] ? data.tarifario[key] : form.tarifaContratista;
+      setForm({
+        ...form,
+        metodo: nuevoMetodo,
+        tarifaContratista: tarifaAuto
+      });
+    }
+  }, /*#__PURE__*/React.createElement("option", {
+    value: ""
+  }, "Elegir…"), (METODOS_POR_TIPO[form.tipo] || []).map(m => /*#__PURE__*/React.createElement("option", {
+    key: m
+  }, m)))), form.tipo === 'Siembra' && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(Field, {
+    label: "Cultivo"
+  }, /*#__PURE__*/React.createElement("select", {
+    style: inputStyle,
+    value: form.cultivo,
+    onChange: e => setForm({
+      ...form,
+      cultivo: e.target.value
+    })
+  }, /*#__PURE__*/React.createElement("option", {
+    value: ""
+  }, "Elegir…"), CULTIVOS_SIEMBRA.map(c => /*#__PURE__*/React.createElement("option", {
+    key: c
+  }, c)))), /*#__PURE__*/React.createElement(Field, {
+    label: form.cultivo === 'Maíz' ? 'Híbrido' : 'Variedad'
+  }, /*#__PURE__*/React.createElement("input", {
+    style: inputStyle,
+    value: form.variedad,
+    onChange: e => setForm({
+      ...form,
+      variedad: e.target.value
+    })
+  }))), participantesDelLote.length > 0 && /*#__PURE__*/React.createElement(Field, {
     label: "¿Para quién es este gasto?"
   }, /*#__PURE__*/React.createElement("select", {
     style: inputStyle,
@@ -3952,11 +4165,24 @@ function Actividades({
   }, "Todos (compartido)"), participantesDelLote.map(p => /*#__PURE__*/React.createElement("option", {
     key: p.clienteId,
     value: p.clienteId
-  }, data.clientes.find(c => c.id === p.clienteId)?.nombre || '?')))), form.tipo === 'Riego' && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(Field, {
-    label: "mm"
-  }, /*#__PURE__*/React.createElement("input", {
-    style: inputStyle,
-    type: "number",
+  }, data.clientes.find(c => c.id === p.clienteId)?.nombre || '?'))))), (form.tipo === 'Riego' || form.tipo === 'Cosecha' || form.tipo === 'Siembra' || esAplicacion) && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: '#aaa89f',
+      textTransform: 'uppercase',
+      marginBottom: 6
+    }
+  }, "Cantidad y costo"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'grid',
+      gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+      gap: 10,
+      marginBottom: 14
+    }
+  }, form.tipo === 'Riego' && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(Field, {
+    label: "Milímetros"
+  }, /*#__PURE__*/React.createElement(InputUnidad, {
+    unidad: "mm",
     value: form.mm,
     onChange: e => setForm({
       ...form,
@@ -3983,48 +4209,24 @@ function Actividades({
       }
     }, "Costo estimado: ", fmtMoney(costoPreview), " (", data.tarifario.Riego, " USD/mm/ha × ", form.mm, "mm × ", loteRiegoPreview?.hectareas || 0, "ha)");
   })()), form.tipo === 'Cosecha' && /*#__PURE__*/React.createElement(Field, {
-    label: "Rendimiento qq/ha"
-  }, /*#__PURE__*/React.createElement("input", {
-    style: inputStyle,
-    type: "number",
+    label: "Rendimiento"
+  }, /*#__PURE__*/React.createElement(InputUnidad, {
+    unidad: "qq/ha",
     value: form.rendimiento,
     onChange: e => setForm({
       ...form,
       rendimiento: e.target.value
     })
   })), form.tipo === 'Siembra' && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(Field, {
-    label: "Cultivo"
-  }, /*#__PURE__*/React.createElement("select", {
-    style: inputStyle,
-    value: form.cultivo,
-    onChange: e => setForm({
-      ...form,
-      cultivo: e.target.value
-    })
-  }, /*#__PURE__*/React.createElement("option", {
-    value: ""
-  }, "Elegir…"), CULTIVOS_SIEMBRA.map(c => /*#__PURE__*/React.createElement("option", {
-    key: c
-  }, c)))), /*#__PURE__*/React.createElement(Field, {
-    label: form.cultivo === 'Maíz' ? 'Híbrido' : 'Variedad'
-  }, /*#__PURE__*/React.createElement("input", {
-    style: inputStyle,
-    value: form.variedad,
-    onChange: e => setForm({
-      ...form,
-      variedad: e.target.value
-    })
-  })), /*#__PURE__*/React.createElement(Field, {
     label: "Densidad"
-  }, /*#__PURE__*/React.createElement("input", {
-    style: inputStyle,
-    type: "number",
+  }, /*#__PURE__*/React.createElement(InputUnidad, {
+    unidad: form.cultivo === 'Soja' ? form.densidadUnidad || 'kg/ha' : 'kg/ha',
     value: form.densidad,
     onChange: e => setForm({
       ...form,
       densidad: e.target.value
     })
-  })), form.cultivo === 'Soja' ? /*#__PURE__*/React.createElement(Field, {
+  })), form.cultivo === 'Soja' && /*#__PURE__*/React.createElement(Field, {
     label: "Unidad densidad"
   }, /*#__PURE__*/React.createElement("select", {
     style: inputStyle,
@@ -4037,30 +4239,10 @@ function Actividades({
     value: "kg/ha"
   }, "kg/ha"), /*#__PURE__*/React.createElement("option", {
     value: "semillas/ha"
-  }, "semillas/ha"))) : null), esAplicacion && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(Field, {
-    label: "Método"
-  }, /*#__PURE__*/React.createElement("select", {
-    style: inputStyle,
-    value: form.metodo,
-    onChange: e => {
-      const nuevoMetodo = e.target.value;
-      const key = laborKey(form.tipo, nuevoMetodo);
-      const tarifaAuto = key && data.tarifario && data.tarifario[key] ? data.tarifario[key] : form.tarifaContratista;
-      setForm({
-        ...form,
-        metodo: nuevoMetodo,
-        tarifaContratista: tarifaAuto
-      });
-    }
-  }, /*#__PURE__*/React.createElement("option", {
-    value: ""
-  }, "Elegir…"), (METODOS_POR_TIPO[form.tipo] || []).map(m => /*#__PURE__*/React.createElement("option", {
-    key: m
-  }, m)))), /*#__PURE__*/React.createElement(Field, {
+  }, "semillas/ha")))), esAplicacion && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(Field, {
     label: "Ha reales (dosis)"
-  }, /*#__PURE__*/React.createElement("input", {
-    style: inputStyle,
-    type: "number",
+  }, /*#__PURE__*/React.createElement(InputUnidad, {
+    unidad: "ha",
     value: form.haReales,
     onChange: e => setForm({
       ...form,
@@ -4068,9 +4250,8 @@ function Actividades({
     })
   })), /*#__PURE__*/React.createElement(Field, {
     label: "Ha facturadas contratista"
-  }, /*#__PURE__*/React.createElement("input", {
-    style: inputStyle,
-    type: "number",
+  }, /*#__PURE__*/React.createElement(InputUnidad, {
+    unidad: "ha",
     placeholder: "= ha reales si vacío",
     value: form.haFacturadas,
     onChange: e => setForm({
@@ -4078,16 +4259,15 @@ function Actividades({
       haFacturadas: e.target.value
     })
   })), /*#__PURE__*/React.createElement(Field, {
-    label: "Tarifa contratista USD/ha"
-  }, /*#__PURE__*/React.createElement("input", {
-    style: inputStyle,
-    type: "number",
+    label: "Tarifa contratista"
+  }, /*#__PURE__*/React.createElement(InputUnidad, {
+    unidad: "USD/ha",
     value: form.tarifaContratista,
     onChange: e => setForm({
       ...form,
       tarifaContratista: e.target.value
     })
-  })))), /*#__PURE__*/React.createElement("div", {
+  }))))), /*#__PURE__*/React.createElement("div", {
     style: {
       marginTop: 12
     }
@@ -4111,11 +4291,18 @@ function Actividades({
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: {
+      fontSize: 11,
+      color: '#aaa89f',
+      textTransform: 'uppercase',
+      marginBottom: 6
+    }
+  }, "Insumos"), /*#__PURE__*/React.createElement("div", {
+    style: {
       fontSize: 12,
       color: '#888780',
       marginBottom: 6
     }
-  }, "Insumos aplicados (cantidad total, se divide por las ha reales)"), items.map((it, idx) => {
+  }, "Cantidad total aplicada, se divide sola por las ha reales"), items.map((it, idx) => {
     const dosis = form.haReales && it.cantidad ? (Number(it.cantidad) / Number(form.haReales)).toFixed(2) : null;
     return /*#__PURE__*/React.createElement("div", {
       key: idx,
