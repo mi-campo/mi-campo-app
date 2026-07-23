@@ -166,7 +166,7 @@ RANGOS DE REFERENCIA (los mismos que trae el informe AgLab, usalos tal cual salv
 - Relación Ca/Mg: <2 Bajo(alerta, exceso relativo de Mg), 2-7 Medio(ok), >7 Alto(alerta, exceso relativo de Ca).
 - Zinc/Zn, Cobre/Cu (ppm): <0.6 Bajo(alerta), 0.6-2 Medio(ok), >2 Alto(ok).
 - Manganeso/Mn (ppm): <35 Bajo(alerta), 35-120 Medio(ok), >120 Alto(ok).
-- Boro/B (ppm): <0.4 Bajo(alerta), 0.4-0.9 Medio(ok), >0.9 Alto(alerta, el boro en exceso es tóxico — a diferencia de otros micronutrientes, acá alto también es alerta).
+- Boro/B (ppm, extracción agua caliente): <0.4 Bajo(alerta, deficiencia), 0.4-2 Medio/Alto(ok, buena disponibilidad — NO es tóxico en este rango), 2-5 Alto(alerta, vigilar, especialmente en garbanzo que es sensible al boro), >5 (crítico, riesgo real de fitotoxicidad). NO marques alerta solo por estar en "Alto" según la tabla de AgLab (>0.9) — ese umbral de AgLab indica buena disponibilidad, no toxicidad; la toxicidad real empieza mucho más arriba (~5ppm).
 - Hierro/Fe (ppm): <60 Bajo(alerta), 60-90 Medio(ok), >90 Alto(ok).
 - PSI (%): <5 Bajo(ok), 5-15 Medio(alerta), >15 Alto(crítico) — acá alto es malo (sodicidad).
 
@@ -179,7 +179,8 @@ Reglas:
 - Para nNo3_0_20, nNo3_20_60, mo y ph: completá el número si el informe lo trae, aunque el estado de ese parámetro sea "alerta" o "critico".
 - Incluí en "parametros" los que puedas leer con confianza: como mínimo pH, MO, P, N-NO3, S, K; si hay más (Ca, Mg, Na, CIC, %SB, Ca/Mg, Zn, Cu, Mn, B, Fe, PSI), inclúilos también.
 - Si el texto de la persona (caption) aclara algo que la tabla no deja claro (por ejemplo a qué campo pertenece si la tabla no lo trae), usalo. Si la tabla y el texto contradicen, priorizá la tabla.
-- Ante la duda entre ok y alerta, elegí alerta.`,
+- Ante la duda entre ok y alerta, elegí alerta.
+- IMPORTANTE: si el mismo valor EXACTO (ej "150.00", "150.0") se repite en el mismo parámetro (típicamente Fósforo) en varias muestras distintas de la tabla, es señal de que el laboratorio reportó un VALOR TOPE (el método no puede medir más arriba de ese número, no es la cifra real exacta). En ese caso marcá ese parámetro como "alerta" igual aunque numéricamente esté en rango "alto", con el comentario "Valor tope del método de laboratorio — no es la cifra exacta, consultar con el laboratorio si conviene repetir con dilución".`,
       messages: [{
         role: 'user',
         content: [
