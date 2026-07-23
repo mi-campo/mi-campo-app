@@ -4,8 +4,8 @@ const path = require('path');
 const fetch = require('node-fetch');
 const { configurarSesion, requireLogin } = require('./auth');
 const apiRoutes = require('./api');
-const { interpretarMensaje, interpretarAnalisisDocumento } = require('./claudeParser');
-const { validar, procesar, manejarAnalisisDocumento } = require('./botHandlers');
+const { interpretarMensaje, interpretarAnalisisDocumento, resolverMuestrasPorTexto } = require('./claudeParser');
+const { validar, procesar, manejarAnalisisDocumento, manejarAclaracionMuestras } = require('./botHandlers');
 const { sacarPendiente, guardarPendiente, load } = require('./db');
 
 const ETIQUETAS_TIPO = {
@@ -95,9 +95,10 @@ app.post('/webhook', async (req, res) => {
       console.log(`Documento/foto de ${numeroRemitente}, caption: "${caption}"`);
       try {
         const { base64, mimeType } = await descargarMediaWhatsApp(media.id);
-        const resultado = await interpretarAnalisisDocumento(base64, mimeType, caption);
-        const textoRespuesta = await manejarAnalisisDocumento(resultado, permisoDoc.contacto);
-        await enviarMensajeWA(numeroRemitente, textoRespuesta);
+        const muestras = await interpretarAnalisisDocumento(base64, mimeType, caption);
+        const { texto, pendientes } = await manejarAnalisisDocumento(muestras, permisoDoc.contacto);
+        if (pendientes) guardarPendiente(numeroRemitente, { tipoPendiente: 'analisis_doc', muestras: pendientes });
+        await enviarMensajeWA(numeroRemitente, texto);
       } catch (err) {
         console.error('Error procesando documento de WhatsApp:', err);
         await enviarMensajeWA(numeroRemitente, '⚠️ Hubo un error leyendo ese archivo. Probá de nuevo, o mandalo como foto en vez de PDF (o al revés).');
@@ -111,6 +112,22 @@ app.post('/webhook', async (req, res) => {
     console.log(`Mensaje de ${numeroRemitente}: ${textoRecibido}`);
 
     const pendiente = sacarPendiente(numeroRemitente);
+
+    // Si lo pendiente es una aclaración de muestras de un análisis (foto/PDF), va por un camino aparte
+    if (pendiente?.tipoPendiente === 'analisis_doc') {
+      const textoNormalizado = textoRecibido.toLowerCase();
+      if (['no', 'cancelar', 'borrar'].includes(textoNormalizado)) {
+        await enviarMensajeWA(numeroRemitente, '❌ Descartado.');
+        return;
+      }
+      const permisoDoc = verificarPermiso(numeroRemitente, 'analisis_foto');
+      const asignaciones = await resolverMuestrasPorTexto(pendiente.muestras, textoRecibido);
+      const { texto, pendientes } = await manejarAclaracionMuestras(pendiente.muestras, asignaciones, permisoDoc.contacto);
+      if (pendientes) guardarPendiente(numeroRemitente, { tipoPendiente: 'analisis_doc', muestras: pendientes });
+      await enviarMensajeWA(numeroRemitente, texto);
+      return;
+    }
+
     let interpretado;
     if (pendiente) {
       const textoNormalizado = textoRecibido.toLowerCase();
