@@ -1,5 +1,6 @@
 const express = require('express');
 const fetch = require('node-fetch');
+const { consultarMercado } = require('./claudeParser');
 const { load, save, uid, loadUsers, saveUsers } = require('./db');
 const { login, requireLogin, requireAdmin, hashPassword } = require('./auth');
 
@@ -157,6 +158,27 @@ Reglas:
   } catch (e) {
     console.error('Error analizando foto:', e);
     res.status(500).json({ error: 'Error interno analizando la imagen' });
+  }
+});
+
+/* ---------- MERCADO (precios + panorama, con cache de 6hs) ---------- */
+router.get('/mercado', requireLogin, async (req, res) => {
+  const data = load();
+  const ahora = Date.now();
+  const cacheValidaMs = 6 * 60 * 60 * 1000; // 6 horas
+  const forzar = req.query.forzar === '1';
+  if (!forzar && data.mercado && data.mercado.actualizado && (ahora - data.mercado.actualizado) < cacheValidaMs) {
+    return res.json(data.mercado);
+  }
+  try {
+    const mercado = await consultarMercado();
+    data.mercado = { ...mercado, actualizado: ahora };
+    save(data);
+    res.json(data.mercado);
+  } catch (e) {
+    console.error('Error consultando mercado:', e);
+    if (data.mercado) return res.json(data.mercado); // si falla, devolver lo ultimo que se tenga guardado
+    res.status(502).json({ error: 'No se pudo obtener información de mercado ahora mismo' });
   }
 });
 
