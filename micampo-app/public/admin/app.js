@@ -8,7 +8,8 @@ const TIPOS_ACTIVIDAD = ['Siembra', 'Fertilización', 'Pulverización', 'Riego',
 const METODOS_POR_TIPO = {
   Siembra: ['Sembradora', 'Drone'],
   Fertilización: ['Voleo', 'Drone', 'Con siembra'],
-  Pulverización: ['Terrestre', 'Drone', 'Aéreo (avión)']
+  Pulverización: ['Terrestre', 'Drone', 'Aéreo (avión)'],
+  Cosecha: ['Propia', 'Contratada']
 };
 const TIPOS_CON_APLICACION = [...Object.keys(METODOS_POR_TIPO), 'Cosecha'];
 function laborKey(tipo, metodo) {
@@ -40,14 +41,14 @@ const COLOR_CULTIVO = {
     borde: '#8FBF5E'
   },
   'Trigo': {
-    texto: '#854F0B',
-    fondo: '#FBF0DD',
-    borde: '#E0A93E'
+    texto: '#8A6D00',
+    fondo: '#FFF6D6',
+    borde: '#E8C547'
   },
   'Garbanzo': {
-    texto: '#7A4A00',
-    fondo: '#FDEFD9',
-    borde: '#D9A441'
+    texto: '#6B3E75',
+    fondo: '#F2E4F5',
+    borde: '#B98FC4'
   },
   'Maíz': {
     texto: '#A3450A',
@@ -359,13 +360,35 @@ function Resumen({
     });
     const camposPasados = data.campos.filter(c => (gastoPorCampo[c.nombre]?.gasto || 0) > Number(c.presupuesto) && Number(c.presupuesto) > 0);
     const consultasPendientes = data.consultas.filter(c => !c.respondida).length;
+    const riegos = data.lotes.filter(l => (l.modo || 'Riego') === 'Riego').map(l => {
+      const campo = data.campos.find(c => c.id === l.campoId);
+      const registros = data.actividades.filter(a => a.loteId === l.id && a.tipo === 'Riego' && a.mm);
+      const esLluvia = r => (r.fuente || '').toLowerCase().includes('lluvia');
+      const acumuladoRiego = registros.filter(r => !esLluvia(r)).reduce((s, a) => s + Number(a.mm), 0);
+      const acumuladoLluvia = registros.filter(esLluvia).reduce((s, a) => s + Number(a.mm), 0);
+      const aguaUtil = aguaUtilPromedio(data, l.id);
+      const objetivo = Number(l.objetivoRiego) || 0;
+      const disponible = (aguaUtil ? aguaUtil.promedio : 0) + acumuladoRiego + acumuladoLluvia;
+      return {
+        lote: l,
+        campo,
+        balance: objetivo > 0 ? objetivo - disponible : null
+      };
+    }).filter(r => r.balance !== null).sort((a, b) => b.balance - a.balance);
+    const lotesInvierno = data.lotes.map(l => ({
+      lote: l,
+      campo: data.campos.find(c => c.id === l.campoId),
+      ciclo: cicloActivo(data, l.id)
+    })).filter(x => x.ciclo && ['Trigo', 'Garbanzo'].includes(x.ciclo.cultivo));
     return {
       haTotal,
       gastoTotal,
       stockBajo,
       gastoPorCampo,
       camposPasados,
-      consultasPendientes
+      consultasPendientes,
+      riegos,
+      lotesInvierno
     };
   }, [data]);
   return /*#__PURE__*/React.createElement("div", {
@@ -421,7 +444,68 @@ function Resumen({
       fontWeight: 500,
       color: stats.consultasPendientes > 0 ? '#854F0B' : undefined
     }
-  }, stats.consultasPendientes))), /*#__PURE__*/React.createElement("div", {
+  }, stats.consultasPendientes))), /*#__PURE__*/React.createElement(Card, null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: 500,
+      marginBottom: 8
+    }
+  }, "💧 Riego"), stats.riegos.length === 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 13,
+      color: '#888780'
+    }
+  }, "Sin objetivos de riego cargados todavía."), stats.riegos.map(r => /*#__PURE__*/React.createElement("div", {
+    key: r.lote.id,
+    style: {
+      display: 'flex',
+      justifyContent: 'space-between',
+      padding: '6px 0',
+      borderBottom: '1px solid #f1efe8',
+      fontSize: 13
+    }
+  }, /*#__PURE__*/React.createElement("span", null, r.campo?.nombre, " — ", r.lote.nombre), /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: r.balance > 0 ? '#854F0B' : '#3B6D11',
+      fontWeight: 500
+    }
+  }, r.balance >= 0 ? `Faltan ${r.balance}mm` : `Sobran ${Math.abs(r.balance)}mm`)))), /*#__PURE__*/React.createElement(Card, null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: 500,
+      marginBottom: 8
+    }
+  }, "🌾 Cultivos de invierno activos"), stats.lotesInvierno.length === 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 13,
+      color: '#888780'
+    }
+  }, "Sin lotes de Trigo o Garbanzo activos ahora."), stats.lotesInvierno.map(({
+    lote,
+    campo,
+    ciclo
+  }) => {
+    const col = COLOR_CULTIVO[ciclo.cultivo] || COLOR_CULTIVO['sin cultivo'];
+    return /*#__PURE__*/React.createElement("div", {
+      key: lote.id,
+      style: {
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: '6px 0',
+        borderBottom: '1px solid #f1efe8',
+        fontSize: 13
+      }
+    }, /*#__PURE__*/React.createElement("span", null, campo?.nombre, " — ", lote.nombre), /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 11,
+        fontWeight: 500,
+        color: col.texto,
+        background: col.fondo,
+        border: `1px solid ${col.borde}`,
+        borderRadius: 5,
+        padding: '2px 8px'
+      }
+    }, ciclo.cultivo));
+  })), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'grid',
       gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
@@ -940,16 +1024,9 @@ function Campos({
       gap: 10,
       flexWrap: 'wrap'
     }
-  }, /*#__PURE__*/React.createElement("input", {
-    style: {
-      ...inputStyle,
-      flex: 1,
-      minWidth: 140
-    },
-    placeholder: "Nombre del campo",
-    value: nuevoCampo,
-    onChange: e => setNuevoCampo(e.target.value)
-  }), /*#__PURE__*/React.createElement("select", {
+  }, /*#__PURE__*/React.createElement(Field, {
+    label: "Productor"
+  }, /*#__PURE__*/React.createElement("select", {
     style: inputStyle,
     value: clienteCampo,
     onChange: e => setClienteCampo(e.target.value)
@@ -958,9 +1035,21 @@ function Campos({
   }, "Propio"), data.clientes.map(c => /*#__PURE__*/React.createElement("option", {
     key: c.id,
     value: c.id
-  }, c.nombre))), /*#__PURE__*/React.createElement("button", {
+  }, c.nombre)))), /*#__PURE__*/React.createElement(Field, {
+    label: "Nombre del campo"
+  }, /*#__PURE__*/React.createElement("input", {
+    style: {
+      ...inputStyle,
+      minWidth: 160
+    },
+    value: nuevoCampo,
+    onChange: e => setNuevoCampo(e.target.value)
+  })), /*#__PURE__*/React.createElement("button", {
     onClick: addCampo,
-    style: btnPrimary
+    style: {
+      ...btnPrimary,
+      alignSelf: 'end'
+    }
   }, "+ Agregar")), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,
@@ -1544,10 +1633,142 @@ function Cosecha({
 }
 
 /* ---------- CALCULADORA PERALTA-DISA ---------- */
+function AnalisisFoto() {
+  const [estado, setEstado] = useState('idle'); // idle | cargando | listo | error
+  const [resultado, setResultado] = useState(null);
+  const [error, setError] = useState('');
+  const elegirArchivo = e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setEstado('cargando');
+    setError('');
+    setResultado(null);
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const base64 = reader.result.split(',')[1];
+      try {
+        const res = await fetch('/api/analizar-foto', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            imageBase64: base64,
+            mediaType: file.type
+          })
+        });
+        const json = await res.json();
+        if (!res.ok) {
+          setError(json.error || 'Error analizando la foto');
+          setEstado('error');
+          return;
+        }
+        setResultado(json);
+        setEstado('listo');
+      } catch (err) {
+        setError('No se pudo conectar para analizar la foto.');
+        setEstado('error');
+      }
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
+  const colorEstado = {
+    ok: {
+      bg: '#EAF3DE',
+      texto: '#27500A',
+      borde: '#8FBF5E',
+      label: 'OK'
+    },
+    alerta: {
+      bg: '#FFF6D6',
+      texto: '#8A6D00',
+      borde: '#E8C547',
+      label: 'ALERTA'
+    },
+    critico: {
+      bg: '#FBE7E4',
+      texto: '#A32D2D',
+      borde: '#E28A8A',
+      label: 'CRÍTICO'
+    }
+  };
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginBottom: 14
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: 500,
+      fontSize: 13,
+      marginBottom: 6
+    }
+  }, "Subir foto del análisis"), /*#__PURE__*/React.createElement("input", {
+    type: "file",
+    accept: "image/*",
+    onChange: elegirArchivo,
+    style: {
+      fontSize: 13
+    }
+  }), estado === 'cargando' && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: '#888780',
+      marginTop: 6
+    }
+  }, "Analizando…"), estado === 'error' && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: '#A32D2D',
+      marginTop: 6
+    }
+  }, error), estado === 'listo' && resultado && /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 8
+    }
+  }, (() => {
+    const c = colorEstado[resultado.resumenGeneral] || colorEstado.ok;
+    return /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: 'inline-block',
+        fontSize: 13,
+        fontWeight: 600,
+        color: c.texto,
+        background: c.bg,
+        border: `1px solid ${c.borde}`,
+        borderRadius: 6,
+        padding: '4px 12px',
+        marginBottom: 8
+      }
+    }, c.label);
+  })(), (resultado.parametros || []).map((p, i) => {
+    const c = colorEstado[p.estado] || colorEstado.ok;
+    return /*#__PURE__*/React.createElement("div", {
+      key: i,
+      style: {
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: '4px 8px',
+        marginBottom: 3,
+        background: c.bg,
+        border: `1px solid ${c.borde}`,
+        borderRadius: 5,
+        fontSize: 12
+      }
+    }, /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("strong", null, p.nombre), ": ", p.valor), /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: c.texto,
+        fontWeight: 500
+      }
+    }, p.comentario || c.label));
+  })));
+}
 function CalculoFertilizacion({
   lote,
   data,
-  update
+  update,
+  cultivo
 }) {
   const fertilidadLote = data.analisis.filter(a => a.loteId === lote.id && a.tipo === 'Fertilidad').sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''));
   const ultima = fertilidadLote[0];
@@ -1610,7 +1831,7 @@ function CalculoFertilizacion({
     };
   }, [f, nNo3_0_20, nNo3_20_60, mo]);
   const aplicacionesReales = data.actividades.filter(a => a.loteId === lote.id && a.tipo === 'Fertilización').sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''));
-  return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+  return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(AnalisisFoto, null), /*#__PURE__*/React.createElement("div", {
     style: {
       fontWeight: 500,
       fontSize: 13,
@@ -1699,7 +1920,13 @@ function CalculoFertilizacion({
       fontSize: 13,
       marginBottom: 4
     }
-  }, "Recomendación — Peralta-DISA"), /*#__PURE__*/React.createElement("div", {
+  }, "Recomendación — Peralta-DISA"), cultivo !== 'Trigo' ? /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: '#854F0B',
+      marginBottom: 8
+    }
+  }, "La fórmula de fertilización de Maíz todavía no está cargada — avisame los parámetros cuando la tengas y la agrego. Por ahora Peralta-DISA solo corre para Trigo.") : /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,
       color: '#888780',
@@ -1782,7 +2009,7 @@ function CalculoFertilizacion({
       color: '#854F0B',
       marginTop: 6
     }
-  }, "Supera 235 kg/ha, repartir en 1ª y 2ª fertilización.")), /*#__PURE__*/React.createElement("div", {
+  }, "Supera 235 kg/ha, repartir en 1ª y 2ª fertilización."))), /*#__PURE__*/React.createElement("div", {
     style: {
       borderTop: '1px solid #e3e1d8',
       margin: '14px 0'
@@ -1830,7 +2057,7 @@ function Fertilizacion({
   }, data.lotes.map(l => {
     const campo = data.campos.find(c => c.id === l.campoId);
     const ciclo = cicloActivo(data, l.id);
-    const esInvierno = ciclo && ['Trigo', 'Garbanzo'].includes(ciclo.cultivo);
+    const esGraminea = ciclo && ['Trigo', 'Maíz'].includes(ciclo.cultivo);
     return /*#__PURE__*/React.createElement(Card, {
       key: l.id,
       style: {
@@ -1840,7 +2067,7 @@ function Fertilizacion({
       style: {
         display: 'flex',
         justifyContent: 'space-between',
-        marginBottom: esInvierno ? 10 : 0
+        marginBottom: esGraminea ? 10 : 0
       }
     }, /*#__PURE__*/React.createElement("span", {
       style: {
@@ -1860,16 +2087,17 @@ function Fertilizacion({
           marginLeft: 8
         }
       }, ciclo ? ciclo.cultivo : `Barbecho → ${proximoCultivoBarbecho(data, l.id)}`);
-    })()), esInvierno ? /*#__PURE__*/React.createElement(CalculoFertilizacion, {
+    })()), esGraminea ? /*#__PURE__*/React.createElement(CalculoFertilizacion, {
       lote: l,
       data: data,
-      update: update
+      update: update,
+      cultivo: ciclo.cultivo
     }) : /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 12,
         color: '#888780'
       }
-    }, "Peralta-DISA es solo para cultivos de invierno (Trigo/Garbanzo) — este lote no aplica ahora."));
+    }, "Solo se fertiliza Trigo o Maíz — este lote no aplica ahora (el Garbanzo fija su propio nitrógeno, no se fertiliza)."));
   }));
 }
 
@@ -2141,6 +2369,110 @@ function AcuerdosLote({
     }
   }, "+ Agregar acuerdo"));
 }
+function Seccion({
+  titulo,
+  children,
+  defaultOpen
+}) {
+  const [abierto, setAbierto] = useState(!!defaultOpen);
+  return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("button", {
+    onClick: () => setAbierto(!abierto),
+    style: {
+      ...btnGhost,
+      fontSize: 13,
+      fontWeight: 500,
+      padding: '4px 6px',
+      display: 'flex',
+      alignItems: 'center',
+      gap: 6
+    }
+  }, abierto ? '▾' : '▸', " ", titulo), abierto && /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 8
+    }
+  }, children));
+}
+function AguaUtilSecano({
+  lote,
+  data,
+  update
+}) {
+  const [f, setF] = useState({
+    fecha: '',
+    aguaUtilMm: '',
+    profundidad: '200'
+  });
+  const lecturas = data.analisis.filter(a => a.loteId === lote.id && a.tipo === 'Agua útil').sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''));
+  const guardar = () => {
+    if (!f.fecha || f.aguaUtilMm === '') return;
+    update('analisis', a => [...a, {
+      id: uid(),
+      loteId: lote.id,
+      tipo: 'Agua útil',
+      ...f
+    }]);
+    setF({
+      fecha: '',
+      aguaUtilMm: '',
+      profundidad: '200'
+    });
+  };
+  return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'grid',
+      gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))',
+      gap: 8
+    }
+  }, /*#__PURE__*/React.createElement(Field, {
+    label: "Fecha"
+  }, /*#__PURE__*/React.createElement("input", {
+    style: inputStyle,
+    type: "date",
+    value: f.fecha,
+    onChange: e => setF({
+      ...f,
+      fecha: e.target.value
+    })
+  })), /*#__PURE__*/React.createElement(Field, {
+    label: "Agua útil (mm)"
+  }, /*#__PURE__*/React.createElement("input", {
+    style: inputStyle,
+    type: "number",
+    value: f.aguaUtilMm,
+    onChange: e => setF({
+      ...f,
+      aguaUtilMm: e.target.value
+    })
+  })), /*#__PURE__*/React.createElement(Field, {
+    label: "Profundidad (cm)"
+  }, /*#__PURE__*/React.createElement("input", {
+    style: inputStyle,
+    type: "number",
+    value: f.profundidad,
+    onChange: e => setF({
+      ...f,
+      profundidad: e.target.value
+    })
+  }))), /*#__PURE__*/React.createElement("button", {
+    onClick: guardar,
+    style: {
+      ...btnSecondary,
+      marginTop: 8
+    }
+  }, "+ Guardar lectura"), lecturas.length > 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 8
+    }
+  }, lecturas.slice(0, 6).map(a => /*#__PURE__*/React.createElement("div", {
+    key: a.id,
+    style: {
+      fontSize: 12,
+      color: '#5f5e5a',
+      padding: '3px 0',
+      borderTop: '1px solid #e3e1d8'
+    }
+  }, a.fecha, " — ", a.aguaUtilMm, "mm (", a.profundidad || '200', "cm)"))));
+}
 function LoteDetalle({
   lote,
   data,
@@ -2173,29 +2505,46 @@ function LoteDetalle({
       borderRadius: 8,
       display: 'flex',
       flexDirection: 'column',
-      gap: 14
+      gap: 10
     }
+  }, /*#__PURE__*/React.createElement(Seccion, {
+    titulo: "Acuerdos del lote"
   }, /*#__PURE__*/React.createElement(AcuerdosLote, {
     lote: lote,
     data: data,
     update: update
-  }), /*#__PURE__*/React.createElement("div", {
+  })), /*#__PURE__*/React.createElement("div", {
     style: {
       borderTop: '1px solid #e3e1d8'
     }
-  }), /*#__PURE__*/React.createElement(Ciclos, {
+  }), /*#__PURE__*/React.createElement(Seccion, {
+    titulo: "Ciclos de cultivo",
+    defaultOpen: true
+  }, /*#__PURE__*/React.createElement(Ciclos, {
     lote: lote,
     data: data,
     update: update
-  }), /*#__PURE__*/React.createElement("div", {
+  })), /*#__PURE__*/React.createElement("div", {
     style: {
       borderTop: '1px solid #e3e1d8'
     }
-  }), /*#__PURE__*/React.createElement(Cosecha, {
+  }), /*#__PURE__*/React.createElement(Seccion, {
+    titulo: "Cosecha"
+  }, /*#__PURE__*/React.createElement(Cosecha, {
     lote: lote,
     data: data,
     update: update
-  }), /*#__PURE__*/React.createElement("div", {
+  })), (lote.modo || 'Riego') === 'Secano' && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      borderTop: '1px solid #e3e1d8'
+    }
+  }), /*#__PURE__*/React.createElement(Seccion, {
+    titulo: "Agua útil (2m)"
+  }, /*#__PURE__*/React.createElement(AguaUtilSecano, {
+    lote: lote,
+    data: data,
+    update: update
+  }))), /*#__PURE__*/React.createElement("div", {
     style: {
       borderTop: '1px solid #e3e1d8'
     }
@@ -2204,13 +2553,9 @@ function LoteDetalle({
       fontSize: 11,
       color: '#888780'
     }
-  }, "El agua útil se carga desde la pestaña \"Riego\", y los datos de fertilidad + la recomendación desde la pestaña \"Fertilización\"."), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontWeight: 500,
-      fontSize: 13,
-      marginBottom: 8
-    }
-  }, "Bitácora"), /*#__PURE__*/React.createElement("div", {
+  }, (lote.modo || 'Riego') === 'Riego' ? 'El agua útil también se puede cargar desde la pestaña "Riego". ' : '', "Los datos de fertilidad + la recomendación se cargan desde la pestaña \"Fertilización\"."), /*#__PURE__*/React.createElement(Seccion, {
+    titulo: "Bitácora"
+  }, /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       gap: 8,
@@ -2544,6 +2889,7 @@ function Riego({
 }
 
 /* ---------- INSUMOS ---------- */
+const UNIDADES_INSUMO = ['kg', 'g', 'L', 'cc'];
 function Insumos({
   data,
   update
@@ -2553,9 +2899,7 @@ function Insumos({
     categoria: 'Herbicida',
     especificar: '',
     unidad: 'kg',
-    stock: '',
     stockMinimo: '',
-    costoUnitario: '',
     clienteId: ''
   });
   const add = () => {
@@ -2563,9 +2907,9 @@ function Insumos({
     update('insumos', i => [...i, {
       id: uid(),
       ...form,
-      stock: Number(form.stock) || 0,
+      stock: 0,
       stockMinimo: Number(form.stockMinimo) || 0,
-      costoUnitario: Number(form.costoUnitario) || 0,
+      costoUnitario: 0,
       clienteId: form.clienteId || null
     }]);
     setForm({
@@ -2573,9 +2917,7 @@ function Insumos({
       categoria: form.categoria,
       especificar: '',
       unidad: 'kg',
-      stock: '',
       stockMinimo: '',
-      costoUnitario: '',
       clienteId: ''
     });
   };
@@ -2589,9 +2931,15 @@ function Insumos({
   }, /*#__PURE__*/React.createElement(Card, null, /*#__PURE__*/React.createElement("div", {
     style: {
       fontWeight: 500,
-      marginBottom: 10
+      marginBottom: 4
     }
   }, "Nuevo insumo"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: '#888780',
+      marginBottom: 10
+    }
+  }, "Esto es solo la ficha del producto — el stock y el costo se van a ir cargando solos con las Compras que registres a cada proveedor, y se van descontando cuando lo uses en una Actividad. Acá solo definís el \"stock mínimo\" (el aviso de cuándo comprar más)."), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'grid',
       gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
@@ -2628,25 +2976,17 @@ function Insumos({
     })
   })), /*#__PURE__*/React.createElement(Field, {
     label: "Unidad"
-  }, /*#__PURE__*/React.createElement("input", {
+  }, /*#__PURE__*/React.createElement("select", {
     style: inputStyle,
     value: form.unidad,
     onChange: e => setForm({
       ...form,
       unidad: e.target.value
     })
-  })), /*#__PURE__*/React.createElement(Field, {
-    label: "Stock"
-  }, /*#__PURE__*/React.createElement("input", {
-    style: inputStyle,
-    type: "number",
-    value: form.stock,
-    onChange: e => setForm({
-      ...form,
-      stock: e.target.value
-    })
-  })), /*#__PURE__*/React.createElement(Field, {
-    label: "Stock mínimo"
+  }, UNIDADES_INSUMO.map(u => /*#__PURE__*/React.createElement("option", {
+    key: u
+  }, u)))), /*#__PURE__*/React.createElement(Field, {
+    label: "Stock mínimo (aviso)"
   }, /*#__PURE__*/React.createElement("input", {
     style: inputStyle,
     type: "number",
@@ -2654,16 +2994,6 @@ function Insumos({
     onChange: e => setForm({
       ...form,
       stockMinimo: e.target.value
-    })
-  })), /*#__PURE__*/React.createElement(Field, {
-    label: "Costo unitario"
-  }, /*#__PURE__*/React.createElement("input", {
-    style: inputStyle,
-    type: "number",
-    value: form.costoUnitario,
-    onChange: e => setForm({
-      ...form,
-      costoUnitario: e.target.value
     })
   }))), /*#__PURE__*/React.createElement("button", {
     onClick: add,
@@ -2697,6 +3027,27 @@ function Insumos({
 }
 
 /* ---------- PROVEEDORES ---------- */
+const UBICACIONES_STOCK = ['Proveedor', 'Planta', 'Campo'];
+function agregarAUbicacion(insumo, ubicacion, rack, posicion, campoId, cantidad) {
+  const buckets = insumo.stockUbicaciones || [];
+  const idx = buckets.findIndex(b => b.ubicacion === ubicacion && (b.rack || '') === (rack || '') && (b.posicion || '') === (posicion || '') && (b.campoId || '') === (campoId || ''));
+  if (idx >= 0) {
+    const nuevos = [...buckets];
+    nuevos[idx] = {
+      ...nuevos[idx],
+      cantidad: (Number(nuevos[idx].cantidad) || 0) + cantidad
+    };
+    return nuevos;
+  }
+  return [...buckets, {
+    id: uid(),
+    ubicacion,
+    rack: rack || '',
+    posicion: posicion || '',
+    campoId: campoId || '',
+    cantidad
+  }];
+}
 function Proveedores({
   data,
   update
@@ -2707,11 +3058,15 @@ function Proveedores({
     insumoId: '',
     cantidad: '',
     precioUnitario: '',
-    condicion: '',
+    financiacion: 'Contado',
+    diasPlazo: '',
+    tasaInteres: '',
+    vencimientoDeuda: '',
     fecha: '',
-    ubicacion: '',
-    retirado: false,
-    vencimiento: ''
+    ubicacion: 'Proveedor',
+    rack: '',
+    posicion: '',
+    campoId: ''
   });
   const addProveedor = () => {
     if (!nombreProv.trim()) return;
@@ -2722,32 +3077,39 @@ function Proveedores({
     }]);
     setNombreProv('');
   };
+  const precioFinanciado = formC.financiacion === 'Plazo' && formC.precioUnitario && formC.tasaInteres ? Number(formC.precioUnitario) * (1 + Number(formC.tasaInteres) / 100) : Number(formC.precioUnitario) || 0;
   const guardarCompra = () => {
     if (!formC.proveedorId || !formC.insumoId || !formC.fecha) return;
-    const cantidad = Number(formC.cantidad) || 0,
-      precioUnitario = Number(formC.precioUnitario) || 0;
+    const cantidad = Number(formC.cantidad) || 0;
+    const precioUnitario = Number(formC.precioUnitario) || 0;
     update('compras', c => [...c, {
       id: uid(),
       ...formC,
       cantidad,
       precioUnitario,
-      montoTotal: cantidad * precioUnitario
+      precioFinanciado,
+      montoTotal: cantidad * precioFinanciado
     }]);
     update('insumos', ins => ins.map(i => i.id === formC.insumoId ? {
       ...i,
-      stock: (Number(i.stock) || 0) + (formC.retirado ? cantidad : 0),
-      costoUnitario: precioUnitario || i.costoUnitario
+      stock: (Number(i.stock) || 0) + cantidad,
+      costoUnitario: precioFinanciado || i.costoUnitario,
+      stockUbicaciones: agregarAUbicacion(i, formC.ubicacion, formC.rack, formC.posicion, formC.campoId, cantidad)
     } : i));
     setFormC({
       proveedorId: '',
       insumoId: '',
       cantidad: '',
       precioUnitario: '',
-      condicion: '',
+      financiacion: 'Contado',
+      diasPlazo: '',
+      tasaInteres: '',
+      vencimientoDeuda: '',
       fecha: '',
-      ubicacion: '',
-      retirado: false,
-      vencimiento: ''
+      ubicacion: 'Proveedor',
+      rack: '',
+      posicion: '',
+      campoId: ''
     });
   };
   return /*#__PURE__*/React.createElement("div", {
@@ -2827,7 +3189,7 @@ function Proveedores({
       cantidad: e.target.value
     })
   })), /*#__PURE__*/React.createElement(Field, {
-    label: "Precio unitario"
+    label: "Precio unitario (contado)"
   }, /*#__PURE__*/React.createElement("input", {
     style: inputStyle,
     type: "number",
@@ -2837,25 +3199,49 @@ function Proveedores({
       precioUnitario: e.target.value
     })
   })), /*#__PURE__*/React.createElement(Field, {
-    label: "Vencimiento"
+    label: "Financiación"
+  }, /*#__PURE__*/React.createElement("select", {
+    style: inputStyle,
+    value: formC.financiacion,
+    onChange: e => setFormC({
+      ...formC,
+      financiacion: e.target.value
+    })
+  }, /*#__PURE__*/React.createElement("option", {
+    value: "Contado"
+  }, "Contado"), /*#__PURE__*/React.createElement("option", {
+    value: "Plazo"
+  }, "Plazo"))), formC.financiacion === 'Plazo' && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(Field, {
+    label: "Días de plazo"
+  }, /*#__PURE__*/React.createElement("input", {
+    style: inputStyle,
+    type: "number",
+    value: formC.diasPlazo,
+    onChange: e => setFormC({
+      ...formC,
+      diasPlazo: e.target.value
+    })
+  })), /*#__PURE__*/React.createElement(Field, {
+    label: "Tasa interés (%)"
+  }, /*#__PURE__*/React.createElement("input", {
+    style: inputStyle,
+    type: "number",
+    value: formC.tasaInteres,
+    onChange: e => setFormC({
+      ...formC,
+      tasaInteres: e.target.value
+    })
+  })), /*#__PURE__*/React.createElement(Field, {
+    label: "Vencimiento de la deuda"
   }, /*#__PURE__*/React.createElement("input", {
     style: inputStyle,
     type: "date",
-    value: formC.vencimiento,
+    value: formC.vencimientoDeuda,
     onChange: e => setFormC({
       ...formC,
-      vencimiento: e.target.value
+      vencimientoDeuda: e.target.value
     })
-  })), /*#__PURE__*/React.createElement(Field, {
-    label: "Ubicación"
-  }, /*#__PURE__*/React.createElement("input", {
-    style: inputStyle,
-    value: formC.ubicacion,
-    onChange: e => setFormC({
-      ...formC,
-      ubicacion: e.target.value
-    })
-  })), /*#__PURE__*/React.createElement(Field, {
+  }))), /*#__PURE__*/React.createElement(Field, {
     label: "Fecha"
   }, /*#__PURE__*/React.createElement("input", {
     style: inputStyle,
@@ -2865,21 +3251,56 @@ function Proveedores({
       ...formC,
       fecha: e.target.value
     })
-  }))), /*#__PURE__*/React.createElement("label", {
-    style: {
-      display: 'flex',
-      gap: 6,
-      fontSize: 13,
-      marginTop: 10
-    }
-  }, /*#__PURE__*/React.createElement("input", {
-    type: "checkbox",
-    checked: formC.retirado,
+  })), /*#__PURE__*/React.createElement(Field, {
+    label: "Ubicación"
+  }, /*#__PURE__*/React.createElement("select", {
+    style: inputStyle,
+    value: formC.ubicacion,
     onChange: e => setFormC({
       ...formC,
-      retirado: e.target.checked
+      ubicacion: e.target.value
     })
-  }), "Ya retirado"), /*#__PURE__*/React.createElement("button", {
+  }, UBICACIONES_STOCK.map(u => /*#__PURE__*/React.createElement("option", {
+    key: u
+  }, u)))), formC.ubicacion === 'Planta' && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(Field, {
+    label: "Rack"
+  }, /*#__PURE__*/React.createElement("input", {
+    style: inputStyle,
+    value: formC.rack,
+    onChange: e => setFormC({
+      ...formC,
+      rack: e.target.value
+    })
+  })), /*#__PURE__*/React.createElement(Field, {
+    label: "Posición"
+  }, /*#__PURE__*/React.createElement("input", {
+    style: inputStyle,
+    value: formC.posicion,
+    onChange: e => setFormC({
+      ...formC,
+      posicion: e.target.value
+    })
+  }))), formC.ubicacion === 'Campo' && /*#__PURE__*/React.createElement(Field, {
+    label: "Campo"
+  }, /*#__PURE__*/React.createElement("select", {
+    style: inputStyle,
+    value: formC.campoId,
+    onChange: e => setFormC({
+      ...formC,
+      campoId: e.target.value
+    })
+  }, /*#__PURE__*/React.createElement("option", {
+    value: ""
+  }, "Elegir…"), data.campos.map(c => /*#__PURE__*/React.createElement("option", {
+    key: c.id,
+    value: c.id
+  }, c.nombre))))), formC.financiacion === 'Plazo' && formC.precioUnitario && formC.tasaInteres && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: '#888780',
+      marginTop: 8
+    }
+  }, "Precio financiado: ", fmtMoney(precioFinanciado), "/unidad (contado ", fmtMoney(Number(formC.precioUnitario)), " + ", formC.tasaInteres, "%)"), /*#__PURE__*/React.createElement("button", {
     onClick: guardarCompra,
     style: {
       ...btnPrimary,
@@ -2900,7 +3321,203 @@ function Proveedores({
         fontSize: 13
       }
     }, /*#__PURE__*/React.createElement("strong", null, p.nombre), " — ", comprasProv.length, " compra(s)");
-  })));
+  })), /*#__PURE__*/React.createElement(Card, null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: 500,
+      marginBottom: 4
+    }
+  }, "Stock por ubicación"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: '#888780',
+      marginBottom: 10
+    }
+  }, "Dónde está físicamente cada insumo, y cómo moverlo entre lugares (ej: de Planta al Campo antes de una aplicación)."), data.insumos.map(i => /*#__PURE__*/React.createElement(StockUbicacionInsumo, {
+    key: i.id,
+    insumo: i,
+    data: data,
+    update: update
+  }))));
+}
+function StockUbicacionInsumo({
+  insumo,
+  data,
+  update
+}) {
+  const buckets = insumo.stockUbicaciones || [];
+  const [abierto, setAbierto] = useState(false);
+  const [mov, setMov] = useState({
+    desdeIdx: '',
+    ubicacion: 'Campo',
+    rack: '',
+    posicion: '',
+    campoId: '',
+    cantidad: ''
+  });
+  if (buckets.length === 0 && !abierto) return null;
+  const transferir = () => {
+    const idx = Number(mov.desdeIdx);
+    const cantidad = Number(mov.cantidad) || 0;
+    if (isNaN(idx) || !buckets[idx] || cantidad <= 0 || cantidad > Number(buckets[idx].cantidad)) return;
+    update('insumos', ins => ins.map(i => {
+      if (i.id !== insumo.id) return i;
+      const restantes = i.stockUbicaciones.map((b, bi) => bi === idx ? {
+        ...b,
+        cantidad: Number(b.cantidad) - cantidad
+      } : b).filter(b => Number(b.cantidad) > 0);
+      const conDestino = agregarAUbicacion({
+        ...i,
+        stockUbicaciones: restantes
+      }, mov.ubicacion, mov.rack, mov.posicion, mov.campoId, cantidad);
+      return {
+        ...i,
+        stockUbicaciones: conDestino
+      };
+    }));
+    setMov({
+      desdeIdx: '',
+      ubicacion: 'Campo',
+      rack: '',
+      posicion: '',
+      campoId: '',
+      cantidad: ''
+    });
+  };
+  const nombreBucket = b => `${b.ubicacion}${b.rack ? ` (rack ${b.rack}${b.posicion ? '/' + b.posicion : ''})` : ''}${b.campoId ? ` (${data.campos.find(c => c.id === b.campoId)?.nombre || '?'})` : ''}`;
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: '8px 0',
+      borderTop: '1px solid #f1efe8'
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: () => setAbierto(!abierto),
+    style: {
+      ...btnGhost,
+      fontSize: 13,
+      padding: '2px 4px'
+    }
+  }, abierto ? '▾' : '▸', " ", insumo.nombre), abierto && /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 6,
+      paddingLeft: 8
+    }
+  }, buckets.length === 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: '#888780'
+    }
+  }, "Sin stock ubicado todavía."), buckets.map((b, i) => /*#__PURE__*/React.createElement("div", {
+    key: b.id,
+    style: {
+      fontSize: 12,
+      color: '#5f5e5a',
+      padding: '2px 0'
+    }
+  }, nombreBucket(b), ": ", b.cantidad, " ", insumo.unidad)), buckets.length > 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      gap: 6,
+      alignItems: 'center',
+      flexWrap: 'wrap',
+      marginTop: 8
+    }
+  }, /*#__PURE__*/React.createElement("select", {
+    style: {
+      ...inputStyle,
+      padding: '3px 6px',
+      fontSize: 12
+    },
+    value: mov.desdeIdx,
+    onChange: e => setMov({
+      ...mov,
+      desdeIdx: e.target.value
+    })
+  }, /*#__PURE__*/React.createElement("option", {
+    value: ""
+  }, "Desde…"), buckets.map((b, i) => /*#__PURE__*/React.createElement("option", {
+    key: i,
+    value: i
+  }, nombreBucket(b)))), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 12
+    }
+  }, "→"), /*#__PURE__*/React.createElement("select", {
+    style: {
+      ...inputStyle,
+      padding: '3px 6px',
+      fontSize: 12
+    },
+    value: mov.ubicacion,
+    onChange: e => setMov({
+      ...mov,
+      ubicacion: e.target.value
+    })
+  }, UBICACIONES_STOCK.map(u => /*#__PURE__*/React.createElement("option", {
+    key: u
+  }, u))), mov.ubicacion === 'Planta' && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("input", {
+    style: {
+      ...inputStyle,
+      width: 60,
+      padding: '3px 6px',
+      fontSize: 12
+    },
+    placeholder: "Rack",
+    value: mov.rack,
+    onChange: e => setMov({
+      ...mov,
+      rack: e.target.value
+    })
+  }), /*#__PURE__*/React.createElement("input", {
+    style: {
+      ...inputStyle,
+      width: 60,
+      padding: '3px 6px',
+      fontSize: 12
+    },
+    placeholder: "Pos.",
+    value: mov.posicion,
+    onChange: e => setMov({
+      ...mov,
+      posicion: e.target.value
+    })
+  })), mov.ubicacion === 'Campo' && /*#__PURE__*/React.createElement("select", {
+    style: {
+      ...inputStyle,
+      padding: '3px 6px',
+      fontSize: 12
+    },
+    value: mov.campoId,
+    onChange: e => setMov({
+      ...mov,
+      campoId: e.target.value
+    })
+  }, /*#__PURE__*/React.createElement("option", {
+    value: ""
+  }, "Campo…"), data.campos.map(c => /*#__PURE__*/React.createElement("option", {
+    key: c.id,
+    value: c.id
+  }, c.nombre))), /*#__PURE__*/React.createElement("input", {
+    style: {
+      ...inputStyle,
+      width: 70,
+      padding: '3px 6px',
+      fontSize: 12
+    },
+    type: "number",
+    placeholder: "Cant.",
+    value: mov.cantidad,
+    onChange: e => setMov({
+      ...mov,
+      cantidad: e.target.value
+    })
+  }), /*#__PURE__*/React.createElement("button", {
+    onClick: transferir,
+    style: {
+      ...btnGhost,
+      fontSize: 11,
+      padding: '3px 8px'
+    }
+  }, "Mover"))));
 }
 
 /* ---------- ACTIVIDADES ---------- */
@@ -3028,6 +3645,7 @@ function Actividades({
     cultivo: '',
     variedad: '',
     densidad: '',
+    densidadUnidad: 'kg/ha',
     paraClienteId: ''
   };
   const [form, setForm] = useState(formInicial);
@@ -3172,10 +3790,15 @@ function Actividades({
   }, /*#__PURE__*/React.createElement("select", {
     style: inputStyle,
     value: form.loteId,
-    onChange: e => setForm({
-      ...form,
-      loteId: e.target.value
-    })
+    onChange: e => {
+      const loteId = e.target.value;
+      const loteElegido = data.lotes.find(l => l.id === loteId);
+      setForm({
+        ...form,
+        loteId,
+        haReales: loteElegido ? String(loteElegido.hectareas) : form.haReales
+      });
+    }
   }, /*#__PURE__*/React.createElement("option", {
     value: ""
   }, "Elegir…"), lotesConCampo.map(l => /*#__PURE__*/React.createElement("option", {
@@ -3286,7 +3909,7 @@ function Actividades({
       variedad: e.target.value
     })
   })), /*#__PURE__*/React.createElement(Field, {
-    label: "Densidad (kg/ha)"
+    label: "Densidad"
   }, /*#__PURE__*/React.createElement("input", {
     style: inputStyle,
     type: "number",
@@ -3295,7 +3918,20 @@ function Actividades({
       ...form,
       densidad: e.target.value
     })
-  }))), esAplicacion && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(Field, {
+  })), form.cultivo === 'Soja' ? /*#__PURE__*/React.createElement(Field, {
+    label: "Unidad densidad"
+  }, /*#__PURE__*/React.createElement("select", {
+    style: inputStyle,
+    value: form.densidadUnidad || 'kg/ha',
+    onChange: e => setForm({
+      ...form,
+      densidadUnidad: e.target.value
+    })
+  }, /*#__PURE__*/React.createElement("option", {
+    value: "kg/ha"
+  }, "kg/ha"), /*#__PURE__*/React.createElement("option", {
+    value: "semillas/ha"
+  }, "semillas/ha"))) : null), esAplicacion && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(Field, {
     label: "Método"
   }, /*#__PURE__*/React.createElement("select", {
     style: inputStyle,
