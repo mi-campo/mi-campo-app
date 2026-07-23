@@ -67,7 +67,7 @@ const OBJETIVO_RIEGO_POR_CULTIVO = {
   'Soja': 120,
   'Maíz': 200
 };
-const TIPOS_BOT = [['riego', 'Riego'], ['precipitacion', 'Lluvia'], ['siembra', 'Siembra'], ['fertilizacion', 'Fertilización'], ['pulverizacion', 'Pulverización'], ['cosecha', 'Cosecha'], ['compra', 'Compra de insumo'], ['aporte_insumo', 'Aporte de insumo'], ['analisis_agua', 'Análisis de agua'], ['analisis_suelo', 'Análisis de suelo'], ['nota', 'Nota'], ['consulta', 'Consultas / preguntas']];
+const TIPOS_BOT = [['riego', 'Riego'], ['precipitacion', 'Lluvia'], ['siembra', 'Siembra'], ['fertilizacion', 'Fertilización'], ['pulverizacion', 'Pulverización'], ['cosecha', 'Cosecha'], ['compra', 'Compra de insumo'], ['aporte_insumo', 'Aporte de insumo'], ['analisis_agua', 'Análisis de agua'], ['analisis_suelo', 'Análisis de suelo'], ['analisis_foto', 'Análisis por foto/PDF'], ['nota', 'Nota'], ['consulta', 'Consultas / preguntas']];
 const inputStyle = {
   padding: '8px 10px',
   borderRadius: 6,
