@@ -184,7 +184,8 @@ function InputUnidad({
   value,
   onChange,
   unidad,
-  placeholder
+  placeholder,
+  disabled
 }) {
   return /*#__PURE__*/React.createElement("div", {
     style: {
@@ -194,12 +195,15 @@ function InputUnidad({
     style: {
       ...inputStyle,
       width: '100%',
-      paddingRight: 8 + unidad.length * 6.5
+      paddingRight: 8 + unidad.length * 6.5,
+      background: disabled ? '#f4f2ea' : '#fff',
+      color: disabled ? '#888780' : 'inherit'
     },
     type: "number",
     value: value,
     onChange: onChange,
-    placeholder: placeholder
+    placeholder: placeholder,
+    disabled: disabled
   }), /*#__PURE__*/React.createElement("span", {
     style: {
       position: 'absolute',
@@ -2333,6 +2337,9 @@ function Fertilizacion({
     const tieneA = tieneAnalisis(a.id) ? 0 : 1;
     const tieneB = tieneAnalisis(b.id) ? 0 : 1;
     if (tieneA !== tieneB) return tieneA - tieneB;
+    const modoA = (a.modo || 'Riego') === 'Secano' ? 1 : 0;
+    const modoB = (b.modo || 'Riego') === 'Secano' ? 1 : 0;
+    if (modoA !== modoB) return modoA - modoB;
     const cicloA = cicloActivo(data, a.id),
       cicloB = cicloActivo(data, b.id);
     const pa = cicloA && PRIORIDAD[cicloA.cultivo] != null ? PRIORIDAD[cicloA.cultivo] : 99;
@@ -3928,7 +3935,8 @@ function Actividades({
     variedad: '',
     densidad: '',
     densidadUnidad: 'kg/ha',
-    paraClienteId: ''
+    paraClienteId: '',
+    esParcial: false
   };
   const [form, setForm] = useState(formInicial);
   const [items, setItems] = useState([{
@@ -4260,7 +4268,28 @@ function Actividades({
       ...form,
       haReales: e.target.value
     })
-  })), /*#__PURE__*/React.createElement(Field, {
+  })), (() => {
+    const loteActual = data.lotes.find(l => l.id === form.loteId);
+    const cobertura = form.haReales && loteActual?.hectareas ? Number(form.haReales) / Number(loteActual.hectareas) : null;
+    if (cobertura !== null && cobertura <= 0.6) {
+      return /*#__PURE__*/React.createElement("div", {
+        style: {
+          display: 'flex',
+          alignItems: 'end',
+          paddingBottom: 8
+        }
+      }, /*#__PURE__*/React.createElement("span", {
+        style: {
+          fontSize: 11,
+          color: '#A32D2D',
+          background: '#FBE7E4',
+          padding: '4px 8px',
+          borderRadius: 5
+        }
+      }, "⚠️ Manchoneo detectado (", Math.round(cobertura * 100), "% del lote)"));
+    }
+    return null;
+  })(), /*#__PURE__*/React.createElement(Field, {
     label: "Ha facturadas contratista"
   }, /*#__PURE__*/React.createElement(InputUnidad, {
     unidad: "ha",
