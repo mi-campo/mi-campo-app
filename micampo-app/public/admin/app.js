@@ -32,7 +32,7 @@ function laborKey(tipo, metodo) {
   }
   return null;
 }
-const CATEGORIAS_INSUMO = ['Insecticida', 'Herbicida', 'Fungicida', 'Fertilizante', 'Semilla', 'Cebo', 'Otro'];
+const CATEGORIAS_INSUMO = ['Insecticida', 'Herbicida', 'Fungicida', 'Coadyuvante', 'Fertilizante', 'Semilla', 'Cebo', 'Otro'];
 const CULTIVOS_SIEMBRA = ['Soja', 'Trigo', 'Garbanzo', 'Maíz'];
 const COLOR_CULTIVO = {
   'Soja': {
@@ -367,7 +367,8 @@ function Resumen({
       const acumuladoRiego = registros.filter(r => !esLluvia(r)).reduce((s, a) => s + Number(a.mm), 0);
       const acumuladoLluvia = registros.filter(esLluvia).reduce((s, a) => s + Number(a.mm), 0);
       const aguaUtil = aguaUtilPromedio(data, l.id);
-      const objetivo = Number(l.objetivoRiego) || 0;
+      const ciclo = cicloActivo(data, l.id);
+      const objetivo = Number(l.objetivoRiego) || (ciclo ? OBJETIVO_RIEGO_POR_CULTIVO[ciclo.cultivo] : 0) || 0;
       const disponible = (aguaUtil ? aguaUtil.promedio : 0) + acumuladoRiego + acumuladoLluvia;
       return {
         lote: l,
@@ -2048,13 +2049,24 @@ function Fertilizacion({
   data,
   update
 }) {
+  const PRIORIDAD = {
+    'Trigo': 0,
+    'Maíz': 1
+  };
+  const lotesOrdenados = [...data.lotes].sort((a, b) => {
+    const cicloA = cicloActivo(data, a.id),
+      cicloB = cicloActivo(data, b.id);
+    const pa = cicloA && PRIORIDAD[cicloA.cultivo] != null ? PRIORIDAD[cicloA.cultivo] : 99;
+    const pb = cicloB && PRIORIDAD[cicloB.cultivo] != null ? PRIORIDAD[cicloB.cultivo] : 99;
+    return pa - pb;
+  });
   return /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       flexDirection: 'column',
       gap: 14
     }
-  }, data.lotes.map(l => {
+  }, lotesOrdenados.map(l => {
     const campo = data.campos.find(c => c.id === l.campoId);
     const ciclo = cicloActivo(data, l.id);
     const esGraminea = ciclo && ['Trigo', 'Maíz'].includes(ciclo.cultivo);
@@ -2659,12 +2671,12 @@ function Riego({
     const lluviasLote = registrosLote.filter(esLluvia);
     const acumuladoRiego = riegosLote.reduce((s, a) => s + Number(a.mm), 0);
     const acumuladoLluvia = lluviasLote.reduce((s, a) => s + Number(a.mm), 0);
-    const objetivo = Number(l.objetivoRiego) || 0;
+    const ciclo = cicloActivo(data, l.id);
+    const objetivo = Number(l.objetivoRiego) || (ciclo ? OBJETIVO_RIEGO_POR_CULTIVO[ciclo.cultivo] : 0) || 0;
     const aguaUtil = aguaUtilPromedio(data, l.id);
     const aguaUtilMm = aguaUtil ? aguaUtil.promedio : 0;
     const disponible = aguaUtilMm + acumuladoRiego + acumuladoLluvia;
     const balance = objetivo - disponible;
-    const ciclo = cicloActivo(data, l.id);
     const lecturasAguaLote = data.analisis.filter(a => a.loteId === l.id && a.tipo === 'Agua útil').sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''));
     const fAgua = formAgua[l.id] || {
       fecha: '',
@@ -2737,7 +2749,7 @@ function Riego({
         width: 90
       },
       type: "number",
-      value: l.objetivoRiego || '',
+      value: objetivo || '',
       onChange: e => setObjetivo(l.id, e.target.value)
     })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
       style: {
@@ -2939,7 +2951,7 @@ function Insumos({
       color: '#888780',
       marginBottom: 10
     }
-  }, "Esto es solo la ficha del producto — el stock y el costo se van a ir cargando solos con las Compras que registres a cada proveedor, y se van descontando cuando lo uses en una Actividad. Acá solo definís el \"stock mínimo\" (el aviso de cuándo comprar más)."), /*#__PURE__*/React.createElement("div", {
+  }, "Esto es solo la ficha del producto — el stock y el costo se van cargando solos con las Compras que registres a cada proveedor, y se van descontando cuando lo uses en una Actividad. El \"Stock mínimo\" es un aviso: si el stock real baja de ese número, te lo marca en rojo en el Resumen (ej: poné 50 y cuando queden 50kg o menos te avisa que hay que comprar más)."), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'grid',
       gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
@@ -2986,7 +2998,7 @@ function Insumos({
   }, UNIDADES_INSUMO.map(u => /*#__PURE__*/React.createElement("option", {
     key: u
   }, u)))), /*#__PURE__*/React.createElement(Field, {
-    label: "Stock mínimo (aviso)"
+    label: "Stock mínimo"
   }, /*#__PURE__*/React.createElement("input", {
     style: inputStyle,
     type: "number",
@@ -2994,7 +3006,8 @@ function Insumos({
     onChange: e => setForm({
       ...form,
       stockMinimo: e.target.value
-    })
+    }),
+    placeholder: "ej: 50"
   }))), /*#__PURE__*/React.createElement("button", {
     onClick: add,
     style: {
@@ -3058,6 +3071,7 @@ function Proveedores({
     insumoId: '',
     cantidad: '',
     precioUnitario: '',
+    moneda: 'USD',
     financiacion: 'Contado',
     diasPlazo: '',
     tasaInteres: '',
@@ -3101,6 +3115,7 @@ function Proveedores({
       insumoId: '',
       cantidad: '',
       precioUnitario: '',
+      moneda: 'USD',
       financiacion: 'Contado',
       diasPlazo: '',
       tasaInteres: '',
@@ -3199,6 +3214,19 @@ function Proveedores({
       precioUnitario: e.target.value
     })
   })), /*#__PURE__*/React.createElement(Field, {
+    label: "Moneda"
+  }, /*#__PURE__*/React.createElement("select", {
+    style: inputStyle,
+    value: formC.moneda,
+    onChange: e => setFormC({
+      ...formC,
+      moneda: e.target.value
+    })
+  }, /*#__PURE__*/React.createElement("option", {
+    value: "USD"
+  }, "USD"), /*#__PURE__*/React.createElement("option", {
+    value: "$"
+  }, "$ (pesos)"))), /*#__PURE__*/React.createElement(Field, {
     label: "Financiación"
   }, /*#__PURE__*/React.createElement("select", {
     style: inputStyle,
@@ -3242,7 +3270,7 @@ function Proveedores({
       vencimientoDeuda: e.target.value
     })
   }))), /*#__PURE__*/React.createElement(Field, {
-    label: "Fecha"
+    label: "Fecha de compra"
   }, /*#__PURE__*/React.createElement("input", {
     style: inputStyle,
     type: "date",
@@ -3300,7 +3328,7 @@ function Proveedores({
       color: '#888780',
       marginTop: 8
     }
-  }, "Precio financiado: ", fmtMoney(precioFinanciado), "/unidad (contado ", fmtMoney(Number(formC.precioUnitario)), " + ", formC.tasaInteres, "%)"), /*#__PURE__*/React.createElement("button", {
+  }, "Precio financiado: ", formC.moneda, " ", precioFinanciado.toFixed(2), "/unidad (contado ", formC.moneda, " ", Number(formC.precioUnitario).toFixed(2), " + ", formC.tasaInteres, "%)"), /*#__PURE__*/React.createElement("button", {
     onClick: guardarCompra,
     style: {
       ...btnPrimary,
