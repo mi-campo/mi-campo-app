@@ -1780,17 +1780,12 @@ function CalculoFertilizacion({
     mo: '',
     ph: ''
   });
-  const [f, setF] = useState({
-    rendObj: '',
-    rendRelativo: '1',
+  const [rendObj, setRendObj] = useState('');
+  const [avanzado, setAvanzado] = useState({
     nanLab: '',
     arrancador: '0',
     antecesor: '0',
     calibracion: 'original'
-  });
-  const set = (k, v) => setF({
-    ...f,
-    [k]: v
   });
   const guardarBase = () => {
     if (!formBase.fecha) return;
@@ -1809,28 +1804,46 @@ function CalculoFertilizacion({
     });
   };
 
-  // Usa la ultima lectura de N-NO3/MO cargada como base del calculo, siempre editable
-  const nNo3_0_20 = ultima?.nNo3_0_20 ?? '';
-  const nNo3_20_60 = ultima?.nNo3_20_60 ?? '';
-  const mo = ultima?.mo ?? '';
-  const resultado = useMemo(() => {
-    const rendObj = Number(f.rendObj) || 0;
-    if (rendObj <= 0) return null;
-    const rendObjZona = rendObj * (Number(f.rendRelativo) || 1);
+  // Agrupa las lecturas de la fecha mas reciente: si hay 2 o mas, son distintas zonas de fertilidad dentro del mismo lote
+  const fechaMasReciente = ultima?.fecha;
+  const muestrasUltimoMuestreo = fertilidadLote.filter(a => a.fecha === fechaMasReciente);
+  const scoreFertilidad = m => (Number(m.mo) || 0) * 10 + (Number(m.nNo3_0_20) || 0) / 10; // MO pesa mas, N-NO3 desempata
+  const muestrasOrdenadas = [...muestrasUltimoMuestreo].sort((a, b) => scoreFertilidad(b) - scoreFertilidad(a));
+  const zonas = muestrasOrdenadas.length >= 2 ? [{
+    etiqueta: 'Zona 1 (Alta)',
+    rendRelativo: 1.03,
+    muestra: muestrasOrdenadas[0]
+  }, {
+    etiqueta: 'Zona 2 (Baja)',
+    rendRelativo: 0.96,
+    muestra: muestrasOrdenadas[muestrasOrdenadas.length - 1]
+  }] : muestrasOrdenadas.length === 1 ? [{
+    etiqueta: null,
+    rendRelativo: 1,
+    muestra: muestrasOrdenadas[0]
+  }] : [];
+  const calcularZona = (muestra, rendRelativo) => {
+    const rendObjNum = Number(rendObj) || 0;
+    if (rendObjNum <= 0 || !muestra) return null;
+    const rendObjZona = rendObjNum * rendRelativo;
     const requerimiento = 28 / 0.625 * rendObjZona / 1000;
-    const nNo3suelo = (Number(nNo3_0_20) || 0) * 1.35 * 2 + (Number(nNo3_20_60) || 0) * 1.3 * 4;
-    const moN = Number(mo) || 0;
-    const nan = f.nanLab !== '' ? Number(f.nanLab) : 11.017 * moN + 18.43;
-    const factorNan = f.calibracion === 'calibrado' ? 3.404 : 3.7;
+    const nNo3suelo = (Number(muestra.nNo3_0_20) || 0) * 1.35 * 2 + (Number(muestra.nNo3_20_60) || 0) * 1.3 * 4;
+    const moN = Number(muestra.mo) || 0;
+    const nan = avanzado.nanLab !== '' ? Number(avanzado.nanLab) : 11.017 * moN + 18.43;
+    const factorNan = avanzado.calibracion === 'calibrado' ? 3.404 : 3.7;
     const mineralizacion = (factorNan * nan + moN / 100 * 0.58 * 1.3 * 0.2 * 10000 * 0.042 * 1000 / 10) / 2;
-    const nFertTotal = Math.max(0, requerimiento - nNo3suelo - (Number(f.arrancador) || 0) - mineralizacion + (Number(f.antecesor) || 0));
+    const nFertTotal = Math.max(0, requerimiento - nNo3suelo - (Number(avanzado.arrancador) || 0) - mineralizacion + (Number(avanzado.antecesor) || 0));
     const ureaTotal = nFertTotal / 0.46;
     return {
       nFertTotal,
       ureaTotal,
       requiereSplit: ureaTotal > 235
     };
-  }, [f, nNo3_0_20, nNo3_20_60, mo]);
+  };
+  const resultadosPorZona = zonas.map(z => ({
+    ...z,
+    resultado: calcularZona(z.muestra, z.rendRelativo)
+  }));
   const aplicacionesReales = data.actividades.filter(a => a.loteId === lote.id && a.tipo === 'Fertilización').sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''));
   return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(AnalisisFoto, null), /*#__PURE__*/React.createElement("div", {
     style: {
@@ -1927,90 +1940,118 @@ function CalculoFertilizacion({
       color: '#854F0B',
       marginBottom: 8
     }
-  }, "La fórmula de fertilización de Maíz todavía no está cargada — avisame los parámetros cuando la tengas y la agrego. Por ahora Peralta-DISA solo corre para Trigo.") : /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+  }, "La fórmula de fertilización de Maíz todavía no está cargada — avisame los parámetros cuando la tengas y la agrego. Por ahora Peralta-DISA solo corre para Trigo.") : zonas.length === 0 ? /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: '#888780',
+      marginBottom: 8
+    }
+  }, "Cargá datos base arriba para que aparezca la recomendación.") : /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,
       color: '#888780',
       marginBottom: 8
     }
-  }, "Usa el N-NO3 y MO del último dato base cargado arriba", ultima ? ` (${ultima.fecha})` : ' (todavía no hay ninguno)', "."), /*#__PURE__*/React.createElement("div", {
+  }, zonas.length === 2 ? `Detecté 2 muestras del muestreo del ${fechaMasReciente} — las tomo como Zona 1 (mejor fertilidad, rinde un poco más) y Zona 2 (rinde un poco menos), con rendimiento relativo ${zonas[0].rendRelativo} y ${zonas[1].rendRelativo}.` : `Usa el dato base del ${fechaMasReciente}.`), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      gap: 10,
+      alignItems: 'end',
+      flexWrap: 'wrap',
+      marginBottom: 10
+    }
+  }, /*#__PURE__*/React.createElement(Field, {
+    label: "Rendimiento objetivo (kg/ha)"
+  }, /*#__PURE__*/React.createElement("input", {
+    style: inputStyle,
+    type: "number",
+    value: rendObj,
+    onChange: e => setRendObj(e.target.value)
+  }))), resultadosPorZona.map((z, i) => z.resultado && /*#__PURE__*/React.createElement("div", {
+    key: i,
+    style: {
+      marginTop: 8,
+      padding: 12,
+      background: '#EAF3DE',
+      borderRadius: 8
+    }
+  }, z.etiqueta && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      fontWeight: 500,
+      color: '#27500A',
+      marginBottom: 4
+    }
+  }, z.etiqueta), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 22,
+      fontWeight: 500,
+      color: '#27500A'
+    }
+  }, z.resultado.ureaTotal.toFixed(0), " kg urea/ha"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: '#3B6D11'
+    }
+  }, z.resultado.nFertTotal.toFixed(1), " kg N/ha"), z.resultado.requiereSplit && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: '#854F0B',
+      marginTop: 6
+    }
+  }, "Supera 235 kg/ha, repartir en 1ª y 2ª fertilización."))), /*#__PURE__*/React.createElement(Seccion, {
+    titulo: "Ajustes avanzados (opcional)"
+  }, /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'grid',
       gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
       gap: 8
     }
   }, /*#__PURE__*/React.createElement(Field, {
-    label: "Rend. objetivo (kg/ha)"
-  }, /*#__PURE__*/React.createElement("input", {
-    style: inputStyle,
-    type: "number",
-    value: f.rendObj,
-    onChange: e => set('rendObj', e.target.value)
-  })), /*#__PURE__*/React.createElement(Field, {
-    label: "Rend. relativo zona"
-  }, /*#__PURE__*/React.createElement("input", {
-    style: inputStyle,
-    type: "number",
-    step: "0.01",
-    value: f.rendRelativo,
-    onChange: e => set('rendRelativo', e.target.value)
-  })), /*#__PURE__*/React.createElement(Field, {
     label: "Nan laboratorio"
   }, /*#__PURE__*/React.createElement("input", {
     style: inputStyle,
     type: "number",
-    value: f.nanLab,
-    onChange: e => set('nanLab', e.target.value),
+    value: avanzado.nanLab,
+    onChange: e => setAvanzado({
+      ...avanzado,
+      nanLab: e.target.value
+    }),
     placeholder: "opcional"
   })), /*#__PURE__*/React.createElement(Field, {
     label: "N arrancador"
   }, /*#__PURE__*/React.createElement("input", {
     style: inputStyle,
     type: "number",
-    value: f.arrancador,
-    onChange: e => set('arrancador', e.target.value)
+    value: avanzado.arrancador,
+    onChange: e => setAvanzado({
+      ...avanzado,
+      arrancador: e.target.value
+    })
   })), /*#__PURE__*/React.createElement(Field, {
     label: "Crédito antecesor"
   }, /*#__PURE__*/React.createElement("input", {
     style: inputStyle,
     type: "number",
-    value: f.antecesor,
-    onChange: e => set('antecesor', e.target.value)
+    value: avanzado.antecesor,
+    onChange: e => setAvanzado({
+      ...avanzado,
+      antecesor: e.target.value
+    })
   })), /*#__PURE__*/React.createElement(Field, {
     label: "Calibración"
   }, /*#__PURE__*/React.createElement("select", {
     style: inputStyle,
-    value: f.calibracion,
-    onChange: e => set('calibracion', e.target.value)
+    value: avanzado.calibracion,
+    onChange: e => setAvanzado({
+      ...avanzado,
+      calibracion: e.target.value
+    })
   }, /*#__PURE__*/React.createElement("option", {
     value: "original"
   }, "Original"), /*#__PURE__*/React.createElement("option", {
     value: "calibrado"
-  }, "−8% calibrado")))), resultado && /*#__PURE__*/React.createElement("div", {
-    style: {
-      marginTop: 12,
-      padding: 12,
-      background: '#EAF3DE',
-      borderRadius: 8
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 22,
-      fontWeight: 500,
-      color: '#27500A'
-    }
-  }, resultado.ureaTotal.toFixed(0), " kg urea/ha"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 12,
-      color: '#3B6D11'
-    }
-  }, resultado.nFertTotal.toFixed(1), " kg N/ha"), resultado.requiereSplit && /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 12,
-      color: '#854F0B',
-      marginTop: 6
-    }
-  }, "Supera 235 kg/ha, repartir en 1ª y 2ª fertilización."))), /*#__PURE__*/React.createElement("div", {
+  }, "−8% calibrado")))))), /*#__PURE__*/React.createElement("div", {
     style: {
       borderTop: '1px solid #e3e1d8',
       margin: '14px 0'
