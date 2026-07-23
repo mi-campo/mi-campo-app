@@ -550,34 +550,87 @@ async function procesar(interpretado, contacto) {
 
 const ETIQUETAS_ESTADO = { ok: '🟢 OK', alerta: '🟡 ALERTA', critico: '🔴 CRÍTICO' };
 
-async function manejarAnalisisDocumento(resultado, contacto) {
-  const data = load();
-  if (!resultado) return '⚠️ No pude leer el análisis de esa foto/PDF. Probá con una foto más clara, o mandalo de nuevo.';
-
-  const r = resolverLote(data, resultado.lote, resultado.campo);
-  if (!r.ok) {
-    return `${r.pregunta}\n\n(Mandá el análisis de nuevo con el campo y el lote en el texto del mensaje, ej: "Efraín — C4")`;
-  }
-  const lote = r.lote;
+function tieneAccesoLote(data, lote, contacto) {
+  if (!contacto?.clienteId) return true;
   const campoDelLote = data.campos.find(c => c.id === lote.campoId);
-  if (contacto?.clienteId && !((campoDelLote?.clienteId === contacto.clienteId) || (campoDelLote?.participantes || []).some(p => p.clienteId === contacto.clienteId))) {
-    return '🚫 Ese lote no es de tus campos, no tengo permitido cargar ahí.';
-  }
+  return (campoDelLote?.clienteId === contacto.clienteId) || (campoDelLote?.participantes || []).some(p => p.clienteId === contacto.clienteId);
+}
 
-  if (resultado.nNo3_0_20 != null || resultado.nNo3_20_60 != null || resultado.mo != null || resultado.ph != null) {
+function guardarMuestraYArmarTexto(data, muestra, lote) {
+  if (muestra.nNo3_0_20 != null || muestra.nNo3_20_60 != null || muestra.mo != null || muestra.ph != null) {
     data.analisis.push({
       id: uid(), loteId: lote.id, tipo: 'Fertilidad', fecha: hoy(),
-      nNo3_0_20: resultado.nNo3_0_20 ?? '', nNo3_20_60: resultado.nNo3_20_60 ?? '', mo: resultado.mo ?? '', ph: resultado.ph ?? '',
+      nNo3_0_20: muestra.nNo3_0_20 ?? '', nNo3_20_60: muestra.nNo3_20_60 ?? '', mo: muestra.mo ?? '', ph: muestra.ph ?? '',
     });
-    save(data);
   }
-
-  let texto = `📋 Análisis de ${nombreConCampo(data, lote)} — ${ETIQUETAS_ESTADO[resultado.resumenGeneral] || '🟢 OK'}`;
-  (resultado.parametros || []).forEach(p => {
+  let texto = `📋 ${muestra.muestraLabel ? `${muestra.muestraLabel} — ` : ''}${nombreConCampo(data, lote)} — ${ETIQUETAS_ESTADO[muestra.resumenGeneral] || '🟢 OK'}`;
+  (muestra.parametros || []).forEach(p => {
     texto += `\n${ETIQUETAS_ESTADO[p.estado] || '🟢'} ${p.nombre}: ${p.valor}${p.comentario ? ` — ${p.comentario}` : ''}`;
   });
-  if (resultado.nNo3_0_20 != null || resultado.mo != null) texto += `\n\nDatos base guardados — ya los podés usar en la pestaña Fertilización para la recomendación.`;
   return texto;
 }
 
-module.exports = { validar, procesar, manejarAnalisisDocumento };
+// Procesa una lista de muestras ya interpretadas de una foto/PDF. Devuelve el texto de respuesta,
+// y si alguna muestra no se pudo asignar a un lote, la lista de pendientes para guardar y esperar aclaración por texto.
+async function manejarAnalisisDocumento(muestras, contacto) {
+  const data = load();
+  if (!muestras || muestras.length === 0) return { texto: '⚠️ No pude leer el análisis de esa foto/PDF. Probá con una foto más clara y bien enfocada, o mandalo de nuevo.', pendientes: null };
+
+  const textos = [];
+  const pendientes = [];
+  let huboGuardado = false;
+
+  muestras.forEach(muestra => {
+    if (!muestra.lote) { pendientes.push(muestra); return; }
+    const candidatos = buscarLotes(data, muestra.lote, muestra.campo);
+    if (candidatos.length !== 1) { pendientes.push(muestra); return; }
+    const lote = candidatos[0];
+    if (!tieneAccesoLote(data, lote, contacto)) { textos.push(`🚫 ${muestra.muestraLabel || 'Una muestra'} es de un lote que no es tuyo, no la cargué.`); return; }
+    textos.push(guardarMuestraYArmarTexto(data, muestra, lote));
+    huboGuardado = true;
+  });
+
+  if (huboGuardado) save(data);
+
+  let texto = textos.join('\n\n');
+  if (pendientes.length > 0) {
+    const listado = pendientes.map((m, i) => `${i + 1}) ${m.muestraLabel || 'Sin identificar'}`).join('\n');
+    texto += `${texto ? '\n\n' : ''}Estas muestras no las pude asignar a un lote:\n${listado}\n\nRespondé aclarando el campo y lote de cada una (ej: "1 es Efraín C4, 2 es La Nazarena C2").`;
+  }
+  if (huboGuardado) texto += `\n\nLos datos base quedaron guardados — ya los podés usar en la pestaña Fertilización.`;
+  return { texto, pendientes: pendientes.length > 0 ? pendientes : null };
+}
+
+// Cuando llega una aclaración por texto para muestras pendientes de un análisis anterior.
+async function manejarAclaracionMuestras(muestrasPendientes, asignaciones, contacto) {
+  const data = load();
+  const textos = [];
+  const siguenPendientes = [];
+  let huboGuardado = false;
+
+  muestrasPendientes.forEach((muestra, i) => {
+    const asignacion = asignaciones.find(a => a.indice === i);
+    if (!asignacion) { siguenPendientes.push(muestra); return; }
+    const candidatos = buscarLotes(data, asignacion.lote, asignacion.campo);
+    if (candidatos.length !== 1) {
+      textos.push(`No encontré un lote único para "${asignacion.campo || ''} ${asignacion.lote || ''}" (${muestra.muestraLabel || 'muestra ' + (i + 1)}).`);
+      siguenPendientes.push(muestra);
+      return;
+    }
+    const lote = candidatos[0];
+    if (!tieneAccesoLote(data, lote, contacto)) { textos.push(`🚫 ${muestra.muestraLabel || 'Una muestra'} es de un lote que no es tuyo, no la cargué.`); return; }
+    textos.push(guardarMuestraYArmarTexto(data, muestra, lote));
+    huboGuardado = true;
+  });
+
+  if (huboGuardado) save(data);
+  let texto = textos.join('\n\n') || 'No pude relacionar tu aclaración con ninguna muestra. Probá de nuevo indicando el número de cada una.';
+  if (siguenPendientes.length > 0) {
+    const listado = siguenPendientes.map((m, i) => `${i + 1}) ${m.muestraLabel || 'Sin identificar'}`).join('\n');
+    texto += `\n\nTodavía faltan estas:\n${listado}`;
+  }
+  if (huboGuardado) texto += `\n\nLos datos base quedaron guardados — ya los podés usar en la pestaña Fertilización.`;
+  return { texto, pendientes: siguenPendientes.length > 0 ? siguenPendientes : null };
+}
+
+module.exports = { validar, procesar, manejarAnalisisDocumento, manejarAclaracionMuestras };
