@@ -1781,12 +1781,8 @@ function CalculoFertilizacion({
     ph: ''
   });
   const [rendObj, setRendObj] = useState('');
-  const [avanzado, setAvanzado] = useState({
-    nanLab: '',
-    arrancador: '0',
-    antecesor: '0',
-    calibracion: 'original'
-  });
+  const [calibracion, setCalibracion] = useState('original');
+  const [pctZona1, setPctZona1] = useState('50');
   const guardarBase = () => {
     if (!formBase.fecha) return;
     update('analisis', a => [...a, {
@@ -1812,15 +1808,18 @@ function CalculoFertilizacion({
   const zonas = muestrasOrdenadas.length >= 2 ? [{
     etiqueta: 'Zona 1 (Alta)',
     rendRelativo: 1.03,
-    muestra: muestrasOrdenadas[0]
+    muestra: muestrasOrdenadas[0],
+    pct: Number(pctZona1) || 0
   }, {
     etiqueta: 'Zona 2 (Baja)',
     rendRelativo: 0.96,
-    muestra: muestrasOrdenadas[muestrasOrdenadas.length - 1]
+    muestra: muestrasOrdenadas[muestrasOrdenadas.length - 1],
+    pct: 100 - (Number(pctZona1) || 0)
   }] : muestrasOrdenadas.length === 1 ? [{
     etiqueta: null,
     rendRelativo: 1,
-    muestra: muestrasOrdenadas[0]
+    muestra: muestrasOrdenadas[0],
+    pct: 100
   }] : [];
   const calcularZona = (muestra, rendRelativo) => {
     const rendObjNum = Number(rendObj) || 0;
@@ -1829,10 +1828,10 @@ function CalculoFertilizacion({
     const requerimiento = 28 / 0.625 * rendObjZona / 1000;
     const nNo3suelo = (Number(muestra.nNo3_0_20) || 0) * 1.35 * 2 + (Number(muestra.nNo3_20_60) || 0) * 1.3 * 4;
     const moN = Number(muestra.mo) || 0;
-    const nan = avanzado.nanLab !== '' ? Number(avanzado.nanLab) : 11.017 * moN + 18.43;
-    const factorNan = avanzado.calibracion === 'calibrado' ? 3.404 : 3.7;
+    const nan = 11.017 * moN + 18.43;
+    const factorNan = calibracion === 'calibrado' ? 3.404 : 3.7;
     const mineralizacion = (factorNan * nan + moN / 100 * 0.58 * 1.3 * 0.2 * 10000 * 0.042 * 1000 / 10) / 2;
-    const nFertTotal = Math.max(0, requerimiento - nNo3suelo - (Number(avanzado.arrancador) || 0) - mineralizacion + (Number(avanzado.antecesor) || 0));
+    const nFertTotal = Math.max(0, requerimiento - nNo3suelo - mineralizacion);
     const ureaTotal = nFertTotal / 0.46;
     return {
       nFertTotal,
@@ -1844,6 +1843,8 @@ function CalculoFertilizacion({
     ...z,
     resultado: calcularZona(z.muestra, z.rendRelativo)
   }));
+  const ureaTotalLote = resultadosPorZona.reduce((s, z) => s + (z.resultado ? z.resultado.ureaTotal * (Number(lote.hectareas) || 0) * (z.pct / 100) : 0), 0);
+  const haZona1 = zonas.length === 2 ? (Number(lote.hectareas) || 0) * (zonas[0].pct / 100) : null;
   const aplicacionesReales = data.actividades.filter(a => a.loteId === lote.id && a.tipo === 'Fertilización').sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''));
   return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(AnalisisFoto, null), /*#__PURE__*/React.createElement("div", {
     style: {
@@ -1952,7 +1953,7 @@ function CalculoFertilizacion({
       color: '#888780',
       marginBottom: 8
     }
-  }, zonas.length === 2 ? `Detecté 2 muestras del muestreo del ${fechaMasReciente} — las tomo como Zona 1 (mejor fertilidad, rinde un poco más) y Zona 2 (rinde un poco menos), con rendimiento relativo ${zonas[0].rendRelativo} y ${zonas[1].rendRelativo}.` : `Usa el dato base del ${fechaMasReciente}.`), /*#__PURE__*/React.createElement("div", {
+  }, zonas.length === 2 ? `Detecté 2 muestras del muestreo del ${fechaMasReciente} — Zona 1 (mejor fertilidad, rinde un poco más) y Zona 2 (rinde un poco menos), rendimiento relativo ${zonas[0].rendRelativo} y ${zonas[1].rendRelativo}.` : `Usa el dato base del ${fechaMasReciente}.`), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       gap: 10,
@@ -1979,36 +1980,48 @@ function CalculoFertilizacion({
       gap: 4
     }
   }, /*#__PURE__*/React.createElement("button", {
-    onClick: () => setAvanzado({
-      ...avanzado,
-      calibracion: 'original'
-    }),
+    onClick: () => setCalibracion('original'),
     style: {
       padding: '8px 14px',
       borderRadius: 6,
       border: 'none',
       cursor: 'pointer',
       fontSize: 13,
-      background: avanzado.calibracion === 'original' ? '#EAF3DE' : '#f0efe8',
-      color: avanzado.calibracion === 'original' ? '#27500A' : '#5f5e5a',
-      fontWeight: avanzado.calibracion === 'original' ? 600 : 400
+      background: calibracion === 'original' ? '#EAF3DE' : '#f0efe8',
+      color: calibracion === 'original' ? '#27500A' : '#5f5e5a',
+      fontWeight: calibracion === 'original' ? 600 : 400
     }
   }, "Peralta"), /*#__PURE__*/React.createElement("button", {
-    onClick: () => setAvanzado({
-      ...avanzado,
-      calibracion: 'calibrado'
-    }),
+    onClick: () => setCalibracion('calibrado'),
     style: {
       padding: '8px 14px',
       borderRadius: 6,
       border: 'none',
       cursor: 'pointer',
       fontSize: 13,
-      background: avanzado.calibracion === 'calibrado' ? '#EAF3DE' : '#f0efe8',
-      color: avanzado.calibracion === 'calibrado' ? '#27500A' : '#5f5e5a',
-      fontWeight: avanzado.calibracion === 'calibrado' ? 600 : 400
+      background: calibracion === 'calibrado' ? '#EAF3DE' : '#f0efe8',
+      color: calibracion === 'calibrado' ? '#27500A' : '#5f5e5a',
+      fontWeight: calibracion === 'calibrado' ? 600 : 400
     }
-  }, "Peralta −8%")))), resultadosPorZona.map((z, i) => z.resultado && /*#__PURE__*/React.createElement("div", {
+  }, "Peralta −8%"))), zonas.length === 2 && /*#__PURE__*/React.createElement(Field, {
+    label: "% Zona 1 del lote"
+  }, /*#__PURE__*/React.createElement("input", {
+    style: {
+      ...inputStyle,
+      width: 90
+    },
+    type: "number",
+    min: "0",
+    max: "100",
+    value: pctZona1,
+    onChange: e => setPctZona1(e.target.value)
+  }))), zonas.length === 2 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: '#888780',
+      marginBottom: 8
+    }
+  }, "Zona 1: ", haZona1?.toFixed(0), "ha (", zonas[0].pct, "%) · Zona 2: ", ((Number(lote.hectareas) || 0) - haZona1).toFixed(0), "ha (", zonas[1].pct, "%)"), resultadosPorZona.map((z, i) => z.resultado && /*#__PURE__*/React.createElement("div", {
     key: i,
     style: {
       marginTop: 8,
@@ -2023,7 +2036,7 @@ function CalculoFertilizacion({
       color: '#27500A',
       marginBottom: 4
     }
-  }, z.etiqueta), /*#__PURE__*/React.createElement("div", {
+  }, z.etiqueta, " — ", z.pct, "% del lote"), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 22,
       fontWeight: 500,
@@ -2040,46 +2053,26 @@ function CalculoFertilizacion({
       color: '#854F0B',
       marginTop: 6
     }
-  }, "Supera 235 kg/ha, repartir en 1ª y 2ª fertilización."))), /*#__PURE__*/React.createElement(Seccion, {
-    titulo: "Ajustes avanzados (opcional)"
+  }, "Supera 235 kg/ha, repartir en 1ª y 2ª fertilización."))), ureaTotalLote > 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 8,
+      padding: 12,
+      background: '#FFF6D6',
+      border: '1px solid #E8C547',
+      borderRadius: 8
+    }
   }, /*#__PURE__*/React.createElement("div", {
     style: {
-      display: 'grid',
-      gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
-      gap: 8
+      fontSize: 12,
+      color: '#8A6D00'
     }
-  }, /*#__PURE__*/React.createElement(Field, {
-    label: "Nan laboratorio"
-  }, /*#__PURE__*/React.createElement("input", {
-    style: inputStyle,
-    type: "number",
-    value: avanzado.nanLab,
-    onChange: e => setAvanzado({
-      ...avanzado,
-      nanLab: e.target.value
-    }),
-    placeholder: "opcional"
-  })), /*#__PURE__*/React.createElement(Field, {
-    label: "N arrancador"
-  }, /*#__PURE__*/React.createElement("input", {
-    style: inputStyle,
-    type: "number",
-    value: avanzado.arrancador,
-    onChange: e => setAvanzado({
-      ...avanzado,
-      arrancador: e.target.value
-    })
-  })), /*#__PURE__*/React.createElement(Field, {
-    label: "Crédito antecesor"
-  }, /*#__PURE__*/React.createElement("input", {
-    style: inputStyle,
-    type: "number",
-    value: avanzado.antecesor,
-    onChange: e => setAvanzado({
-      ...avanzado,
-      antecesor: e.target.value
-    })
-  }))))), /*#__PURE__*/React.createElement("div", {
+  }, "Total urea a comprar/aplicar en todo el lote (", lote.hectareas, "ha)"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 24,
+      fontWeight: 600,
+      color: '#8A6D00'
+    }
+  }, ureaTotalLote.toFixed(0), " kg"))), /*#__PURE__*/React.createElement("div", {
     style: {
       borderTop: '1px solid #e3e1d8',
       margin: '14px 0'
@@ -2122,7 +2115,11 @@ function Fertilizacion({
     'Trigo': 0,
     'Maíz': 1
   };
+  const tieneAnalisis = loteId => data.analisis.some(a => a.loteId === loteId && a.tipo === 'Fertilidad');
   const lotesOrdenados = [...data.lotes].sort((a, b) => {
+    const tieneA = tieneAnalisis(a.id) ? 0 : 1;
+    const tieneB = tieneAnalisis(b.id) ? 0 : 1;
+    if (tieneA !== tieneB) return tieneA - tieneB;
     const cicloA = cicloActivo(data, a.id),
       cicloB = cicloActivo(data, b.id);
     const pa = cicloA && PRIORIDAD[cicloA.cultivo] != null ? PRIORIDAD[cicloA.cultivo] : 99;
