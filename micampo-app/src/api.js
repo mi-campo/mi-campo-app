@@ -1,4 +1,5 @@
 const express = require('express');
+const fetch = require('node-fetch');
 const { load, save, uid, loadUsers, saveUsers } = require('./db');
 const { login, requireLogin, requireAdmin, hashPassword } = require('./auth');
 
@@ -100,6 +101,63 @@ router.delete('/usuarios/:id', requireAdmin, (req, res) => {
   const users = loadUsers().filter(u => u.id !== req.params.id);
   saveUsers(users);
   res.json({ ok: true });
+});
+
+/* ---------- ANÁLISIS POR FOTO (visión) ---------- */
+router.post('/analizar-foto', requireLogin, async (req, res) => {
+  const { imageBase64, mediaType } = req.body;
+  if (!imageBase64) return res.status(400).json({ error: 'Falta la imagen' });
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': process.env.ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 1200,
+        system: `Sos un asistente agronómico que lee fotos de análisis de suelo o agua (de laboratorios como AgLab u otros, de la zona de Córdoba, Argentina) y evalúa cada parámetro contra rangos normales de referencia para agricultura extensiva (trigo, soja, maíz, garbanzo).
+
+Devolvé SOLO un JSON, sin texto antes ni después, sin \`\`\`, con esta forma exacta:
+{"parametros":[{"nombre":"<nombre del parámetro, ej 'pH', 'P (Bray)', 'N-NO3 0-20cm', 'M.O.', 'S', 'B'>","valor":"<valor tal cual lo leíste, con unidad>","estado":"ok"|"alerta"|"critico","comentario":"<vacío si estado es ok; si no, 1 frase corta explicando qué está fuera de lo normal, ej 'Fósforo bajo para el objetivo de rendimiento' o 'pH elevado'>"}],"resumenGeneral":"ok"|"alerta"|"critico"}
+
+Reglas:
+- "ok" (verde): el valor está dentro de rango normal para la región.
+- "alerta" (amarillo): está algo fuera de lo normal, pero no es grave — amerita atención.
+- "critico" (rojo): está muy fuera de lo normal, requiere acción.
+- "resumenGeneral" es "critico" si CUALQUIER parámetro es crítico, si no "alerta" si CUALQUIERA es alerta, si no "ok".
+- Si no podés leer algún valor con claridad, no lo incluyas en la lista (mejor omitir que inventar).
+- Sé conservador: ante la duda entre ok y alerta, elegí alerta.`,
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'image', source: { type: 'base64', media_type: mediaType || 'image/jpeg', data: imageBase64 } },
+            { type: 'text', text: 'Analizá los parámetros de esta foto de análisis y devolveme el JSON pedido.' },
+          ],
+        }],
+      }),
+    });
+    if (!response.ok) {
+      const errText = await response.text();
+      console.error('Error de la API de vision:', errText);
+      return res.status(502).json({ error: 'No se pudo analizar la imagen ahora mismo' });
+    }
+    const data = await response.json();
+    const textoRespuesta = data.content.map(b => b.text || '').join('');
+    const limpio = textoRespuesta.trim().replace(/^```(json)?\n?/, '').replace(/```$/, '').trim();
+    let resultado;
+    try {
+      resultado = JSON.parse(limpio);
+    } catch (e) {
+      return res.status(502).json({ error: 'No se pudo interpretar el resultado del análisis' });
+    }
+    res.json(resultado);
+  } catch (e) {
+    console.error('Error analizando foto:', e);
+    res.status(500).json({ error: 'Error interno analizando la imagen' });
+  }
 });
 
 module.exports = router;
