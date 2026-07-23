@@ -557,9 +557,10 @@ function tieneAccesoLote(data, lote, contacto) {
 }
 
 function guardarMuestraYArmarTexto(data, muestra, lote) {
+  const fechaValida = muestra.fecha && /^\d{4}-\d{2}-\d{2}$/.test(muestra.fecha) ? muestra.fecha : hoy();
   if (muestra.nNo3_0_20 != null || muestra.nNo3_20_60 != null || muestra.mo != null || muestra.ph != null) {
     data.analisis.push({
-      id: uid(), loteId: lote.id, tipo: 'Fertilidad', fecha: hoy(),
+      id: uid(), loteId: lote.id, tipo: 'Fertilidad', fecha: fechaValida,
       nNo3_0_20: muestra.nNo3_0_20 ?? '', nNo3_20_60: muestra.nNo3_20_60 ?? '', mo: muestra.mo ?? '', ph: muestra.ph ?? '',
     });
   }
