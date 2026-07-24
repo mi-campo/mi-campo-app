@@ -12,6 +12,7 @@ const ETIQUETAS_TIPO = {
   riego: 'Riego', precipitacion: 'Lluvia', siembra: 'Siembra', fertilizacion: 'Fertilización', pulverizacion: 'Pulverización',
   cosecha: 'Cosecha', compra: 'Compra de insumo', analisis_agua: 'Análisis de agua', analisis_suelo: 'Análisis de suelo',
   nota: 'Nota', consulta: 'Consultas / preguntas', aporte_insumo: 'Aporte de insumo', analisis_foto: 'Análisis por foto/PDF',
+  receta: 'Receta / orden de aplicación',
 };
 
 function normalizarNumero(n) {
@@ -170,8 +171,12 @@ app.post('/webhook', async (req, res) => {
       return;
     }
 
-    const textoConfirmacion = await procesar(interpretado, permiso.contacto);
-    await enviarMensajeWA(numeroRemitente, textoConfirmacion);
+    const resultado = await procesar(interpretado, permiso.contacto);
+    if (resultado && resultado.esImagen) {
+      await enviarImagenWA(numeroRemitente, resultado.imagenBuffer, resultado.caption);
+    } else {
+      await enviarMensajeWA(numeroRemitente, resultado);
+    }
   } catch (err) {
     console.error('Error procesando mensaje:', err);
   }
@@ -210,6 +215,38 @@ async function enviarMensajeWA(numeroDestino, texto) {
   });
   const respBody = await resp.text();
   console.log('Respuesta de Meta al enviar:', resp.status, respBody);
+}
+
+async function enviarImagenWA(numeroDestino, imagenBuffer, caption) {
+  // OJO: uso globalThis.fetch (el nativo de Node 18+), no el "fetch" importado de node-fetch de arriba —
+  // node-fetch v2 no entiende FormData/Blob nativos, y el fetch global de Node si.
+  const fetchNativo = globalThis.fetch;
+  const formData = new FormData();
+  formData.append('messaging_product', 'whatsapp');
+  formData.append('file', new Blob([imagenBuffer], { type: 'image/png' }), 'orden.png');
+  const uploadResp = await fetchNativo(`https://graph.facebook.com/v21.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}/media`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${process.env.WHATSAPP_TOKEN}` },
+    body: formData,
+  });
+  const uploadBody = await uploadResp.json();
+  if (!uploadBody.id) {
+    console.error('No se pudo subir la imagen a WhatsApp:', uploadBody);
+    return enviarMensajeWA(numeroDestino, `${caption}\n\n⚠️ No pude adjuntar la imagen de la orden, pero quedó guardada en el sistema.`);
+  }
+  // Paso 2: mandar el mensaje de imagen referenciando el media id subido (este si puede ir por el fetch normal, es JSON)
+  const resp = await fetch(`https://graph.facebook.com/v21.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${process.env.WHATSAPP_TOKEN}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      messaging_product: 'whatsapp',
+      to: numeroDestino.replace(/^549/, '54'),
+      type: 'image',
+      image: { id: uploadBody.id, caption },
+    }),
+  });
+  const respBody = await resp.text();
+  console.log('Respuesta de Meta al enviar imagen:', resp.status, respBody);
 }
 
 app.listen(PORT, () => console.log(`MI CAMPO escuchando en el puerto ${PORT}`));
