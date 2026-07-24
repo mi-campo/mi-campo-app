@@ -384,8 +384,42 @@ const COLOR_TENDENCIA = {
     borde: '#c9c6bb'
   }
 };
+function Sparkline({
+  datos,
+  color,
+  alto
+}) {
+  // Grafico de linea simple con SVG puro (sin librerias externas)
+  if (!datos || datos.length < 2) return null;
+  const ancho = 280;
+  const alturaGrafico = alto || 60;
+  const valores = datos.map(d => d.porcentaje);
+  const min = Math.min(...valores),
+    max = Math.max(...valores);
+  const rango = max - min || 1;
+  const puntos = datos.map((d, i) => {
+    const x = i / (datos.length - 1) * ancho;
+    const y = alturaGrafico - (d.porcentaje - min) / rango * alturaGrafico;
+    return `${x},${y}`;
+  }).join(' ');
+  return /*#__PURE__*/React.createElement("svg", {
+    viewBox: `0 0 ${ancho} ${alturaGrafico}`,
+    width: "100%",
+    height: alturaGrafico,
+    preserveAspectRatio: "none",
+    style: {
+      display: 'block'
+    }
+  }, /*#__PURE__*/React.createElement("polyline", {
+    points: puntos,
+    fill: "none",
+    stroke: color,
+    strokeWidth: "2"
+  }));
+}
 function Mercado() {
   const [mercado, setMercado] = useState(null);
+  const [fleteComercializacion, setFleteComercializacion] = useState('40');
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState('');
   const cargar = forzar => {
@@ -497,8 +531,9 @@ function Mercado() {
     if (!trigo) return null;
     const KG_UREA_POR_TN_TRIGO = 97.4; // 28kgN/tn / 0.625 eficiencia / 0.46 urea — requerimiento BRUTO, antes de descontar suelo
     const costoUreaPorTn = KG_UREA_POR_TN_TRIGO / 1000 * mercado.urea.precioUSDtn;
-    const porcentajeCosto = costoUreaPorTn / trigo.precioUSDtn * 100;
-    const col = porcentajeCosto < 30 ? COLOR_TENDENCIA.Alcista : porcentajeCosto < 55 ? COLOR_TENDENCIA.Neutral : COLOR_TENDENCIA.Bajista;
+    const precioNetoTrigo = trigo.precioUSDtn - (Number(fleteComercializacion) || 0);
+    const margenNeto = precioNetoTrigo - costoUreaPorTn;
+    const col = margenNeto > precioNetoTrigo * 0.5 ? COLOR_TENDENCIA.Alcista : margenNeto > 0 ? COLOR_TENDENCIA.Neutral : COLOR_TENDENCIA.Bajista;
     return /*#__PURE__*/React.createElement(Card, {
       style: {
         borderLeft: `4px solid ${col.borde}`
@@ -508,18 +543,62 @@ function Mercado() {
         fontWeight: 500,
         marginBottom: 8
       }
-    }, "Costo de la urea en trigo — referencia rápida"), /*#__PURE__*/React.createElement("div", {
+    }, "Invertís en urea vs. te devuelve el trigo — 1tn"), /*#__PURE__*/React.createElement("div", {
       style: {
-        fontSize: 24,
-        fontWeight: 600,
-        color: col.texto
+        display: 'flex',
+        gap: 16,
+        alignItems: 'end',
+        flexWrap: 'wrap',
+        marginBottom: 10
       }
-    }, porcentajeCosto.toFixed(0), "%"), /*#__PURE__*/React.createElement("div", {
+    }, /*#__PURE__*/React.createElement(Field, {
+      label: "Flete + comercialización (USD/tn)"
+    }, /*#__PURE__*/React.createElement("input", {
+      style: {
+        ...inputStyle,
+        width: 90
+      },
+      type: "number",
+      value: fleteComercializacion,
+      onChange: e => setFleteComercializacion(e.target.value)
+    }))), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: 'flex',
+        gap: 24,
+        flexWrap: 'wrap'
+      }
+    }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 22,
+        fontWeight: 600
+      }
+    }, "USD ", costoUreaPorTn.toFixed(0)), /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 11,
         color: '#888780'
       }
-    }, "del valor de 1tn de trigo — peor caso, sin descontar el suelo. Para el costo real de un lote, usá Fertilización."));
+    }, "invertís en urea (97,4kg/tn)")), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 22,
+        fontWeight: 600
+      }
+    }, "USD ", precioNetoTrigo.toFixed(0)), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 11,
+        color: '#888780'
+      }
+    }, "te devuelve esa tonelada (neto de flete/comercialización)")), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 22,
+        fontWeight: 600,
+        color: col.texto
+      }
+    }, "USD ", margenNeto.toFixed(0)), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 11,
+        color: '#888780'
+      }
+    }, "te queda, después de pagar la urea"))));
   })(), mercado?.relaciones && mercado.relaciones.length > 0 && /*#__PURE__*/React.createElement(Card, null, /*#__PURE__*/React.createElement("div", {
     style: {
       fontWeight: 500,
@@ -543,21 +622,27 @@ function Mercado() {
     const puedeCalcular = precioUreaHoy && r.promedioHistorico && grano;
     const precioHistoricoTeorico = puedeCalcular ? r.promedioHistorico * grano.precioUSDtn : null;
     const porcentajeDif = puedeCalcular ? (precioUreaHoy - precioHistoricoTeorico) / precioHistoricoTeorico * 100 : null;
-    // Escala graduada, en vez de solo favorable/desfavorable
+    // Escala graduada, con matices para diferencias chicas
     let etiqueta = 'Neutro',
       col = COLOR_TENDENCIA.Neutral;
     if (porcentajeDif != null) {
       if (porcentajeDif <= -10) {
         etiqueta = 'Muy favorable';
         col = COLOR_TENDENCIA.Alcista;
-      } else if (porcentajeDif < 0) {
+      } else if (porcentajeDif <= -3) {
         etiqueta = 'Favorable';
         col = COLOR_TENDENCIA.Alcista;
-      } else if (porcentajeDif < 10) {
-        etiqueta = 'Ajustado';
+      } else if (porcentajeDif < 0) {
+        etiqueta = 'Levemente favorable';
+        col = COLOR_TENDENCIA.Alcista;
+      } else if (porcentajeDif < 3) {
+        etiqueta = 'Levemente desfavorable';
         col = COLOR_TENDENCIA.Neutral;
-      } else {
+      } else if (porcentajeDif < 10) {
         etiqueta = 'Desfavorable';
+        col = COLOR_TENDENCIA.Bajista;
+      } else {
+        etiqueta = 'Muy desfavorable';
         col = COLOR_TENDENCIA.Bajista;
       }
     } else {
