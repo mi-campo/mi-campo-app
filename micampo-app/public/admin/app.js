@@ -420,6 +420,8 @@ function Sparkline({
 function Mercado() {
   const [mercado, setMercado] = useState(null);
   const [fleteComercializacion, setFleteComercializacion] = useState('40');
+  const [fleteUrea, setFleteUrea] = useState('0');
+  const [tipoPrecioUrea, setTipoPrecioUrea] = useState('retirar'); // 'retirar' | 'puesto'
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState('');
   const cargar = forzar => {
@@ -530,7 +532,8 @@ function Mercado() {
     const trigo = mercado.granos.find(g => g.nombre === 'Trigo');
     if (!trigo) return null;
     const KG_UREA_POR_TN_TRIGO = 97.4; // 28kgN/tn / 0.625 eficiencia / 0.46 urea — requerimiento BRUTO, antes de descontar suelo
-    const costoUreaPorTn = KG_UREA_POR_TN_TRIGO / 1000 * mercado.urea.precioUSDtn;
+    const precioUreaPuestaEnZona = tipoPrecioUrea === 'retirar' ? mercado.urea.precioUSDtn + (Number(fleteUrea) || 0) : mercado.urea.precioUSDtn;
+    const costoUreaPorTn = KG_UREA_POR_TN_TRIGO / 1000 * precioUreaPuestaEnZona;
     const precioNetoTrigo = trigo.precioUSDtn - (Number(fleteComercializacion) || 0);
     const margenNeto = precioNetoTrigo - costoUreaPorTn;
     const col = margenNeto > precioNetoTrigo * 0.5 ? COLOR_TENDENCIA.Alcista : margenNeto > 0 ? COLOR_TENDENCIA.Neutral : COLOR_TENDENCIA.Bajista;
@@ -545,6 +548,45 @@ function Mercado() {
       }
     }, "Invertís en urea vs. te devuelve el trigo — 1tn"), /*#__PURE__*/React.createElement("div", {
       style: {
+        marginBottom: 10
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12,
+        color: '#888780',
+        marginBottom: 4
+      }
+    }, "El precio de urea que tenés, ¿es...?"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: 'flex',
+        gap: 4
+      }
+    }, /*#__PURE__*/React.createElement("button", {
+      onClick: () => setTipoPrecioUrea('retirar'),
+      style: {
+        padding: '6px 12px',
+        borderRadius: 6,
+        border: 'none',
+        cursor: 'pointer',
+        fontSize: 12,
+        background: tipoPrecioUrea === 'retirar' ? '#EAF3DE' : '#f0efe8',
+        color: tipoPrecioUrea === 'retirar' ? '#27500A' : '#5f5e5a',
+        fontWeight: tipoPrecioUrea === 'retirar' ? 600 : 400
+      }
+    }, "A retirar (le sumo flete)"), /*#__PURE__*/React.createElement("button", {
+      onClick: () => setTipoPrecioUrea('puesto'),
+      style: {
+        padding: '6px 12px',
+        borderRadius: 6,
+        border: 'none',
+        cursor: 'pointer',
+        fontSize: 12,
+        background: tipoPrecioUrea === 'puesto' ? '#EAF3DE' : '#f0efe8',
+        color: tipoPrecioUrea === 'puesto' ? '#27500A' : '#5f5e5a',
+        fontWeight: tipoPrecioUrea === 'puesto' ? 600 : 400
+      }
+    }, "Puesto en mi zona"))), /*#__PURE__*/React.createElement("div", {
+      style: {
         display: 'flex',
         gap: 16,
         alignItems: 'end',
@@ -552,7 +594,7 @@ function Mercado() {
         marginBottom: 10
       }
     }, /*#__PURE__*/React.createElement(Field, {
-      label: "Flete + comercialización (USD/tn)"
+      label: "Flete + comercialización trigo (USD/tn)"
     }, /*#__PURE__*/React.createElement("input", {
       style: {
         ...inputStyle,
@@ -561,6 +603,16 @@ function Mercado() {
       type: "number",
       value: fleteComercializacion,
       onChange: e => setFleteComercializacion(e.target.value)
+    })), tipoPrecioUrea === 'retirar' && /*#__PURE__*/React.createElement(Field, {
+      label: "Flete urea hasta tu zona (USD/tn)"
+    }, /*#__PURE__*/React.createElement("input", {
+      style: {
+        ...inputStyle,
+        width: 90
+      },
+      type: "number",
+      value: fleteUrea,
+      onChange: e => setFleteUrea(e.target.value)
     }))), /*#__PURE__*/React.createElement("div", {
       style: {
         display: 'flex',
@@ -577,7 +629,7 @@ function Mercado() {
         fontSize: 11,
         color: '#888780'
       }
-    }, "invertís en urea (97,4kg/tn)")), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    }, "invertís en urea (97,4kg/tn", tipoPrecioUrea === 'retirar' ? ', con flete puesta en tu zona' : ', ya puesta en tu zona', ")")), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 22,
         fontWeight: 600
