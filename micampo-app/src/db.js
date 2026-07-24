@@ -21,6 +21,9 @@ const emptyData = {
   contactosBot: [],
   tarifario: {},
   mercado: null,
+  recetas: [],
+  hectareasAplicables: {},
+  recetaCounter: 0,
 };
 
 function uid() {
