@@ -497,9 +497,8 @@ function Mercado() {
     if (!trigo) return null;
     const KG_UREA_POR_TN_TRIGO = 97.4; // 28kgN/tn / 0.625 eficiencia / 0.46 urea — requerimiento BRUTO, antes de descontar suelo
     const costoUreaPorTn = KG_UREA_POR_TN_TRIGO / 1000 * mercado.urea.precioUSDtn;
-    const porcentaje = costoUreaPorTn / trigo.precioUSDtn * 100;
-    const col = porcentaje < 30 ? COLOR_TENDENCIA.Alcista : porcentaje < 55 ? COLOR_TENDENCIA.Neutral : COLOR_TENDENCIA.Bajista;
-    const lectura = porcentaje < 30 ? 'Muy favorable' : porcentaje < 55 ? 'Ajustado' : 'Desfavorable';
+    const porcentajeCosto = costoUreaPorTn / trigo.precioUSDtn * 100;
+    const col = porcentajeCosto < 30 ? COLOR_TENDENCIA.Alcista : porcentajeCosto < 55 ? COLOR_TENDENCIA.Neutral : COLOR_TENDENCIA.Bajista;
     return /*#__PURE__*/React.createElement(Card, {
       style: {
         borderLeft: `4px solid ${col.borde}`
@@ -507,49 +506,26 @@ function Mercado() {
     }, /*#__PURE__*/React.createElement("div", {
       style: {
         fontWeight: 500,
-        marginBottom: 4
-      }
-    }, "¿Conviene fertilizar trigo? — con tu propia demanda de N"), /*#__PURE__*/React.createElement("div", {
-      style: {
-        fontSize: 11,
-        color: '#888780',
         marginBottom: 8
       }
-    }, "Usa el requerimiento bruto de Peralta-DISA (44,8 kgN/tn → 97,4 kg urea/tn), antes de descontar lo que ya aporta el suelo — es el peor caso, el costo real con tus datos base cargados suele ser menor."), /*#__PURE__*/React.createElement("div", {
+    }, "Costo de la urea en trigo — referencia rápida"), /*#__PURE__*/React.createElement("div", {
       style: {
-        display: 'flex',
-        gap: 20,
-        alignItems: 'baseline',
-        flexWrap: 'wrap'
-      }
-    }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
-      style: {
-        fontSize: 28,
+        fontSize: 24,
         fontWeight: 600,
         color: col.texto
       }
-    }, porcentaje.toFixed(0), "%"), /*#__PURE__*/React.createElement("div", {
+    }, porcentajeCosto.toFixed(0), "%"), /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 11,
         color: '#888780'
       }
-    }, "del valor de esa tonelada de trigo se va en la urea")), /*#__PURE__*/React.createElement("span", {
-      style: {
-        fontSize: 12,
-        fontWeight: 600,
-        color: col.texto,
-        background: col.fondo,
-        border: `1px solid ${col.borde}`,
-        borderRadius: 5,
-        padding: '3px 10px'
-      }
-    }, lectura)), /*#__PURE__*/React.createElement("div", {
+    }, "del valor de 1tn de trigo, si se aplicara la demanda total de N sin ningún descuento del suelo (peor caso — la dosis real casi siempre es menor)"), /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 11,
         color: '#888780',
         marginTop: 8
       }
-    }, "USD ", costoUreaPorTn.toFixed(0), " de urea (97,4kg a USD ", mercado.urea.precioUSDtn, "/tn — ", mercado.urea.fuente, ") para producir 1tn de trigo a USD ", trigo.precioUSDtn, "/tn."));
+    }, "97,4kg urea/tn (Peralta-DISA, bruto) a USD ", mercado.urea.precioUSDtn, "/tn = USD ", costoUreaPorTn.toFixed(0), " — trigo a USD ", trigo.precioUSDtn, "/tn. Para el costo real de un lote puntual, usá la calculadora de la pestaña Fertilización (esa sí descuenta el suelo)."));
   })(), mercado?.relaciones && mercado.relaciones.length > 0 && /*#__PURE__*/React.createElement(Card, null, /*#__PURE__*/React.createElement("div", {
     style: {
       fontWeight: 500,
@@ -561,14 +537,16 @@ function Mercado() {
       color: '#888780',
       marginBottom: 8
     }
-  }, "Cuántos kg de grano hacen falta para comprar 1 kg de urea, comparado contra el promedio histórico."), /*#__PURE__*/React.createElement("div", {
+  }, "Comparado contra el promedio histórico de cada cultivo (fuente: Coninagro/BCR/fyo)."), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'grid',
-      gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+      gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
       gap: 12
     }
   }, mercado.relaciones.map((r, i) => {
     const col = r.momento === 'favorable' ? COLOR_TENDENCIA.Alcista : r.momento === 'desfavorable' ? COLOR_TENDENCIA.Bajista : COLOR_TENDENCIA.Neutral;
+    const grano = mercado.granos?.find(g => g.nombre === r.cultivo);
+    const precioUreaHoy = mercado.urea?.precioUSDtn;
     return /*#__PURE__*/React.createElement("div", {
       key: i,
       style: {
@@ -594,29 +572,37 @@ function Mercado() {
         fontWeight: 600,
         color: col.texto
       }
-    }, r.momento === 'favorable' ? 'Favorable' : r.momento === 'desfavorable' ? 'Desfavorable' : 'Neutro')), /*#__PURE__*/React.createElement("div", {
+    }, r.momento === 'favorable' ? 'Favorable' : r.momento === 'desfavorable' ? 'Desfavorable' : 'Neutro')), precioUreaHoy && r.promedioHistorico && grano ? (() => {
+      const precioHistoricoTeorico = r.promedioHistorico * grano.precioUSDtn / 1000;
+      const diferencia = precioUreaHoy - precioHistoricoTeorico;
+      return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+        style: {
+          fontSize: 20,
+          fontWeight: 600,
+          color: col.texto,
+          marginTop: 4
+        }
+      }, "USD ", precioUreaHoy, "/tn"), /*#__PURE__*/React.createElement("div", {
+        style: {
+          fontSize: 11,
+          color: '#888780'
+        }
+      }, "precio de la urea hoy — al ratio histórico de ", r.cultivo.toLowerCase(), " \"debería\" costar ~USD ", precioHistoricoTeorico.toFixed(0), "/tn"), /*#__PURE__*/React.createElement("div", {
+        style: {
+          fontSize: 13,
+          fontWeight: 500,
+          color: col.texto,
+          marginTop: 4
+        }
+      }, diferencia < 0 ? `Ahorrás ~USD ${Math.abs(diferencia).toFixed(0)}/tn` : diferencia > 0 ? `Pagás ~USD ${diferencia.toFixed(0)}/tn de más` : 'En línea con el histórico'));
+    })() : /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 20,
         fontWeight: 600,
         color: col.texto,
         marginTop: 4
       }
-    }, r.kgGranoPorKgUrea, " kg"), /*#__PURE__*/React.createElement("div", {
-      style: {
-        fontSize: 11,
-        color: '#888780'
-      }
-    }, "de ", r.cultivo.toLowerCase(), " por kg de urea", r.promedioHistorico ? ` (histórico: ${r.promedioHistorico}kg)` : ''), r.promedioHistorico && (() => {
-      const diferencia = (r.kgGranoPorKgUrea - r.promedioHistorico) / r.promedioHistorico * 100;
-      return /*#__PURE__*/React.createElement("div", {
-        style: {
-          fontSize: 12,
-          fontWeight: 500,
-          color: col.texto,
-          marginTop: 2
-        }
-      }, diferencia > 0 ? '+' : '', diferencia.toFixed(0), "% vs. histórico ", diferencia < 0 ? '(hace falta menos grano — favorable)' : diferencia > 0 ? '(hace falta más grano — desfavorable)' : '');
-    })(), r.comentario && /*#__PURE__*/React.createElement("div", {
+    }, r.kgGranoPorKgUrea, " kg de ", r.cultivo.toLowerCase(), " / kg urea"), r.comentario && /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 12,
         color: '#5f5e5a',
