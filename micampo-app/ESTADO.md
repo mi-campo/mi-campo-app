@@ -27,7 +27,7 @@ Maquinaria, RRHH, combustible, facturación/AFIP, integraciones oficiales (SENAS
 
 ## Riesgos activos (no resueltos todavía)
 1. `sharp` no está en `package.json` (usado en `recetaImagen.js`) — causa real de una caída de producción.
-2. `app.jsx` puede desincronizarse de `app.js` si no se suben juntos — **hábito obligatorio: siempre los dos juntos**.
+2. ~~`app.jsx` desincronizado de `app.js`~~ → **resuelto el 24/7/2026** — se reconstruyó `app.jsx` desde el `app.js` real desplegado (verificado: compila byte a byte igual). Nota: ~32 de 59 funciones quedaron en formato compilado (`React.createElement`) en vez de JSX lindo, porque la herramienta de conversión automática no soportó ciertos patrones modernos (funciones flecha auto-ejecutadas) — funcionan igual de bien, solo son menos legibles si hay que tocarlas a mano. Sigue el hábito obligatorio: **siempre subir `app.jsx` y `app.js` juntos**, cada vez que se toque el panel.
 3. Sin backup automático de `data/data.json` — es el único lugar donde vive todo el histórico.
 4. Token de WhatsApp de prueba vence cada 24hs — sin token permanente configurado.
 5. Doble implementación de lectura de análisis (`/api/analizar-foto` del panel vs. flujo WhatsApp) — desincronizadas entre sí.
