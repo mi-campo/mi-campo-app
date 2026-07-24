@@ -326,9 +326,11 @@ Reglas:
   return { granos, urea };
 }
 
+module.exports.consultarPrecios = consultarPrecios;
+
 async function consultarFactoresMercado() {
   const resultado = await llamarClaudeConBusqueda({
-    maxTokens: 1200,
+    maxTokens: 1600,
     timeoutMs: 45000,
     system: `Sos un analista de mercado de granos con el estilo directo de los analistas argentinos de bolsa de cereales: concreto, sin adornos.
 
@@ -338,11 +340,11 @@ Devolvé SOLO un JSON, sin texto antes ni después, sin \`\`\`, con esta forma e
 {"factores":[{"tema":"<2-4 palabras>","detalle":"<1 frase corta y directa, máximo 15 palabras>","impacto":"alcista"|"bajista"}]}
 
 Reglas:
-- 2 a 5 eventos/noticias reales y recientes, no explicaciones genéricas de manual. No inventes noticias — si no encontrás algo confiable y reciente, omitilo.
+- 7 eventos/noticias reales y recientes, no explicaciones genéricas de manual. No inventes noticias — si no encontrás 7 confiables y recientes, devolvé los que encuentres, no completes con relleno.
 - Sistema métrico SIEMPRE: temperaturas en °C (no Fahrenheit), toneladas (no bushels ni libras), km (no millas). Convertí si la fuente original usa otra unidad.
 - Si mencionás RENDIMIENTO de cultivo, siempre en tn/ha — convertí si la fuente lo da en otra unidad: sacos/ha de Brasil (1 saca = 60kg, así que sacos/ha × 0,06 = tn/ha) o bushels/acre de EEUU (bu/ac × factor de conversión del grano ÷ 2,471 = tn/ha; el factor es ~25,4kg/bu para maíz, ~27,2kg/bu para soja y trigo). Mostrá el número ya convertido a tn/ha, no la unidad original.
 - "detalle" es texto plano, corto y directo — NUNCA incluyas citas, referencias, marcas de fuente ni ninguna etiqueta (nada de <cite>, [1], corchetes, ni similares). Es para mostrarse tal cual en una pantalla.`,
-    mensaje: 'Dame los factores de clima y geopolítica más relevantes de los últimos días que puedan mover el precio de soja, maíz o trigo.',
+    mensaje: 'Dame las 7 noticias/factores de clima y geopolítica más relevantes de los últimos días que puedan mover el precio de soja, maíz o trigo.',
   });
   const factores = (resultado && resultado.factores) || [];
   // Red de seguridad: por si igual se cuela alguna marca de cita, la sacamos del texto
@@ -375,3 +377,33 @@ async function consultarMercado() {
 }
 
 module.exports.consultarMercado = consultarMercado;
+
+async function consultarResumenDiarioCompleto() {
+  const resultado = await llamarClaudeConBusqueda({
+    maxTokens: 2000,
+    timeoutMs: 55000,
+    system: `Sos un analista que arma el resumen diario de novedades para un productor agropecuario de Córdoba, Argentina (soja, maíz, trigo, garbanzo). Estilo directo, sin adornos, tipo analista de bolsa de cereales.
+
+Buscá lo más relevante de los últimos 1-2 días en TODOS estos temas, y elegí las 7 noticias más importantes en total (no 7 por tema, 7 en total, las que más le importen a un productor real):
+1. Mercado y precios: movimientos importantes de soja/maíz/trigo, factores de oferta y demanda.
+2. Clima: El Niño/La Niña, sequías o excesos de humedad en el Corn Belt de EEUU, Argentina o Brasil.
+3. Geopolítica y comercio: conflictos, bloqueos, sanciones, aranceles, retenciones, acuerdos que afecten exportación/logística de granos.
+4. Boletín Oficial de la Nación y Boletín Oficial de la Provincia de Córdoba: resoluciones, decretos o disposiciones que afecten al agro — prohibición o restricción de agroquímicos/fitosanitarios (ej. bans de principios activos), cambios normativos.
+5. Secretaría de Agricultura, Ganadería y Pesca de la Nación (bajo el Ministerio de Economía) y Ministerio de Bioagroindustria de la Provincia de Córdoba, y organismos relacionados (SENASA): resoluciones o anuncios que afecten al productor.
+6. INASE (Instituto Nacional de Semillas): resoluciones, cambios normativos, o novedades sobre propiedad intelectual de semillas, Ley de Semillas argentina, regalías extendidas, o fiscalización de semilla.
+
+Devolvé SOLO un JSON, sin texto antes ni después, sin \`\`\`, con esta forma exacta:
+{"noticias":[{"categoria":"mercado"|"regulatorio","tema":"<2-5 palabras>","detalle":"<1 frase corta y directa, máximo 25 palabras>","fuente":"<ej 'CBOT', 'Boletín Oficial Córdoba', 'INASE'>","impacto":"alcista"|"bajista"|null}]}
+
+Reglas:
+- Máximo 7 noticias en total, las más relevantes de todos los temas — no completes con relleno si hay menos de 7 reales y recientes.
+- "impacto" solo aplica a noticias de mercado/clima/geopolítica (alcista o bajista); para noticias regulatorias dejalo en null.
+- Sistema métrico SIEMPRE: temperaturas en °C, toneladas (no bushels/libras), rendimiento en tn/ha (convertí si la fuente da sacos/ha de Brasil —1 saca=60kg— o bu/ac de EEUU).
+- Sin citas ni referencias en el texto (nada de <cite>, [1], corchetes). No inventes nada — mejor devolver menos de 7 que inventar.`,
+    mensaje: 'Dame las 7 noticias más relevantes de hoy para un productor agropecuario de Córdoba: mercado de granos, clima, geopolítica, y novedades regulatorias (Boletín Oficial, Secretaría de Agricultura/Bioagroindustria, INASE/Ley de Semillas).',
+  });
+  const noticias = (resultado && resultado.noticias) || [];
+  return noticias.map(n => ({ ...n, tema: limpiarCitas(n.tema), detalle: limpiarCitas(n.detalle) }));
+}
+
+module.exports.consultarResumenDiarioCompleto = consultarResumenDiarioCompleto;
