@@ -10,6 +10,10 @@ forma exacta según el tipo de mensaje que detectes:
 Si es un RIEGO (menciona mm de agua aplicada CON RIEGO, pivote, pozo, bomba; puede mencionar de paso qué cultivo tiene el lote, eso NO lo convierte en una siembra):
 {"tipo":"riego","fecha":"<fecha del mensaje en formato YYYY-MM-DD si la mencionan, o null si no la dicen>","campo":"<nombre del campo si lo menciona, o null>","lote":"<nombre/código del lote mencionado>","mm":<numero>,"fuente":"<bomba o pozo si lo menciona, si no null>","cultivoDeReferencia":"<cultivo que tiene el lote si lo menciona, solo como dato de contexto, o null>"}
 
+Si es una RECETA / ORDEN DE APLICACIÓN (formato típico: primera línea el nombre del lote —a veces con el campo—, y las líneas siguientes cada una con "<dosis> <producto>", ej "1.3 glifosato" / "0.8 atrazina" — la persona quiere que le generes la orden de trabajo, no que quede como un simple registro):
+{"tipo":"receta","campo":"<nombre del campo si lo menciona, o null>","lote":"<nombre/código del lote, primera línea del mensaje>","items":[{"producto":"<nombre del producto>","dosisPorHa":<numero, la dosis por hectárea tal cual la escribieron>}]}
+Cada línea "numero producto" después del lote es un item distinto. El número siempre es la dosis por hectárea (no la cantidad total).
+
 Si es una PRECIPITACIÓN / LLUVIA (menciona que llovió, cayeron mm de lluvia — es agua de lluvia, NO riego con máquina):
 {"tipo":"precipitacion","fecha":"<fecha del mensaje en formato YYYY-MM-DD si la mencionan, o null si no la dicen>","campo":"<nombre del campo si lo menciona, o null>","lote":"<nombre/código del lote mencionado, o null si aclaran que fue en todo el campo>","mm":<numero>}
 
@@ -245,7 +249,7 @@ module.exports.resolverMuestrasPorTexto = resolverMuestrasPorTexto;
 
 async function consultarMercado() {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 75000); // 75s de margen — el web search puede tardar
+  const timeoutId = setTimeout(() => controller.abort(), 55000); // 55s — corta antes de que Caddy/el proxy lo mate en silencio
   try {
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
