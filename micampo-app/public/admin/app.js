@@ -519,13 +519,7 @@ function Mercado() {
         fontSize: 11,
         color: '#888780'
       }
-    }, "del valor de 1tn de trigo, si se aplicara la demanda total de N sin ningún descuento del suelo (peor caso — la dosis real casi siempre es menor)"), /*#__PURE__*/React.createElement("div", {
-      style: {
-        fontSize: 11,
-        color: '#888780',
-        marginTop: 8
-      }
-    }, "97,4kg urea/tn (Peralta-DISA, bruto) a USD ", mercado.urea.precioUSDtn, "/tn = USD ", costoUreaPorTn.toFixed(0), " — trigo a USD ", trigo.precioUSDtn, "/tn. Para el costo real de un lote puntual, usá la calculadora de la pestaña Fertilización (esa sí descuenta el suelo)."));
+    }, "del valor de 1tn de trigo — peor caso, sin descontar el suelo. Para el costo real de un lote, usá Fertilización."));
   })(), mercado?.relaciones && mercado.relaciones.length > 0 && /*#__PURE__*/React.createElement(Card, null, /*#__PURE__*/React.createElement("div", {
     style: {
       fontWeight: 500,
@@ -537,16 +531,39 @@ function Mercado() {
       color: '#888780',
       marginBottom: 8
     }
-  }, "Comparado contra el promedio histórico de cada cultivo (fuente: Coninagro/BCR/fyo)."), /*#__PURE__*/React.createElement("div", {
+  }, "vs. promedio histórico (Coninagro/BCR/fyo)"), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'grid',
-      gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+      gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
       gap: 12
     }
   }, mercado.relaciones.map((r, i) => {
-    const col = r.momento === 'favorable' ? COLOR_TENDENCIA.Alcista : r.momento === 'desfavorable' ? COLOR_TENDENCIA.Bajista : COLOR_TENDENCIA.Neutral;
     const grano = mercado.granos?.find(g => g.nombre === r.cultivo);
     const precioUreaHoy = mercado.urea?.precioUSDtn;
+    const puedeCalcular = precioUreaHoy && r.promedioHistorico && grano;
+    const precioHistoricoTeorico = puedeCalcular ? r.promedioHistorico * grano.precioUSDtn : null;
+    const porcentajeDif = puedeCalcular ? (precioUreaHoy - precioHistoricoTeorico) / precioHistoricoTeorico * 100 : null;
+    // Escala graduada, en vez de solo favorable/desfavorable
+    let etiqueta = 'Neutro',
+      col = COLOR_TENDENCIA.Neutral;
+    if (porcentajeDif != null) {
+      if (porcentajeDif <= -10) {
+        etiqueta = 'Muy favorable';
+        col = COLOR_TENDENCIA.Alcista;
+      } else if (porcentajeDif < 0) {
+        etiqueta = 'Favorable';
+        col = COLOR_TENDENCIA.Alcista;
+      } else if (porcentajeDif < 10) {
+        etiqueta = 'Ajustado';
+        col = COLOR_TENDENCIA.Neutral;
+      } else {
+        etiqueta = 'Desfavorable';
+        col = COLOR_TENDENCIA.Bajista;
+      }
+    } else {
+      col = r.momento === 'favorable' ? COLOR_TENDENCIA.Alcista : r.momento === 'desfavorable' ? COLOR_TENDENCIA.Bajista : COLOR_TENDENCIA.Neutral;
+      etiqueta = r.momento === 'favorable' ? 'Favorable' : r.momento === 'desfavorable' ? 'Desfavorable' : 'Neutro';
+    }
     return /*#__PURE__*/React.createElement("div", {
       key: i,
       style: {
@@ -572,43 +589,24 @@ function Mercado() {
         fontWeight: 600,
         color: col.texto
       }
-    }, r.momento === 'favorable' ? 'Favorable' : r.momento === 'desfavorable' ? 'Desfavorable' : 'Neutro')), precioUreaHoy && r.promedioHistorico && grano ? (() => {
-      const precioHistoricoTeorico = r.promedioHistorico * grano.precioUSDtn / 1000;
-      const diferencia = precioUreaHoy - precioHistoricoTeorico;
-      return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
-        style: {
-          fontSize: 20,
-          fontWeight: 600,
-          color: col.texto,
-          marginTop: 4
-        }
-      }, "USD ", precioUreaHoy, "/tn"), /*#__PURE__*/React.createElement("div", {
-        style: {
-          fontSize: 11,
-          color: '#888780'
-        }
-      }, "precio de la urea hoy — al ratio histórico de ", r.cultivo.toLowerCase(), " \"debería\" costar ~USD ", precioHistoricoTeorico.toFixed(0), "/tn"), /*#__PURE__*/React.createElement("div", {
-        style: {
-          fontSize: 13,
-          fontWeight: 500,
-          color: col.texto,
-          marginTop: 4
-        }
-      }, diferencia < 0 ? `Ahorrás ~USD ${Math.abs(diferencia).toFixed(0)}/tn` : diferencia > 0 ? `Pagás ~USD ${diferencia.toFixed(0)}/tn de más` : 'En línea con el histórico'));
-    })() : /*#__PURE__*/React.createElement("div", {
+    }, etiqueta)), /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 20,
         fontWeight: 600,
         color: col.texto,
         marginTop: 4
       }
-    }, r.kgGranoPorKgUrea, " kg de ", r.cultivo.toLowerCase(), " / kg urea"), r.comentario && /*#__PURE__*/React.createElement("div", {
+    }, "USD ", precioUreaHoy || '—', "/tn"), porcentajeDif != null ? /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 12,
-        color: '#5f5e5a',
-        marginTop: 6
+        color: '#888780'
       }
-    }, r.comentario));
+    }, porcentajeDif > 0 ? '+' : '', porcentajeDif.toFixed(0), "% vs. histórico (", precioHistoricoTeorico.toFixed(0), "/tn)") : /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12,
+        color: '#888780'
+      }
+    }, r.kgGranoPorKgUrea, " kg de ", r.cultivo.toLowerCase(), " / kg urea"));
   }))), mercado?.factores && mercado.factores.length > 0 && /*#__PURE__*/React.createElement(Card, null, /*#__PURE__*/React.createElement("div", {
     style: {
       fontWeight: 500,
