@@ -1,5 +1,25 @@
 const fetch = require('node-fetch');
 
+// Intenta parsear JSON de forma tolerante: si la respuesta trae texto extra alrededor
+// (a pesar de pedirle que no lo haga), busca desde la primera "{" hasta la ultima "}".
+function parsearJsonTolerante(texto) {
+  const limpio = texto.trim().replace(/^```(json)?\n?/, '').replace(/```$/, '').trim();
+  try {
+    return JSON.parse(limpio);
+  } catch (e) {
+    const inicio = limpio.indexOf('{');
+    const fin = limpio.lastIndexOf('}');
+    if (inicio >= 0 && fin > inicio) {
+      try {
+        return JSON.parse(limpio.slice(inicio, fin + 1));
+      } catch (e2) {
+        return null;
+      }
+    }
+    return null;
+  }
+}
+
 const SYSTEM_PROMPT = `Sos un asistente que interpreta mensajes cortos, informales y a veces con errores de tipeo,
 que manda gente de campo (agrónomos, encargados, tolveros) por WhatsApp, y los convierte en datos estructurados
 para un sistema de administración agropecuaria llamado MI CAMPO.
@@ -94,15 +114,8 @@ async function interpretarMensaje(textoMensaje) {
 
   const data = await response.json();
   const textoRespuesta = data.content.map(b => b.text || '').join('');
-
-  // Por si la IA igual envuelve la respuesta en marcado de código (```json ... ```)
-  const limpio = textoRespuesta.trim().replace(/^```(json)?\n?/, '').replace(/```$/, '').trim();
-
-  try {
-    return JSON.parse(limpio);
-  } catch (e) {
-    return { tipo: 'desconocido', motivo: 'No se pudo interpretar la respuesta de la IA' };
-  }
+  const resultado = parsearJsonTolerante(textoRespuesta);
+  return resultado || { tipo: 'desconocido', motivo: 'No se pudo interpretar la respuesta de la IA' };
 }
 
 module.exports = { interpretarMensaje };
@@ -205,14 +218,12 @@ Reglas:
   }
   const data = await response.json();
   const textoRespuesta = data.content.map(b => b.text || '').join('');
-  const limpio = textoRespuesta.trim().replace(/^```(json)?\n?/, '').replace(/```$/, '').trim();
-  try {
-    const parsed = JSON.parse(limpio);
-    return parsed.muestras ? parsed.muestras : (parsed.parametros ? [parsed] : null); // compatibilidad si viniera en formato viejo
-  } catch (e) {
+  const parsed = parsearJsonTolerante(textoRespuesta);
+  if (!parsed) {
     console.error('No se pudo parsear el JSON de analisis de documento. Respuesta cruda de la IA:', textoRespuesta);
     return null;
   }
+  return parsed.muestras ? parsed.muestras : (parsed.parametros ? [parsed] : null); // compatibilidad si viniera en formato viejo
 }
 
 module.exports.interpretarAnalisisDocumento = interpretarAnalisisDocumento;
@@ -237,12 +248,8 @@ Si el texto no aclara alguna muestra, no la incluyas en la lista.`,
   if (!response.ok) return [];
   const data = await response.json();
   const textoRespuesta = data.content.map(b => b.text || '').join('');
-  const limpio = textoRespuesta.trim().replace(/^```(json)?\n?/, '').replace(/```$/, '').trim();
-  try {
-    return JSON.parse(limpio).asignaciones || [];
-  } catch (e) {
-    return [];
-  }
+  const parsed = parsearJsonTolerante(textoRespuesta);
+  return (parsed && parsed.asignaciones) || [];
 }
 
 module.exports.resolverMuestrasPorTexto = resolverMuestrasPorTexto;
@@ -285,13 +292,12 @@ Reglas:
     }
     const data = await response.json();
     const textoRespuesta = data.content.map(b => b.text || '').join('');
-    const limpio = textoRespuesta.trim().replace(/^```(json)?\n?/, '').replace(/```$/, '').trim();
-    try {
-      return JSON.parse(limpio);
-    } catch (e) {
+    const resultado = parsearJsonTolerante(textoRespuesta);
+    if (!resultado) {
       console.error('No se pudo parsear el JSON de mercado. Respuesta cruda:', textoRespuesta);
       throw new Error('No se pudo interpretar la respuesta del mercado');
     }
+    return resultado;
   } catch (e) {
     if (e.name === 'AbortError') {
       console.error('Timeout consultando mercado (75s)');
