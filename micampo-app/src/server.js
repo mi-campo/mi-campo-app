@@ -78,7 +78,7 @@ app.post('/webhook', async (req, res) => {
     const mensaje = change?.value?.messages?.[0];
     if (!mensaje) return;
 
-    const numeroRemitente = mensaje.from;
+    const numeroRemitente = normalizarNumero(mensaje.from);
 
     // Documento (PDF) o foto de un análisis
     if (mensaje.type === 'document' || mensaje.type === 'image') {
