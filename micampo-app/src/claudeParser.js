@@ -298,15 +298,15 @@ async function consultarPrecios() {
     timeoutMs: 45000,
     system: `Sos un analista de mercado de granos con el estilo directo de los analistas argentinos de bolsa de cereales (tipo Nóvitas/Enrique Erize): concreto, sin adornos.
 
-Buscá en la web los precios ACTUALES de soja, maíz y trigo — preferentemente el precio pizarra/físico de Rosario, Argentina (en USD/tn) si lo encontrás actualizado, y como referencia el futuro más cercano de Chicago (CBOT). Compará cada uno contra el promedio de las últimas 2-4 semanas.
+Buscá en la web los precios ACTUALES de soja, maíz y trigo — preferentemente el precio pizarra/físico de Rosario, Argentina (en USD/tn) si lo encontrás actualizado, y como referencia el futuro más cercano de Chicago (CBOT). Compará cada uno contra el promedio de las últimas 2-4 semanas. Buscá también el precio actual de la urea (USD/tn, FOB o precio de referencia en Argentina).
 
 Devolvé SOLO un JSON, sin texto antes ni después, sin \`\`\`, con esta forma exacta:
-{"granos":[{"nombre":"Soja","precioUSDtn":<numero>,"fuente":"<ej 'Pizarra Rosario' o 'CBOT'>","vsPromedio":"por encima"|"por debajo"|"en línea","tendencia":"Alcista"|"Bajista"|"Neutral","comentario":"<1-2 frases breves>"}]}
+{"granos":[{"nombre":"Soja","precioUSDtn":<numero>,"fuente":"<ej 'Pizarra Rosario' o 'CBOT'>","vsPromedio":"por encima"|"por debajo"|"en línea","tendencia":"Alcista"|"Bajista"|"Neutral","comentario":"<1-2 frases breves>"}],"urea":{"precioUSDtn":<numero>,"fuente":"<ej 'FOB US Gulf' o 'Precio de referencia Argentina'>"}}
 
-Un grano por elemento: Soja, Maíz, Trigo. No inventes precios — si no encontrás algo confiable, omitilo.`,
-    mensaje: 'Dame los precios actuales de soja, maíz y trigo para un productor agropecuario argentino, comparados con el promedio reciente.',
+Un grano por elemento: Soja, Maíz, Trigo. No inventes precios — si no encontrás algo confiable, omitilo (dejá "urea" en null si no encontrás nada confiable).`,
+    mensaje: 'Dame los precios actuales de soja, maíz, trigo y urea para un productor agropecuario argentino, comparados con el promedio reciente.',
   });
-  return (resultado && resultado.granos) || [];
+  return { granos: (resultado && resultado.granos) || [], urea: (resultado && resultado.urea) || null };
 }
 
 async function consultarFactoresMercado() {
@@ -344,8 +344,8 @@ Un elemento para Trigo y otro para Maíz. "favorable" = hace falta menos grano q
 }
 
 async function consultarMercado() {
-  const [granos, factores, relaciones] = await Promise.all([consultarPrecios(), consultarFactoresMercado(), consultarRelacionInsumoProducto()]);
-  return { granos, factores, relaciones, fechaConsulta: new Date().toISOString().slice(0, 10) };
+  const [precios, factores, relaciones] = await Promise.all([consultarPrecios(), consultarFactoresMercado(), consultarRelacionInsumoProducto()]);
+  return { granos: precios.granos, urea: precios.urea, factores, relaciones, fechaConsulta: new Date().toISOString().slice(0, 10) };
 }
 
 module.exports.consultarMercado = consultarMercado;
