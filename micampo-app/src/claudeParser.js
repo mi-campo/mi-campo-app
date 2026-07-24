@@ -340,6 +340,7 @@ Devolvé SOLO un JSON, sin texto antes ni después, sin \`\`\`, con esta forma e
 Reglas:
 - 2 a 5 eventos/noticias reales y recientes, no explicaciones genéricas de manual. No inventes noticias — si no encontrás algo confiable y reciente, omitilo.
 - Sistema métrico SIEMPRE: temperaturas en °C (no Fahrenheit), toneladas (no bushels ni libras), km (no millas). Convertí si la fuente original usa otra unidad.
+- Si mencionás RENDIMIENTO de cultivo, siempre en tn/ha — convertí si la fuente lo da en otra unidad: sacos/ha de Brasil (1 saca = 60kg, así que sacos/ha × 0,06 = tn/ha) o bushels/acre de EEUU (bu/ac × factor de conversión del grano ÷ 2,471 = tn/ha; el factor es ~25,4kg/bu para maíz, ~27,2kg/bu para soja y trigo). Mostrá el número ya convertido a tn/ha, no la unidad original.
 - "detalle" es texto plano, corto y directo — NUNCA incluyas citas, referencias, marcas de fuente ni ninguna etiqueta (nada de <cite>, [1], corchetes, ni similares). Es para mostrarse tal cual en una pantalla.`,
     mensaje: 'Dame los factores de clima y geopolítica más relevantes de los últimos días que puedan mover el precio de soja, maíz o trigo.',
   });
