@@ -162,12 +162,18 @@ Reglas:
 });
 
 /* ---------- MERCADO (precios + panorama, con cache de 6hs) ---------- */
+const KG_UREA_POR_TN_TRIGO = 97.4; // 28kgN/tn / 0.625 eficiencia / 0.46 urea — requerimiento bruto Peralta-DISA
+
 function actualizarHistorialYPromedios(data, mercado) {
   const historial = data.mercado?.historial || [];
   const hoy = new Date().toISOString().slice(0, 10);
   const sinHoy = historial.filter(h => h.fecha !== hoy); // evita duplicar si se actualiza mas de una vez el mismo dia
   const nuevoHistorial = mercado.granos && mercado.granos.length > 0
-    ? [...sinHoy, { fecha: hoy, granos: mercado.granos.map(g => ({ nombre: g.nombre, precioUSDtn: g.precioUSDtn })) }].slice(-90) // guarda como mucho los ultimos 90 dias
+    ? [...sinHoy, {
+        fecha: hoy,
+        granos: mercado.granos.map(g => ({ nombre: g.nombre, precioUSDtn: g.precioUSDtn })),
+        ureaUSDtn: mercado.urea?.precioUSDtn || null,
+      }].slice(-90) // guarda como mucho los ultimos 90 dias
     : historial;
 
   // Si ya tenemos al menos 5 lecturas propias de un grano, usamos NUESTRO promedio real en vez de que la IA lo adivine
@@ -181,7 +187,20 @@ function actualizarHistorialYPromedios(data, mercado) {
     }
   });
 
-  return nuevoHistorial;
+  // Idem para el % de costo de urea sobre el trigo (nuestra propia serie, para el grafico)
+  const serieCostoUreaTrigo = nuevoHistorial
+    .map(h => {
+      const trigo = h.granos.find(g => g.nombre === 'Trigo');
+      if (!trigo || !h.ureaUSDtn) return null;
+      const costoUreaPorTn = (KG_UREA_POR_TN_TRIGO / 1000) * h.ureaUSDtn;
+      return { fecha: h.fecha, porcentaje: (costoUreaPorTn / trigo.precioUSDtn) * 100 };
+    })
+    .filter(v => v != null);
+  const costoUreaTrigo = serieCostoUreaTrigo.length >= 5
+    ? { promedioPropio: serieCostoUreaTrigo.reduce((s, v) => s + v.porcentaje, 0) / serieCostoUreaTrigo.length, cantidadLecturas: serieCostoUreaTrigo.length, serie: serieCostoUreaTrigo }
+    : { serie: serieCostoUreaTrigo };
+
+  return { historial: nuevoHistorial, costoUreaTrigo };
 }
 
 router.get('/mercado', requireLogin, async (req, res) => {
@@ -199,8 +218,8 @@ router.get('/mercado', requireLogin, async (req, res) => {
       if (data.mercado) return res.json(data.mercado);
       return res.status(502).json({ error: 'No se pudo obtener información de mercado ahora mismo' });
     }
-    const historial = actualizarHistorialYPromedios(data, mercado);
-    data.mercado = { ...mercado, historial, actualizado: ahora };
+    const { historial, costoUreaTrigo } = actualizarHistorialYPromedios(data, mercado);
+    data.mercado = { ...mercado, historial, costoUreaTrigo, actualizado: ahora };
     save(data);
     res.json(data.mercado);
   } catch (e) {
