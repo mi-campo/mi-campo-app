@@ -162,6 +162,28 @@ Reglas:
 });
 
 /* ---------- MERCADO (precios + panorama, con cache de 6hs) ---------- */
+function actualizarHistorialYPromedios(data, mercado) {
+  const historial = data.mercado?.historial || [];
+  const hoy = new Date().toISOString().slice(0, 10);
+  const sinHoy = historial.filter(h => h.fecha !== hoy); // evita duplicar si se actualiza mas de una vez el mismo dia
+  const nuevoHistorial = mercado.granos && mercado.granos.length > 0
+    ? [...sinHoy, { fecha: hoy, granos: mercado.granos.map(g => ({ nombre: g.nombre, precioUSDtn: g.precioUSDtn })) }].slice(-90) // guarda como mucho los ultimos 90 dias
+    : historial;
+
+  // Si ya tenemos al menos 5 lecturas propias de un grano, usamos NUESTRO promedio real en vez de que la IA lo adivine
+  (mercado.granos || []).forEach(g => {
+    const lecturas = nuevoHistorial.map(h => h.granos.find(x => x.nombre === g.nombre)?.precioUSDtn).filter(v => v != null);
+    if (lecturas.length >= 5) {
+      const promedioPropio = lecturas.reduce((s, v) => s + v, 0) / lecturas.length;
+      g.promedioPropio = Math.round(promedioPropio);
+      g.cantidadLecturas = lecturas.length;
+      g.vsPromedio = g.precioUSDtn > promedioPropio * 1.02 ? 'por encima' : g.precioUSDtn < promedioPropio * 0.98 ? 'por debajo' : 'en línea';
+    }
+  });
+
+  return nuevoHistorial;
+}
+
 router.get('/mercado', requireLogin, async (req, res) => {
   const data = load();
   const ahora = Date.now();
@@ -172,7 +194,13 @@ router.get('/mercado', requireLogin, async (req, res) => {
   }
   try {
     const mercado = await consultarMercado();
-    data.mercado = { ...mercado, actualizado: ahora };
+    if ((!mercado.granos || mercado.granos.length === 0) && (!mercado.factores || mercado.factores.length === 0)) {
+      // Fallaron las dos partes — no pisar un dato bueno anterior con uno vacío
+      if (data.mercado) return res.json(data.mercado);
+      return res.status(502).json({ error: 'No se pudo obtener información de mercado ahora mismo' });
+    }
+    const historial = actualizarHistorialYPromedios(data, mercado);
+    data.mercado = { ...mercado, historial, actualizado: ahora };
     save(data);
     res.json(data.mercado);
   } catch (e) {
