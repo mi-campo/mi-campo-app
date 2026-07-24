@@ -492,7 +492,65 @@ function Mercado() {
         marginTop: 8
       }
     }, g.comentario));
-  })), mercado?.relaciones && mercado.relaciones.length > 0 && /*#__PURE__*/React.createElement(Card, null, /*#__PURE__*/React.createElement("div", {
+  })), mercado?.urea && mercado.granos && (() => {
+    const trigo = mercado.granos.find(g => g.nombre === 'Trigo');
+    if (!trigo) return null;
+    const KG_UREA_POR_TN_TRIGO = 97.4; // 28kgN/tn / 0.625 eficiencia / 0.46 urea — requerimiento BRUTO, antes de descontar suelo
+    const costoUreaPorTn = KG_UREA_POR_TN_TRIGO / 1000 * mercado.urea.precioUSDtn;
+    const porcentaje = costoUreaPorTn / trigo.precioUSDtn * 100;
+    const col = porcentaje < 30 ? COLOR_TENDENCIA.Alcista : porcentaje < 55 ? COLOR_TENDENCIA.Neutral : COLOR_TENDENCIA.Bajista;
+    const lectura = porcentaje < 30 ? 'Muy favorable' : porcentaje < 55 ? 'Ajustado' : 'Desfavorable';
+    return /*#__PURE__*/React.createElement(Card, {
+      style: {
+        borderLeft: `4px solid ${col.borde}`
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontWeight: 500,
+        marginBottom: 4
+      }
+    }, "¿Conviene fertilizar trigo? — con tu propia demanda de N"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 11,
+        color: '#888780',
+        marginBottom: 8
+      }
+    }, "Usa el requerimiento bruto de Peralta-DISA (44,8 kgN/tn → 97,4 kg urea/tn), antes de descontar lo que ya aporta el suelo — es el peor caso, el costo real con tus datos base cargados suele ser menor."), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: 'flex',
+        gap: 20,
+        alignItems: 'baseline',
+        flexWrap: 'wrap'
+      }
+    }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 28,
+        fontWeight: 600,
+        color: col.texto
+      }
+    }, porcentaje.toFixed(0), "%"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 11,
+        color: '#888780'
+      }
+    }, "del valor de esa tonelada de trigo se va en la urea")), /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 12,
+        fontWeight: 600,
+        color: col.texto,
+        background: col.fondo,
+        border: `1px solid ${col.borde}`,
+        borderRadius: 5,
+        padding: '3px 10px'
+      }
+    }, lectura)), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 11,
+        color: '#888780',
+        marginTop: 8
+      }
+    }, "USD ", costoUreaPorTn.toFixed(0), " de urea (97,4kg a USD ", mercado.urea.precioUSDtn, "/tn — ", mercado.urea.fuente, ") para producir 1tn de trigo a USD ", trigo.precioUSDtn, "/tn."));
+  })(), mercado?.relaciones && mercado.relaciones.length > 0 && /*#__PURE__*/React.createElement(Card, null, /*#__PURE__*/React.createElement("div", {
     style: {
       fontWeight: 500,
       marginBottom: 4
