@@ -342,7 +342,7 @@ Devolvé SOLO un JSON, sin texto antes ni después, sin \`\`\`, con esta forma e
 Reglas:
 - 7 eventos/noticias reales y recientes, no explicaciones genéricas de manual. No inventes noticias — si no encontrás 7 confiables y recientes, devolvé los que encuentres, no completes con relleno.
 - Sistema métrico SIEMPRE: temperaturas en °C (no Fahrenheit), toneladas (no bushels ni libras), km (no millas). Convertí si la fuente original usa otra unidad.
-- Si mencionás RENDIMIENTO de cultivo, siempre en tn/ha — convertí si la fuente lo da en otra unidad: sacos/ha de Brasil (1 saca = 60kg, así que sacos/ha × 0,06 = tn/ha) o bushels/acre de EEUU (bu/ac × factor de conversión del grano ÷ 2,471 = tn/ha; el factor es ~25,4kg/bu para maíz, ~27,2kg/bu para soja y trigo). Mostrá el número ya convertido a tn/ha, no la unidad original.
+- Si mencionás RENDIMIENTO de cultivo, siempre en tn/ha — NUNCA dejes bu/ac ni sacos/ha en el texto final, tenés que convertir antes de escribir. Ejemplo resuelto: "180 bu/ac de maíz" → 180 × 25,4kg/bu = 4572 kg/ac → ÷1000 = 4,572 tn/ac → ×2,471 (ha por acre) = **11,3 tn/ha**. Para soja/trigo usá 27,2kg/bu en vez de 25,4. Para Brasil: "60 sacos/ha" → 60 × 60kg = 3600kg → **3,6 tn/ha**. Si no podés convertir con confianza, mejor omitir el número que dejarlo en la unidad original.
 - "detalle" es texto plano, corto y directo — NUNCA incluyas citas, referencias, marcas de fuente ni ninguna etiqueta (nada de <cite>, [1], corchetes, ni similares). Es para mostrarse tal cual en una pantalla.`,
     mensaje: 'Dame las 7 noticias/factores de clima y geopolítica más relevantes de los últimos días que puedan mover el precio de soja, maíz o trigo.',
   });
@@ -399,7 +399,7 @@ Devolvé SOLO un JSON, sin texto antes ni después, sin \`\`\`, con esta forma e
 Reglas:
 - Máximo 7 noticias en total, las más relevantes de todos los temas — no completes con relleno si hay menos de 7 reales y recientes.
 - "impacto" solo aplica a noticias de mercado/clima/geopolítica (alcista o bajista); para noticias regulatorias dejalo en null.
-- Sistema métrico SIEMPRE: temperaturas en °C, toneladas (no bushels/libras), rendimiento en tn/ha (convertí si la fuente da sacos/ha de Brasil —1 saca=60kg— o bu/ac de EEUU).
+- Sistema métrico SIEMPRE: temperaturas en °C, toneladas (no bushels/libras). RENDIMIENTO siempre en tn/ha, NUNCA dejes bu/ac ni sacos/ha en el texto — convertí antes de escribir. Ejemplo: "180 bu/ac maíz" → 180×25,4kg/bu÷1000×2,471 = 11,3 tn/ha (usá 27,2kg/bu para soja/trigo). Brasil: "60 sacos/ha" → 60×60kg = 3,6 tn/ha. Si no podés convertir con confianza, omití el número.
 - Sin citas ni referencias en el texto (nada de <cite>, [1], corchetes). No inventes nada — mejor devolver menos de 7 que inventar.`,
     mensaje: 'Dame las 7 noticias más relevantes de hoy para un productor agropecuario de Córdoba: mercado de granos, clima, geopolítica, y novedades regulatorias (Boletín Oficial, Secretaría de Agricultura/Bioagroindustria, INASE/Ley de Semillas).',
   });
