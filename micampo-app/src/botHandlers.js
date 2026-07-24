@@ -1,5 +1,6 @@
 const { load, save, uid, buscarLotes, buscarLotesExacto, precioPromedio, cicloActivo } = require('./db');
 const { responderConsulta } = require('./claudeParser');
+const { generarImagenReceta } = require('./recetaImagen');
 
 function hoy() {
   return new Date().toISOString().slice(0, 10);
@@ -67,6 +68,12 @@ function validar(interpretado) {
       const r = resolverLote(data, interpretado.lote, interpretado.campo);
       if (!r.ok) return r;
       if (!interpretado.mm) return { ok: false, pregunta: '¿Cuántos mm de lluvia cayeron?', campoFaltante: 'mm' };
+      return { ok: true };
+    }
+    case 'receta': {
+      const r = resolverLote(data, interpretado.lote, interpretado.campo);
+      if (!r.ok) return r;
+      if (!interpretado.items || interpretado.items.length === 0) return { ok: false, pregunta: 'Mandá el mensaje de nuevo con el lote arriba y cada producto con su dosis en una línea (ej "1.3 glifosato").', campoFaltante: null };
       return { ok: true };
     }
     case 'pulverizacion': {
@@ -194,6 +201,35 @@ function manejarPrecipitacion(interpretado) {
   texto += `\nPrecipitaciones acumuladas: ${bal.acumuladoLluvia}mm · Riego acumulado: ${bal.acumuladoRiego}mm`;
   if (bal.balance !== null) texto += bal.balance >= 0 ? ` · Faltan ${bal.balance}mm para el objetivo` : ` · Sobran ${Math.abs(bal.balance)}mm sobre el objetivo`;
   return texto;
+}
+
+async function manejarReceta(interpretado) {
+  const data = load();
+  const lote = buscarLotes(data, interpretado.lote, interpretado.campo)[0];
+  const campoDelLote = data.campos.find(c => c.id === lote.campoId);
+  const hectareasAplicables = (data.hectareasAplicables && data.hectareasAplicables[lote.id]) || Number(lote.hectareas) || 0;
+
+  data.recetaCounter = (Number(data.recetaCounter) || 0) + 1;
+  const numero = data.recetaCounter;
+
+  const items = interpretado.items.map(it => ({
+    producto: it.producto,
+    dosisPorHa: Number(it.dosisPorHa),
+    totalProducto: Number(it.dosisPorHa) * hectareasAplicables,
+  }));
+
+  const receta = {
+    id: uid(), numero, loteId: lote.id,
+    establecimiento: campoDelLote?.nombre || '', lote: lote.nombre,
+    fecha: hoy(), hectareasReales: Number(lote.hectareas) || 0, hectareasAplicables,
+    observaciones: '', apoyo: '', items,
+  };
+  data.recetas.push(receta);
+  save(data);
+
+  const imagenBuffer = await generarImagenReceta(receta);
+  const caption = `✅ Orden N° ${String(numero).padStart(5, '0')} — ${nombreConCampo(data, lote)} — ${hectareasAplicables}ha aplicables`;
+  return { esImagen: true, imagenBuffer, caption };
 }
 
 function resolverInsumos(data, items) {
@@ -534,6 +570,7 @@ async function procesar(interpretado, contacto) {
   switch (interpretado.tipo) {
     case 'riego': return manejarRiego(interpretado);
     case 'precipitacion': return manejarPrecipitacion(interpretado);
+    case 'receta': return manejarReceta(interpretado);
     case 'pulverizacion': return manejarPulverizacion(interpretado);
     case 'siembra': return manejarSiembra(interpretado);
     case 'fertilizacion': return manejarFertilizacion(interpretado);
