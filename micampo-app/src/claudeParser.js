@@ -254,9 +254,9 @@ Si el texto no aclara alguna muestra, no la incluyas en la lista.`,
 
 module.exports.resolverMuestrasPorTexto = resolverMuestrasPorTexto;
 
-async function consultarMercado() {
+async function llamarClaudeConBusqueda({ system, mensaje, maxTokens, timeoutMs }) {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 55000); // 55s — corta antes de que Caddy/el proxy lo mate en silencio
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -268,45 +268,84 @@ async function consultarMercado() {
       signal: controller.signal,
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
-        max_tokens: 3000,
+        max_tokens: maxTokens,
         tools: [{ type: 'web_search_20250305', name: 'web_search' }],
-        system: `Sos un analista de mercado de granos experimentado, con el estilo directo y sin vueltas de los analistas argentinos de bolsa de cereales (tipo Nóvitas/Enrique Erize): concreto, sin especular de más, sin adornos.
-
-Buscá en la web los precios ACTUALES de soja, maíz y trigo — preferentemente el precio pizarra/físico de Rosario, Argentina (en USD/tn) si lo encontrás actualizado, y como referencia también el futuro más cercano de Chicago (CBOT, en USD/tn). Compará cada uno contra el promedio de las últimas 2-4 semanas. Buscá también noticias recientes (últimos días) que puedan afectar estos precios: clima (El Niño/La Niña, sequías o excesos de humedad en el Corn Belt de EEUU, en Argentina o Brasil), geopolítica (conflictos, bloqueos, sanciones que afecten exportación/logística de granos), políticas comerciales (aranceles, retenciones, acuerdos).
-
-Devolvé SOLO un JSON, sin texto antes ni después, sin \`\`\`, con esta forma exacta:
-{"granos":[{"nombre":"Soja","precioUSDtn":<numero>,"fuente":"<de donde sacaste el precio, ej 'Pizarra Rosario' o 'CBOT'>","vsPromedio":"por encima"|"por debajo"|"en línea","tendencia":"Alcista"|"Bajista"|"Neutral","comentario":"<1-2 frases breves, directas, tono de analista profesional>"}],"factores":[{"tema":"<ej 'Clima Corn Belt EEUU'>","detalle":"<1 frase concreta, con la fuente/hecho real que encontraste>","impacto":"alcista"|"bajista"}],"fechaConsulta":"<fecha de hoy en formato YYYY-MM-DD>"}
-
-Reglas:
-- Un grano por elemento: Soja, Maíz, Trigo (agregá Garbanzo solo si encontrás una referencia de precio confiable, si no omitilo).
-- No inventes precios ni noticias — si no encontrás algo confiable y reciente, omitilo antes que inventar.
-- "factores" son 2 a 5 eventos/noticias reales y recientes que puedan mover el mercado en el corto plazo, no explicaciones genéricas de manual.
-- Sé breve: los comentarios son de analista de mercado real, no un ensayo.`,
-        messages: [{ role: 'user', content: 'Dame el panorama de mercado de granos de hoy para un productor agropecuario argentino: precios de soja, maíz y trigo, comparación con el promedio reciente, y los factores de clima/geopolítica que puedan mover el mercado en el corto plazo.' }],
+        system,
+        messages: [{ role: 'user', content: mensaje }],
       }),
     });
     if (!response.ok) {
       const errText = await response.text();
-      console.error('Error de la API consultando mercado:', response.status, errText);
-      throw new Error('No se pudo consultar el mercado');
+      console.error('Error de la API (busqueda mercado):', response.status, errText);
+      return null;
     }
     const data = await response.json();
     const textoRespuesta = data.content.map(b => b.text || '').join('');
     const resultado = parsearJsonTolerante(textoRespuesta);
-    if (!resultado) {
-      console.error('No se pudo parsear el JSON de mercado. Respuesta cruda:', textoRespuesta);
-      throw new Error('No se pudo interpretar la respuesta del mercado');
-    }
+    if (!resultado) console.error('No se pudo parsear el JSON. Respuesta cruda:', textoRespuesta);
     return resultado;
   } catch (e) {
-    if (e.name === 'AbortError') {
-      console.error('Timeout consultando mercado (75s)');
-      throw new Error('La consulta de mercado tardó demasiado, probá de nuevo en un rato');
-    }
-    throw e;
+    console.error(e.name === 'AbortError' ? `Timeout (${timeoutMs}ms) consultando mercado` : e);
+    return null;
   } finally {
     clearTimeout(timeoutId);
   }
+}
+
+async function consultarPrecios() {
+  const resultado = await llamarClaudeConBusqueda({
+    maxTokens: 1200,
+    timeoutMs: 45000,
+    system: `Sos un analista de mercado de granos con el estilo directo de los analistas argentinos de bolsa de cereales (tipo Nóvitas/Enrique Erize): concreto, sin adornos.
+
+Buscá en la web los precios ACTUALES de soja, maíz y trigo — preferentemente el precio pizarra/físico de Rosario, Argentina (en USD/tn) si lo encontrás actualizado, y como referencia el futuro más cercano de Chicago (CBOT). Compará cada uno contra el promedio de las últimas 2-4 semanas.
+
+Devolvé SOLO un JSON, sin texto antes ni después, sin \`\`\`, con esta forma exacta:
+{"granos":[{"nombre":"Soja","precioUSDtn":<numero>,"fuente":"<ej 'Pizarra Rosario' o 'CBOT'>","vsPromedio":"por encima"|"por debajo"|"en línea","tendencia":"Alcista"|"Bajista"|"Neutral","comentario":"<1-2 frases breves>"}]}
+
+Un grano por elemento: Soja, Maíz, Trigo. No inventes precios — si no encontrás algo confiable, omitilo.`,
+    mensaje: 'Dame los precios actuales de soja, maíz y trigo para un productor agropecuario argentino, comparados con el promedio reciente.',
+  });
+  return (resultado && resultado.granos) || [];
+}
+
+async function consultarFactoresMercado() {
+  const resultado = await llamarClaudeConBusqueda({
+    maxTokens: 1200,
+    timeoutMs: 45000,
+    system: `Sos un analista de mercado de granos con el estilo directo de los analistas argentinos de bolsa de cereales: concreto, sin adornos.
+
+Buscá noticias recientes (últimos días) que puedan afectar el precio de soja, maíz y trigo: clima (El Niño/La Niña, sequías o excesos de humedad en el Corn Belt de EEUU, en Argentina o Brasil), geopolítica (conflictos, bloqueos, sanciones que afecten exportación/logística de granos), políticas comerciales (aranceles, retenciones, acuerdos).
+
+Devolvé SOLO un JSON, sin texto antes ni después, sin \`\`\`, con esta forma exacta:
+{"factores":[{"tema":"<ej 'Clima Corn Belt EEUU'>","detalle":"<1 frase concreta, con el hecho real que encontraste>","impacto":"alcista"|"bajista"}]}
+
+2 a 5 eventos/noticias reales y recientes que puedan mover el mercado en el corto plazo, no explicaciones genéricas de manual. No inventes noticias — si no encontrás algo confiable y reciente, omitilo.`,
+    mensaje: 'Dame los factores de clima y geopolítica más relevantes de los últimos días que puedan mover el precio de soja, maíz o trigo.',
+  });
+  return (resultado && resultado.factores) || [];
+}
+
+async function consultarRelacionInsumoProducto() {
+  const resultado = await llamarClaudeConBusqueda({
+    maxTokens: 1200,
+    timeoutMs: 45000,
+    system: `Sos un analista agropecuario argentino especializado en la "relación insumo-producto" — el indicador que usan Coninagro, la Bolsa de Comercio de Rosario y consultoras como fyo, que mide cuántos kilos de grano hacen falta para comprar 1 kilo de urea.
+
+Buscá el informe/dato más reciente disponible (de Coninagro, BCR, fyo, u otra fuente seria) sobre la relación insumo-producto urea/trigo y urea/maíz en Argentina: el ratio actual (kg de grano por kg de urea) y, si lo encontrás, el promedio histórico de referencia (5 o 10 años) para poder decir si hoy es un momento favorable o desfavorable para comprar urea comparado con lo histórico.
+
+Devolvé SOLO un JSON, sin texto antes ni después, sin \`\`\`, con esta forma exacta:
+{"relaciones":[{"cultivo":"Trigo","kgGranoPorKgUrea":<numero>,"promedioHistorico":<numero o null si no lo encontrás>,"momento":"favorable"|"desfavorable"|"neutro","comentario":"<1-2 frases breves, con la fuente>"}]}
+
+Un elemento para Trigo y otro para Maíz. "favorable" = hace falta menos grano que el promedio histórico para comprar la urea (buen momento para comprar). "desfavorable" = hace falta más grano que el histórico. Si no encontrás el promedio histórico, dejá "promedioHistorico" en null y "momento" en "neutro". No inventes números — si no encontrás un dato confiable y reciente, omitilo.`,
+    mensaje: 'Dame la relación insumo-producto actual de la urea contra el trigo y el maíz en Argentina, comparada con el promedio histórico.',
+  });
+  return (resultado && resultado.relaciones) || [];
+}
+
+async function consultarMercado() {
+  const [granos, factores, relaciones] = await Promise.all([consultarPrecios(), consultarFactoresMercado(), consultarRelacionInsumoProducto()]);
+  return { granos, factores, relaciones, fechaConsulta: new Date().toISOString().slice(0, 10) };
 }
 
 module.exports.consultarMercado = consultarMercado;
