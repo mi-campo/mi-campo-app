@@ -255,7 +255,7 @@ function App() {
       color: '#888780'
     }
   }, "Cargando MI CAMPO…");
-  const tabs = [['resumen', 'Resumen'], ['mercado', 'Mercado'], ['campos', 'Campos y lotes'], ['riego', 'Riego'], ['fertilizacion', 'Fertilización'], ['insumos', 'Insumos'], ['proveedores', 'Proveedores'], ['actividades', 'Actividades'], ['tarifario', 'Tarifario'], ['clientes', 'Clientes'], ['usuarios', 'Usuarios'], ['whatsapp', 'WhatsApp'], ['consultas', 'Consultas']];
+  const tabs = [['resumen', 'Resumen'], ['mercado', 'Mercado'], ['campos', 'Campos y lotes'], ['riego', 'Riego'], ['fertilizacion', 'Fertilización'], ['recetas', 'Recetas'], ['insumos', 'Insumos'], ['proveedores', 'Proveedores'], ['actividades', 'Actividades'], ['tarifario', 'Tarifario'], ['clientes', 'Clientes'], ['usuarios', 'Usuarios'], ['whatsapp', 'WhatsApp'], ['consultas', 'Consultas']];
   return /*#__PURE__*/React.createElement("div", {
     style: {
       maxWidth: 1000,
@@ -335,6 +335,9 @@ function App() {
     data: data,
     update: update
   }), tab === 'fertilizacion' && /*#__PURE__*/React.createElement(Fertilizacion, {
+    data: data,
+    update: update
+  }), tab === 'recetas' && /*#__PURE__*/React.createElement(Recetas, {
     data: data,
     update: update
   }), tab === 'insumos' && /*#__PURE__*/React.createElement(Insumos, {
@@ -3810,6 +3813,119 @@ function StockUbicacionInsumo({
 }
 
 /* ---------- ACTIVIDADES ---------- */
+function Recetas({
+  data,
+  update
+}) {
+  const recetas = data.recetas || [];
+  const setHaAplicables = (loteId, val) => update('hectareasAplicables', h => ({
+    ...(h || {}),
+    [loteId]: val ? Number(val) : null
+  }));
+  const recetasOrdenadas = [...recetas].sort((a, b) => b.numero - a.numero);
+  const fechaDDMMAAAA = iso => {
+    if (!iso) return '';
+    const [y, m, d] = iso.split('-');
+    return y && m && d ? `${d}/${m}/${y}` : iso;
+  };
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 14
+    }
+  }, /*#__PURE__*/React.createElement(Card, null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: 500,
+      marginBottom: 4
+    }
+  }, "Hectáreas aplicables por lote"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: '#888780',
+      marginBottom: 10
+    }
+  }, "Cargá acá cuántas hectáreas se aplican realmente en cada lote (siempre un poco más que las reales, por la superposición de la máquina). El bot usa este número para calcular cuánto insumo pedirle al aplicador — así no le queda corto y se le termina antes de cubrir todo el lote."), data.lotes.map(l => {
+    const campo = data.campos.find(c => c.id === l.campoId);
+    const valor = (data.hectareasAplicables || {})[l.id];
+    return /*#__PURE__*/React.createElement("div", {
+      key: l.id,
+      style: {
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: '8px 0',
+        borderTop: '1px solid #f1efe8'
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 14
+      }
+    }, campo?.nombre, " — ", l.nombre, " ", /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 11,
+        color: '#888780'
+      }
+    }, "(", l.hectareas, "ha reales)")), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: 'flex',
+        alignItems: 'center',
+        gap: 6
+      }
+    }, /*#__PURE__*/React.createElement("input", {
+      style: {
+        ...inputStyle,
+        width: 90
+      },
+      type: "number",
+      placeholder: String(l.hectareas),
+      value: valor ?? '',
+      onChange: e => setHaAplicables(l.id, e.target.value)
+    }), /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 12,
+        color: '#888780'
+      }
+    }, "ha aplicables")));
+  })), /*#__PURE__*/React.createElement(Card, null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: 500,
+      marginBottom: 10
+    }
+  }, "Historial de órdenes (", recetasOrdenadas.length, ")"), recetasOrdenadas.length === 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 13,
+      color: '#888780'
+    }
+  }, "Todavía no se generó ninguna orden. Mandá por WhatsApp el lote y los productos con dosis para que se genere sola."), recetasOrdenadas.map(r => /*#__PURE__*/React.createElement("div", {
+    key: r.id,
+    style: {
+      padding: '10px 0',
+      borderTop: '1px solid #f1efe8'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      justifyContent: 'space-between'
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontWeight: 500,
+      fontSize: 14
+    }
+  }, "N° ", String(r.numero).padStart(5, '0'), " — ", r.establecimiento, " — Lote ", r.lote), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 12,
+      color: '#888780'
+    }
+  }, fechaDDMMAAAA(r.fecha), " · ", r.hectareasAplicables, "ha aplicables")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: '#5f5e5a',
+      marginTop: 4
+    }
+  }, r.items.map((it, i) => `${it.producto} ${it.dosisPorHa}/ha (total ${it.totalProducto.toFixed(1)})`).join(' · '))))));
+}
 function Tarifario({
   data,
   update
