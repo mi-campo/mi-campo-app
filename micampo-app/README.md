@@ -1,88 +1,65 @@
-# MI CAMPO — Sistema completo (bot + panel con login)
+# MI CAMPO
 
-Reemplaza al bot que ya tenías corriendo. Incluye:
-- El mismo bot de WhatsApp de antes (sin cambios de comportamiento)
-- Panel web en `/admin` (todo lo que ya conocías, ahora con Usuarios y Consultas)
-- Panel en `/productor` para que cada productor entre con su propio usuario y vea solo lo suyo
-- Login obligatorio para entrar a cualquiera de los dos paneles
+Sistema de gestión agrícola de Fran (CAYFE / campos propios y asociados). Bot de WhatsApp para cargar datos en lenguaje natural (texto, fotos, PDFs) + panel web (`/admin` para Fran, `/productor` para socios).
 
-## Paso 1 — Subir el código a GitHub (una sola vez)
+**Para el estado actual del proyecto, riesgos conocidos, y a dónde ir según lo que quieras tocar: ver [`ESTADO.md`](./ESTADO.md).**
+**Para el porqué de decisiones no obvias: ver [`DECISIONES.md`](./DECISIONES.md).**
+**Para vocabulario específico del negocio: ver [`GLOSARIO.md`](./GLOSARIO.md).**
 
-1. Andá a **github.com**, creá una cuenta si no tenés (gratis).
-2. Arriba a la derecha, `+` → **"New repository"**.
-3. Nombre: `micampo-app`. Dejalo **público** (el código no tiene contraseñas ni datos adentro, todo eso vive aparte en el servidor). Creá el repositorio.
-4. En la página del repositorio recién creado, buscá el link **"uploading an existing file"**.
-5. Descomprimí el archivo `micampo-app.zip` que te pasé en tu computadora.
-6. Arrastrá **la carpeta entera descomprimida** (o todos los archivos y carpetas de adentro) a esa página de GitHub.
-7. Abajo, botón verde **"Commit changes"**.
+## Stack
 
-Con eso el código ya está en GitHub, listo para bajarlo al servidor con un solo comando.
+Node.js + Express (backend) · React 18 vía CDN, sin build tool (frontend) · JSON plano como base de datos (`data/data.json`) · WhatsApp Cloud API (Meta) · Anthropic API (interpretación de mensajes, visión, búsqueda web) · DigitalOcean + PM2 + Caddy (infraestructura).
 
-## Paso 2 — Actualizar el servidor
-
-Conectate a la Web Console de tu Droplet en DigitalOcean y corré, en orden:
+## Cómo correr el proyecto localmente (desarrollo)
 
 ```bash
-# Frenar el bot viejo
-pm2 stop micampo-bot
-pm2 delete micampo-bot
-
-# Bajar el código nuevo
-cd /root
-git clone https://github.com/TU_USUARIO/micampo-app.git
 cd micampo-app
-
-# Instalar dependencias
 npm install
-
-# Traer las credenciales que ya tenías configuradas
-cp ../micampo-bot/.env .env
+cp .env.example .env   # completar con tus propias claves
+node src/seed.js admin "Tu Nombre" "usuario" "contraseña"
+node src/server.js
 ```
 
-Ahora agregá una línea nueva al `.env` (la clave de sesión), y migrá los datos que ya cargaste con el bot viejo:
+## Cómo actualizar el servidor de producción (lo normal, día a día)
 
+1. Editar el código en GitHub (interfaz web) y hacer commit.
+2. En la Web Console de DigitalOcean, correr:
+   ```bash
+   mc
+   ```
+   (alias configurado en el servidor para `cd /root/mi-campo-app-repo/micampo-app && git pull && pm2 restart micampo`)
+3. Si tocaste el panel (`public/admin/app.jsx`), compilarlo a `app.js` con Babel y subir **los dos archivos juntos** — es un hábito obligatorio, ver `ESTADO.md`.
+
+Confirmar que quedó bien:
 ```bash
-echo "SESSION_SECRET=$(openssl rand -hex 32)" >> .env
-mkdir -p data
-cp ../micampo-bot/data.json data/data.json 2>/dev/null || echo "no había datos previos, arranca vacío"
+pm2 status
 ```
 
-## Paso 3 — Crear tu usuario administrador
+## Estructura
 
-```bash
-node src/seed.js admin "Fran" "fran" "ElijeUnaClaveSegura123"
+```
+micampo-app/
+├── public/
+│   ├── admin/        → panel de administrador (app.jsx fuente, app.js compilado)
+│   ├── productor/     → panel de productor
+│   └── login.html
+├── src/
+│   ├── server.js      → servidor Express + webhook de WhatsApp
+│   ├── api.js         → endpoints del panel (/api/...)
+│   ├── auth.js        → login y sesiones
+│   ├── botHandlers.js → lógica de negocio del bot (validar, procesar cada tipo de mensaje)
+│   ├── claudeParser.js→ todas las llamadas a la IA (interpretar mensajes, visión, mercado)
+│   ├── db.js          → lectura/escritura de datos, búsqueda de lotes
+│   ├── recetaImagen.js→ generación de la imagen de órdenes de aplicación
+│   ├── resumenDiario.js → script del resumen diario por WhatsApp (corre por cron, no por el server)
+│   └── seed.js         → crear usuarios desde la terminal
+└── data/               → datos reales (no se sube a git)
 ```
 
-Cambiá `"fran"` por el nombre de usuario que quieras, y la contraseña por una que vayas a recordar (guardala en algún lado seguro).
+## Backup
 
-## Paso 4 — Prender el sistema
+Corre automático todos los días a las 3am (`/root/backup_micampo.sh`, programado con `crontab`). Copias en `/root/backups-micampo`, se borran solas las de más de 30 días.
 
-```bash
-pm2 start src/server.js --name micampo
-pm2 save
-```
+## Resumen diario por WhatsApp
 
-## Paso 5 — Probar
-
-Andá a **https://159.65.227.79.nip.io** en el navegador — te debería aparecer la pantalla de login. Entrá con el usuario y contraseña que creaste en el Paso 3.
-
-El bot de WhatsApp sigue funcionando exactamente igual que antes (mismo webhook, misma URL), no hace falta tocar nada en Meta.
-
-## Crear accesos para productores
-
-Una vez adentro del panel admin, andá a la pestaña **"Usuarios"** — ahí podés crear un login para cada productor, eligiendo a qué cliente queda asociado. Ese productor va a entrar por el mismo link, con su usuario y contraseña, y automáticamente va a ver solo sus campos.
-
-También podés crearlos por comando, si preferís:
-```bash
-node src/seed.js productor "Nombre del productor" "usuario_productor" "clave123" ID_DEL_CLIENTE
-```
-(corriendo `node src/seed.js` sin nada más te muestra la lista de IDs de clientes disponibles)
-
-## Actualizar el código más adelante
-
-Cuando le agreguemos alguna función nueva, el proceso es simple:
-```bash
-cd /root/micampo-app
-git pull
-pm2 restart micampo
-```
+`src/resumenDiario.js` corre por `cron` (lunes a sábado, 7am), no por el servidor web — manda un resumen de precios, factores de mercado y novedades regulatorias al número configurado en `RESUMEN_DIARIO_NUMERO`.
