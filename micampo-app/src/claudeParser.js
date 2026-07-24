@@ -2,6 +2,18 @@ const fetch = require('node-fetch');
 
 // Intenta parsear JSON de forma tolerante: si la respuesta trae texto extra alrededor
 // (a pesar de pedirle que no lo haga), busca desde la primera "{" hasta la ultima "}".
+// Saca etiquetas de cita (<cite...>...</cite>, [1], [n-n], etc.) que a veces se cuelan en texto que viene de busqueda web,
+// dejando solo el texto plano de adentro.
+function limpiarCitas(texto) {
+  if (!texto) return texto;
+  return texto
+    .replace(/<cite[^>]*>/gi, '')
+    .replace(/<\/cite>/gi, '')
+    .replace(/\[\d+(-\d+)?(,\d+(-\d+)?)*\]/g, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+
 function parsearJsonTolerante(texto) {
   const limpio = texto.trim().replace(/^```(json)?\n?/, '').replace(/```$/, '').trim();
   try {
@@ -301,12 +313,17 @@ async function consultarPrecios() {
 Buscá en la web los precios ACTUALES de soja, maíz y trigo — preferentemente el precio pizarra/físico de Rosario, Argentina (en USD/tn) si lo encontrás actualizado, y como referencia el futuro más cercano de Chicago (CBOT). Compará cada uno contra el promedio de las últimas 2-4 semanas. Buscá también el precio actual de la urea (USD/tn, FOB o precio de referencia en Argentina).
 
 Devolvé SOLO un JSON, sin texto antes ni después, sin \`\`\`, con esta forma exacta:
-{"granos":[{"nombre":"Soja","precioUSDtn":<numero>,"fuente":"<ej 'Pizarra Rosario' o 'CBOT'>","vsPromedio":"por encima"|"por debajo"|"en línea","tendencia":"Alcista"|"Bajista"|"Neutral","comentario":"<1-2 frases breves>"}],"urea":{"precioUSDtn":<numero>,"fuente":"<ej 'FOB US Gulf' o 'Precio de referencia Argentina'>"}}
+{"granos":[{"nombre":"Soja","precioUSDtn":<numero>,"fuente":"<ej 'Pizarra Rosario' o 'CBOT'>","vsPromedio":"por encima"|"por debajo"|"en línea","tendencia":"Alcista"|"Bajista"|"Neutral","comentario":"<1 frase corta, máximo 15 palabras>"}],"urea":{"precioUSDtn":<numero>,"fuente":"<ej 'FOB US Gulf' o 'Precio de referencia Argentina'>"}}
 
-Un grano por elemento: Soja, Maíz, Trigo. No inventes precios — si no encontrás algo confiable, omitilo (dejá "urea" en null si no encontrás nada confiable).`,
+Reglas:
+- Un grano por elemento: Soja, Maíz, Trigo. No inventes precios — si no encontrás algo confiable, omitilo (dejá "urea" en null si no encontrás nada confiable).
+- Sistema métrico SIEMPRE (toneladas, no bushels ni libras).
+- "comentario" es texto plano, corto — NUNCA incluyas citas, referencias ni etiquetas (nada de <cite>, [1], corchetes, ni similares). Es para mostrarse tal cual en una pantalla.`,
     mensaje: 'Dame los precios actuales de soja, maíz, trigo y urea para un productor agropecuario argentino, comparados con el promedio reciente.',
   });
-  return { granos: (resultado && resultado.granos) || [], urea: (resultado && resultado.urea) || null };
+  const granos = ((resultado && resultado.granos) || []).map(g => ({ ...g, comentario: limpiarCitas(g.comentario), fuente: limpiarCitas(g.fuente) }));
+  const urea = resultado && resultado.urea ? { ...resultado.urea, fuente: limpiarCitas(resultado.urea.fuente) } : null;
+  return { granos, urea };
 }
 
 async function consultarFactoresMercado() {
@@ -318,12 +335,17 @@ async function consultarFactoresMercado() {
 Buscá noticias recientes (últimos días) que puedan afectar el precio de soja, maíz y trigo: clima (El Niño/La Niña, sequías o excesos de humedad en el Corn Belt de EEUU, en Argentina o Brasil), geopolítica (conflictos, bloqueos, sanciones que afecten exportación/logística de granos), políticas comerciales (aranceles, retenciones, acuerdos).
 
 Devolvé SOLO un JSON, sin texto antes ni después, sin \`\`\`, con esta forma exacta:
-{"factores":[{"tema":"<ej 'Clima Corn Belt EEUU'>","detalle":"<1 frase concreta, con el hecho real que encontraste>","impacto":"alcista"|"bajista"}]}
+{"factores":[{"tema":"<2-4 palabras>","detalle":"<1 frase corta y directa, máximo 15 palabras>","impacto":"alcista"|"bajista"}]}
 
-2 a 5 eventos/noticias reales y recientes que puedan mover el mercado en el corto plazo, no explicaciones genéricas de manual. No inventes noticias — si no encontrás algo confiable y reciente, omitilo.`,
+Reglas:
+- 2 a 5 eventos/noticias reales y recientes, no explicaciones genéricas de manual. No inventes noticias — si no encontrás algo confiable y reciente, omitilo.
+- Sistema métrico SIEMPRE: temperaturas en °C (no Fahrenheit), toneladas (no bushels ni libras), km (no millas). Convertí si la fuente original usa otra unidad.
+- "detalle" es texto plano, corto y directo — NUNCA incluyas citas, referencias, marcas de fuente ni ninguna etiqueta (nada de <cite>, [1], corchetes, ni similares). Es para mostrarse tal cual en una pantalla.`,
     mensaje: 'Dame los factores de clima y geopolítica más relevantes de los últimos días que puedan mover el precio de soja, maíz o trigo.',
   });
-  return (resultado && resultado.factores) || [];
+  const factores = (resultado && resultado.factores) || [];
+  // Red de seguridad: por si igual se cuela alguna marca de cita, la sacamos del texto
+  return factores.map(f => ({ ...f, detalle: limpiarCitas(f.detalle), tema: limpiarCitas(f.tema) }));
 }
 
 async function consultarRelacionInsumoProducto() {
@@ -335,12 +357,15 @@ async function consultarRelacionInsumoProducto() {
 Buscá el informe/dato más reciente disponible (de Coninagro, BCR, fyo, u otra fuente seria) sobre la relación insumo-producto urea/trigo y urea/maíz en Argentina: el ratio actual (kg de grano por kg de urea) y, si lo encontrás, el promedio histórico de referencia (5 o 10 años) para poder decir si hoy es un momento favorable o desfavorable para comprar urea comparado con lo histórico.
 
 Devolvé SOLO un JSON, sin texto antes ni después, sin \`\`\`, con esta forma exacta:
-{"relaciones":[{"cultivo":"Trigo","kgGranoPorKgUrea":<numero>,"promedioHistorico":<numero o null si no lo encontrás>,"momento":"favorable"|"desfavorable"|"neutro","comentario":"<1-2 frases breves, con la fuente>"}]}
+{"relaciones":[{"cultivo":"Trigo","kgGranoPorKgUrea":<numero>,"promedioHistorico":<numero o null si no lo encontrás>,"momento":"favorable"|"desfavorable"|"neutro","comentario":"<1 frase corta, máximo 15 palabras>"}]}
 
-Un elemento para Trigo y otro para Maíz. "favorable" = hace falta menos grano que el promedio histórico para comprar la urea (buen momento para comprar). "desfavorable" = hace falta más grano que el histórico. Si no encontrás el promedio histórico, dejá "promedioHistorico" en null y "momento" en "neutro". No inventes números — si no encontrás un dato confiable y reciente, omitilo.`,
+Reglas:
+- Un elemento para Trigo y otro para Maíz. "favorable" = hace falta menos grano que el promedio histórico para comprar la urea. "desfavorable" = hace falta más. Si no encontrás el promedio histórico, dejá "promedioHistorico" en null y "momento" en "neutro". No inventes números.
+- "comentario" es texto plano, corto — NUNCA incluyas citas, referencias ni etiquetas (nada de <cite>, [1], corchetes, ni similares). Es para mostrarse tal cual en una pantalla.`,
     mensaje: 'Dame la relación insumo-producto actual de la urea contra el trigo y el maíz en Argentina, comparada con el promedio histórico.',
   });
-  return (resultado && resultado.relaciones) || [];
+  const relaciones = (resultado && resultado.relaciones) || [];
+  return relaciones.map(r => ({ ...r, comentario: limpiarCitas(r.comentario) }));
 }
 
 async function consultarMercado() {
