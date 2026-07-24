@@ -485,14 +485,87 @@ function Mercado() {
         fontSize: 11,
         color: '#888780'
       }
-    }, g.fuente, " · ", g.vsPromedio, " del promedio reciente"), g.comentario && /*#__PURE__*/React.createElement("div", {
+    }, g.fuente, " · ", g.vsPromedio, " del promedio", g.promedioPropio ? /*#__PURE__*/React.createElement(React.Fragment, null, " (propio, USD ", g.promedioPropio, "/tn — ", g.cantidadLecturas, " lecturas)") : /*#__PURE__*/React.createElement(React.Fragment, null, " (estimado por búsqueda web)")), g.comentario && /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 13,
         color: '#5f5e5a',
         marginTop: 8
       }
     }, g.comentario));
-  })), mercado?.factores && mercado.factores.length > 0 && /*#__PURE__*/React.createElement(Card, null, /*#__PURE__*/React.createElement("div", {
+  })), mercado?.relaciones && mercado.relaciones.length > 0 && /*#__PURE__*/React.createElement(Card, null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: 500,
+      marginBottom: 4
+    }
+  }, "Relación insumo-producto (urea)"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: '#888780',
+      marginBottom: 8
+    }
+  }, "Cuántos kg de grano hacen falta para comprar 1 kg de urea, comparado contra el promedio histórico."), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'grid',
+      gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+      gap: 12
+    }
+  }, mercado.relaciones.map((r, i) => {
+    const col = r.momento === 'favorable' ? COLOR_TENDENCIA.Alcista : r.momento === 'desfavorable' ? COLOR_TENDENCIA.Bajista : COLOR_TENDENCIA.Neutral;
+    return /*#__PURE__*/React.createElement("div", {
+      key: i,
+      style: {
+        padding: 10,
+        background: col.fondo,
+        border: `1px solid ${col.borde}`,
+        borderRadius: 8
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center'
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 13,
+        fontWeight: 500
+      }
+    }, r.cultivo), /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 11,
+        fontWeight: 600,
+        color: col.texto
+      }
+    }, r.momento === 'favorable' ? 'Favorable' : r.momento === 'desfavorable' ? 'Desfavorable' : 'Neutro')), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 20,
+        fontWeight: 600,
+        color: col.texto,
+        marginTop: 4
+      }
+    }, r.kgGranoPorKgUrea, " kg"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 11,
+        color: '#888780'
+      }
+    }, "de ", r.cultivo.toLowerCase(), " por kg de urea", r.promedioHistorico ? ` (histórico: ${r.promedioHistorico}kg)` : ''), r.promedioHistorico && (() => {
+      const diferencia = (r.kgGranoPorKgUrea - r.promedioHistorico) / r.promedioHistorico * 100;
+      return /*#__PURE__*/React.createElement("div", {
+        style: {
+          fontSize: 12,
+          fontWeight: 500,
+          color: col.texto,
+          marginTop: 2
+        }
+      }, diferencia > 0 ? '+' : '', diferencia.toFixed(0), "% vs. histórico ", diferencia < 0 ? '(hace falta menos grano — favorable)' : diferencia > 0 ? '(hace falta más grano — desfavorable)' : '');
+    })(), r.comentario && /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12,
+        color: '#5f5e5a',
+        marginTop: 6
+      }
+    }, r.comentario));
+  }))), mercado?.factores && mercado.factores.length > 0 && /*#__PURE__*/React.createElement(Card, null, /*#__PURE__*/React.createElement("div", {
     style: {
       fontWeight: 500,
       marginBottom: 8
