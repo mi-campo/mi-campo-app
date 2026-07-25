@@ -3426,9 +3426,17 @@ function AguaUtilSecano({
       fontSize: 12,
       color: '#5f5e5a',
       padding: '3px 0',
-      borderTop: '1px solid #e3e1d8'
+      borderTop: '1px solid #e3e1d8',
+      display: 'flex',
+      justifyContent: 'space-between'
     }
-  }, a.fecha, " — ", a.aguaUtilMm, "mm (", a.profundidad || '200', "cm)"))));
+  }, /*#__PURE__*/React.createElement("span", null, a.fecha, " — ", a.aguaUtilMm, "mm (", a.profundidad || '200', "cm)"), /*#__PURE__*/React.createElement("button", {
+    onClick: () => {
+      if (!confirm(`¿Borrar esta lectura de agua útil (${a.fecha} — ${a.aguaUtilMm}mm)?`)) return;
+      update('analisis', arr => arr.filter(x => x.id !== a.id));
+    },
+    style: { ...btnGhost, padding: '0 6px', fontSize: 11 }
+  }, "✕")))));
 }
 function LoteDetalle({
   lote,
@@ -3794,9 +3802,17 @@ function Riego({
         fontSize: 12,
         color: '#5f5e5a',
         padding: '3px 0',
-        borderTop: '1px solid #e3e1d8'
+        borderTop: '1px solid #e3e1d8',
+        display: 'flex',
+        justifyContent: 'space-between'
       }
-    }, a.fecha, " — ", a.aguaUtilMm, "mm (", a.profundidad || '200', "cm)"))))), registrosLote.length > 0 && /*#__PURE__*/React.createElement("div", {
+    }, /*#__PURE__*/React.createElement("span", null, a.fecha, " — ", a.aguaUtilMm, "mm (", a.profundidad || '200', "cm)"), /*#__PURE__*/React.createElement("button", {
+      onClick: () => {
+        if (!confirm(`¿Borrar esta lectura de agua útil (${a.fecha} — ${a.aguaUtilMm}mm)?`)) return;
+        update('analisis', arr => arr.filter(x => x.id !== a.id));
+      },
+      style: { ...btnGhost, padding: '0 6px', fontSize: 11 }
+    }, "✕")))))), registrosLote.length > 0 && /*#__PURE__*/React.createElement("div", {
       style: {
         marginTop: 10
       }
