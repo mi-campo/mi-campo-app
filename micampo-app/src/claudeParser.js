@@ -75,7 +75,7 @@ CUIDADO — no confundas "puntos de muestreo" con lotes distintos: si el mensaje
 Ejemplo: "Micolini agua útil primer punto 304mm segundo punto 264mm promedio agua útil 284mm" (sin decir a qué lote) → campo:"Micolini", lecturas:[{"campo":"Micolini","lote":null,"aguaUtilMm":304},{"campo":"Micolini","lote":null,"aguaUtilMm":264}] — DOS lecturas, no tres, con lote:null en ambas, para que el sistema pregunte a qué lote de Micolini corresponde, en vez de adivinar y repartirlas en lotes distintos.
 
 Si es un ANÁLISIS DE SUELO / pedido de recomendación de fertilización (menciona N-NO3, materia orgánica, MO, rendimiento objetivo):
-{"tipo":"analisis_suelo","fecha":"<fecha del mensaje en formato YYYY-MM-DD si la mencionan, o null si no la dicen>","campo":"<nombre del campo si lo menciona, o null>","lote":"<nombre/código del lote>","nNo3_0_20":<numero o null>,"nNo3_20_60":<numero o null>,"mo":<numero o null>,"rendObj":<numero en kg/ha o null>}
+{"tipo":"analisis_suelo","fecha":"<fecha del mensaje en formato YYYY-MM-DD si la mencionan, o null si no la dicen>","campo":"<nombre del campo si lo menciona, o null>","lote":"<nombre/código del lote>","nNo3_0_20":<numero o null>,"nNo3_20_60":<numero o null>,"mo":<numero o null>,"ph":<numero o null>,"rendObj":<numero en kg/ha o null>}
 
 Si es una PREGUNTA / PEDIDO DE INFORMACIÓN (quiere saber algo: cuánto se regó, qué actividades hubo, cuánto stock queda de un insumo, cuánto se gastó en un lote o campo, un resumen general — típicamente empieza con "cuánto", "qué", "cómo va", "cuándo fue", o termina con "?"):
 {"tipo":"consulta","pregunta":"<la pregunta, tal cual o resumida>","campo":"<nombre del campo si lo menciona, o null>","lote":"<nombre/código del lote si lo menciona, o null>","insumo":"<nombre del insumo si pregunta por stock de algo puntual, o null>"}
@@ -150,11 +150,18 @@ async function responderConsulta(pregunta, contextoDatos) {
     },
     body: JSON.stringify({
       model: 'claude-haiku-4-5-20251001',
-      max_tokens: 600,
+      max_tokens: 2500,
       system: `Sos el asistente de MI CAMPO, un sistema de administración agropecuaria. Te llega una pregunta de alguien de campo por WhatsApp,
 junto con los datos reales relevantes del sistema en JSON. Respondé la pregunta en 1 a 4 líneas, en español rioplatense, tono directo y claro,
 como si fueras un asistente de confianza — sin rodeos, sin repetir la pregunta, sin inventar datos que no estén en el JSON.
-Si la pregunta pide un LISTADO (ej "qué lotes tienen/no tienen tal dato", "cuáles están sin cargar") es una excepción a las 4 líneas: listá cada lote en una línea propia, agrupado en dos listas si corresponde (ej "Con dato:" / "Sin dato:"), sin adornos.
+Si la pregunta pide un LISTADO simple (ej "qué lotes tienen/no tienen tal dato", "cuáles están sin cargar") es una excepción a las 4 líneas: listá cada lote en una línea propia, agrupado en dos listas si corresponde (ej "Con dato:" / "Sin dato:"), sin adornos.
+Si la pregunta pide un RESUMEN COMPLETO por lote (varios campos a la vez: siembra, densidad, variedad, N-NO3, rendimiento objetivo, fertilización, agua útil, etc — "todo todo"), usá este formato compacto, un bloque por lote:
+Campo — Lote
+  Sembrado: <fecha> · <variedad> · <densidad>  (o "✗ sin sembrar")
+  N-NO3: <0-20>/<20-60>  ·  Rto obj: <valor>
+  Fertilización: <kg totales> kg  (o "✗ sin fertilizar")
+  Agua útil: <valor>mm  (o "✗ sin dato")
+Una línea en blanco entre lote y lote. Sin introducción ni cierre, directo al primer lote. Omití un campo del bloque solo si ese lote no tiene ningún dato relacionado en absoluto (ej no está sembrado y no tiene fertilidad: no hace falta forzar todas las líneas).
 Si el JSON no tiene la información necesaria para responder, decilo claramente en vez de inventar.
 Usá números redondeados y unidades (mm, kg, ha, USD) donde corresponda. No uses markdown, es un mensaje de WhatsApp.`,
       messages: [{ role: 'user', content: `Pregunta: ${pregunta}\n\nDatos disponibles:\n${JSON.stringify(contextoDatos)}` }],
