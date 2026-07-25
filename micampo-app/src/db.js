@@ -172,7 +172,9 @@ function sacarPendiente(numero) {
 // El ciclo "abierto" de un lote es el que todavía no tiene fecha de fin.
 // Como los ciclos son secuenciales, nunca hay más de uno abierto por lote.
 function cicloActivo(data, loteId) {
-  return (data.ciclos || []).find(c => c.loteId === loteId && !c.fechaFin) || null;
+  const abiertos = (data.ciclos || []).filter(c => c.loteId === loteId && !c.fechaFin);
+  if (abiertos.length === 0) return null;
+  return [...abiertos].sort((a, b) => (b.fechaInicio || '').localeCompare(a.fechaInicio || ''))[0];
 }
 
 module.exports = {
