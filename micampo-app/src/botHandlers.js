@@ -532,9 +532,13 @@ async function manejarConsulta(interpretado, contacto) {
     const riegos = actividadesLote.filter(a => a.tipo === 'Riego' && a.mm);
     const gastoTotalUSD = actividadesLote.reduce((s, a) => s + (a.costoTotal || 0), 0);
     const ciclo = cicloActivo(data, lote.id);
+    const fertilidadLote = data.analisis.filter(a => a.loteId === lote.id && a.tipo === 'Fertilidad').sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''));
+    const agua = aguaUtilPromedio(data, lote.id);
     contexto.lote = {
       nombre: `${campoDelLote?.nombre || ''} — ${lote.nombre}`, hectareas: lote.hectareas, modo: lote.modo,
-      cultivoActual: ciclo ? ciclo.cultivo : null,
+      cultivoActual: ciclo ? ciclo.cultivo : null, rendimientoObjetivoKgHa: lote.rendimientoObjetivo || null,
+      analisisSuelo: fertilidadLote.length > 0 ? fertilidadLote.slice(0, 4).map(f => ({ fecha: f.fecha, nNo3_0_20: f.nNo3_0_20, nNo3_20_60: f.nNo3_20_60, mo: f.mo, ph: f.ph })) : 'sin análisis de suelo cargado',
+      aguaUtilPromedioMm: agua ? agua.promedio : null, fechaAguaUtil: agua ? agua.fecha : null,
       riegoAcumuladoMm: riegos.reduce((s, a) => s + Number(a.mm), 0), objetivoRiegoMm: lote.objetivoRiego || 0,
       gastoTotalUSD, costoPorHaUSD: lote.hectareas > 0 ? Math.round(gastoTotalUSD / lote.hectareas) : null,
       cosechas: actividadesLote.filter(a => a.tipo === 'Cosecha' || a.rendimiento).map(a => ({ fecha: a.fecha, rendimientoQqHa: a.rendimiento })),
@@ -590,14 +594,17 @@ async function manejarConsulta(interpretado, contacto) {
         const actividadesLote = data.actividades.filter(a => a.loteId === l.id);
         const siembra = actividadesLote.filter(a => a.tipo === 'Siembra').sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''))[0];
         const fertilizaciones = actividadesLote.filter(a => a.tipo === 'Fertilización');
-        const registrosSuelo = data.analisis.filter(a => a.loteId === l.id && a.tipo === 'Fertilidad');
+        const registrosSuelo = data.analisis.filter(a => a.loteId === l.id && a.tipo === 'Fertilidad').sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''));
+        const ultimaFertilidad = registrosSuelo[0];
+        const kgFertilizacionTotal = fertilizaciones.reduce((s, a) => s + (a.items || []).reduce((s2, it) => s2 + (Number(it.cantidad) || 0), 0), 0);
         const conflictoCiclos = data.ciclos.filter(c2 => c2.loteId === l.id && !c2.fechaFin).length > 1;
         return {
           nombre: `${c?.nombre || ''} — ${l.nombre}`, modo: l.modo || 'Riego', hectareas: l.hectareas,
           cultivoActivo: ciclo ? ciclo.cultivo : 'Barbecho', conflictoCiclosAbiertos: conflictoCiclos,
-          fechaSiembra: siembra ? siembra.fecha : null, variedadSiembra: siembra ? siembra.variedad : null,
-          cantidadFertilizaciones: fertilizaciones.length,
-          tieneAnalisisSuelo: registrosSuelo.length > 0, rendimientoObjetivo: l.rendimientoObjetivo || null,
+          fechaSiembra: siembra ? siembra.fecha : null, variedadSiembra: siembra ? siembra.variedad : null, densidadSiembra: siembra ? siembra.densidad : null,
+          cantidadFertilizaciones: fertilizaciones.length, kgFertilizacionTotal,
+          nNo3_0_20: ultimaFertilidad ? ultimaFertilidad.nNo3_0_20 : null, nNo3_20_60: ultimaFertilidad ? ultimaFertilidad.nNo3_20_60 : null,
+          rendimientoObjetivo: l.rendimientoObjetivo || null,
           tieneAguaUtil: registrosAgua.length > 0, fechaUltimaAguaUtil,
           riegoAcumuladoMm: riegoAcumulado, objetivoRiegoMm: l.objetivoRiego || 0,
         };
