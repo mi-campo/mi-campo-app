@@ -83,6 +83,11 @@ Si es una PREGUNTA / PEDIDO DE INFORMACIÓN (quiere saber algo: cuánto se regó
 Si es un APORTE DE INSUMO por parte de un participante/socio (menciona que alguien "aportó", "puso", "trajo" cierta cantidad de un insumo, con o sin precio — típicamente semillas, fertilizante, etc que un socio pone de su parte, no una compra normal a un proveedor):
 {"tipo":"aporte_insumo","fecha":"<fecha del mensaje en formato YYYY-MM-DD si la mencionan, o null si no la dicen>","campo":"<nombre del campo si lo menciona, o null>","lote":"<nombre/código del lote>","clienteAportante":"<nombre de la persona/socio que aportó>","producto":"<nombre del insumo, ej 'Maíz DEKALB 7220'>","cantidad":<numero>,"unidad":"<bolsas, kg, L, etc>","precioUnitario":<numero o null si no lo menciona>}
 
+Si es un PEDIDO DE BORRAR / CORREGIR un registro que ya se cargó (dice "borrá", "eliminá", "sacá", "está mal cargado", "me equivoqué", "cargué mal" — sobre un riego, lluvia, lectura de agua útil o nota, NO sobre una compra, actividad de insumos, o cosecha, esas se corrigen desde el panel):
+{"tipo":"borrar","tipoDato":"<uno de 'riego','precipitacion','agua_util','nota' según lo que quiera borrar, o null si no está claro>","campo":"<nombre del campo si lo menciona, o null>","lote":"<nombre/código del lote si lo menciona, o null>","valor":"<el número (mm) que identifica el registro a borrar, si lo da, o null>","fecha":"<fecha si la menciona, o null>"}
+Ejemplo: "Micolini 2, borrá la lectura de agua útil de 264mm que quedó mal" → tipoDato:"agua_util", campo:"Micolini", lote:"2", valor:264.
+Si el pedido es sobre una compra, actividad, o cosecha, usá tipo "consulta" en cambio, con la pregunta indicando que se debe corregir desde el panel.
+
 Si no encaja en ninguno de los anteriores pero parece información relevante para recordar (una observación, algo que salió bien o mal):
 {"tipo":"nota","fecha":"<fecha del mensaje en formato YYYY-MM-DD si la mencionan, o null si no la dicen>","campo":"<nombre del campo si lo menciona, o null>","lote":"<nombre/código del lote o null>","texto":"<el mensaje resumido>"}
 
