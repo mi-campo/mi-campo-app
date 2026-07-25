@@ -2560,7 +2560,7 @@ function CalculoFertilizacion({
     ...l,
     rendimientoObjetivo: val
   } : l));
-  const [calibracion, setCalibracion] = useState('original');
+  const [calibracion, setCalibracion] = useState('calibrado');
   const [pctZona1, setPctZona1] = useState('50');
   // Estado especifico de Maiz (7 modelos Peralta)
   const [zonaMaiz, setZonaMaiz] = useState('Centro');
@@ -3028,12 +3028,12 @@ function Fertilizacion({
     const fertilidadLote = data.analisis.filter(a => a.loteId === l.id && a.tipo === 'Fertilidad').sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''));
     if (fertilidadLote.length === 0 || !l.rendimientoObjetivo) return acc;
     const zonas = zonasFertilidad(fertilidadLote, 50);
-    const kgLote = zonas.reduce((s, z) => {
-      const r = calcularZonaTrigo(z.muestra, z.rendRelativo, Number(l.rendimientoObjetivo) || 0, 'calibrado');
+    const kgPara = calib => zonas.reduce((s, z) => {
+      const r = calcularZonaTrigo(z.muestra, z.rendRelativo, Number(l.rendimientoObjetivo) || 0, calib);
       return s + (r ? r.ureaTotal * (Number(l.hectareas) || 0) * (z.pct / 100) : 0);
     }, 0);
-    return { kgTotal: acc.kgTotal + kgLote, haTotal: acc.haTotal + (Number(l.hectareas) || 0), lotesContados: acc.lotesContados + 1 };
-  }, { kgTotal: 0, haTotal: 0, lotesContados: 0 });
+    return { kgCalibrado: acc.kgCalibrado + kgPara('calibrado'), kgOriginal: acc.kgOriginal + kgPara('original'), haTotal: acc.haTotal + (Number(l.hectareas) || 0), lotesContados: acc.lotesContados + 1 };
+  }, { kgCalibrado: 0, kgOriginal: 0, haTotal: 0, lotesContados: 0 });
   const lotesTrigoSinDatos = lotesOrdenados.filter(l => {
     const ciclo = cicloActivo(data, l.id);
     if (!ciclo || ciclo.cultivo !== 'Trigo') return false;
@@ -3053,10 +3053,9 @@ function Fertilizacion({
     ' — entrá a "Campos y lotes" en cada uno y borrá el ciclo que no corresponde en "Ciclos de cultivo".'
   )), resumenUrea.lotesContados > 0 && /*#__PURE__*/React.createElement(Card, {
     style: { background: '#EAF3DE', borderLeft: '4px solid #3B6D11' }
-  }, /*#__PURE__*/React.createElement("div", { style: { fontWeight: 600, fontSize: 15 } }, `🌾 Urea total estimada a comprar: ${(resumenUrea.kgTotal / 1000).toFixed(1)} tn (${Math.round(resumenUrea.kgTotal).toLocaleString('es-AR')}kg) — promedio ${resumenUrea.haTotal > 0 ? Math.round(resumenUrea.kgTotal / resumenUrea.haTotal) : 0}kg/ha`),
-  /*#__PURE__*/React.createElement("div", { style: { fontSize: 12, color: '#5f5e5a', marginTop: 4 } },
-    `Sumando ${resumenUrea.lotesContados} lote(s) de Trigo con datos base y rendimiento objetivo cargados — método Peralta-DISA, factor calibrado (-8%).`,
-    lotesTrigoSinDatos > 0 ? ` Hay ${lotesTrigoSinDatos} lote(s) de Trigo más sin datos base o sin rendimiento objetivo, no están incluidos en este total.` : ''
+  }, /*#__PURE__*/React.createElement("div", { style: { fontWeight: 600, fontSize: 15 } }, `🌾 Urea a comprar: ${(resumenUrea.kgCalibrado / 1000).toFixed(1)} tn (${resumenUrea.haTotal > 0 ? Math.round(resumenUrea.kgCalibrado / resumenUrea.haTotal) : 0}kg/ha) · Calibrado -8%`),
+  /*#__PURE__*/React.createElement("div", { style: { fontSize: 12, color: '#5f5e5a', marginTop: 2 } },
+    `Sin calibrar: ${(resumenUrea.kgOriginal / 1000).toFixed(1)}tn (${resumenUrea.haTotal > 0 ? Math.round(resumenUrea.kgOriginal / resumenUrea.haTotal) : 0}kg/ha) · ${resumenUrea.lotesContados} lote(s)${lotesTrigoSinDatos > 0 ? `, ${lotesTrigoSinDatos} sin datos` : ''}`
   )), lotesOrdenados.map(l => {
     const campo = data.campos.find(c => c.id === l.campoId);
     const ciclo = cicloActivo(data, l.id);
