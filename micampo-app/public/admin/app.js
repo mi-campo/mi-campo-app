@@ -2221,6 +2221,256 @@ function AnalisisFoto() {
     }, p.comentario || c.label));
   })));
 }
+const ANTECESOR_N_EXTRA_MAIZ = {
+  'CC gramínea': 20,
+  'CC leguminosa': 0,
+  'Centeno': 20,
+  'Garbanzo': 20,
+  'Girasol': 0,
+  'Maíz': 20,
+  'Otro': 0,
+  'Soja': 0,
+  'Sorgo': 20,
+  'Trigo': 20
+};
+const ZONAS_MAIZ = ['Sur', 'Pie de Sierra - Centro', 'Centro', 'Norte', 'Este'];
+const CURVA_POR_ZONA_MAIZ = {
+  'Sur': {
+    b0: 7.874,
+    b1: 0.02988,
+    b2: -0.00006826
+  },
+  'Pie de Sierra - Centro': {
+    b0: 5.966,
+    b1: 0.05774,
+    b2: -0.0001541
+  },
+  'Centro': {
+    b0: 4.409,
+    b1: 0.06263,
+    b2: -0.0001544
+  },
+  'Norte': {
+    b0: 4.983,
+    b1: 0.06736,
+    b2: -0.0002122
+  },
+  'Este': {
+    b0: 6.853,
+    b1: 0.03478,
+    b2: -0.0001157
+  }
+};
+const CURVA_POR_ZONA_P90_MAIZ = {
+  'Sur': {
+    b0: 7.787,
+    b1: 0.03926,
+    b2: -0.0000788
+  },
+  'Pie de Sierra - Centro': {
+    b0: 5.669,
+    b1: 0.065,
+    b2: -0.0001774
+  },
+  'Centro': {
+    b0: 4.478,
+    b1: 0.08193,
+    b2: -0.0002577
+  },
+  'Norte': {
+    b0: 3.689,
+    b1: 0.09471,
+    b2: -0.0003127
+  },
+  'Este': {
+    b0: 6.699,
+    b1: 0.05328,
+    b2: -0.0002386
+  }
+};
+const CURVA_UNICA_P75_MAIZ = {
+  b0: 5.565,
+  b1: 0.05332,
+  b2: -0.0001463
+};
+const CURVA_UNICA_P90_MAIZ = {
+  b0: 7.787,
+  b1: 0.03926,
+  b2: -0.0000788
+};
+const CURVA_RINDEOBJ_P90_MAIZ = {
+  '<4': {
+    b0: 0.1314,
+    b1: 0.05154,
+    b2: -0.0001858
+  },
+  '4-6': {
+    b0: 3.447,
+    b1: 0.03766,
+    b2: -0.0001401
+  },
+  '6-8': {
+    b0: 5.309,
+    b1: 0.04487,
+    b2: -0.0001768
+  },
+  '8-10': {
+    b0: 6.990,
+    b1: 0.03841,
+    b2: -0.0001369
+  },
+  '>10': {
+    b0: 8.167,
+    b1: 0.03424,
+    b2: -0.00004797
+  }
+};
+const CURVA_T0_POR_RANGO_MAIZ = {
+  '<4': {
+    b0: 0.4275,
+    b1: 0.0367,
+    b2: -0.0001297
+  },
+  '4-6': {
+    b0: 3.519,
+    b1: 0.02483,
+    b2: -0.00008514
+  },
+  '6-8': {
+    b0: 5.189,
+    b1: 0.03617,
+    b2: -0.0001378
+  },
+  '8-10': {
+    b0: 7.101,
+    b1: 0.02914,
+    b2: -0.0001024
+  },
+  '>10': {
+    b0: 7.872,
+    b1: 0.03804,
+    b2: -0.00009485
+  }
+};
+function binRendMaiz(t) {
+  if (t > 10) return '>10';
+  if (t > 8) return '8-10';
+  if (t > 6) return '6-8';
+  if (t > 4) return '4-6';
+  return '<4';
+}
+function evaluarCurvaMaiz({
+  b0,
+  b1,
+  b2
+}, n) {
+  return b2 * n * n + b1 * n + b0;
+}
+function dosisCurvaMaiz({
+  b0,
+  b1,
+  b2,
+  rendObjZonaTon,
+  fraccionObjetivo,
+  nDisponibleSuelo,
+  credito,
+  ip
+}) {
+  const b1k = b1 * 1000,
+    b2k = b2 * 1000;
+  const discriminante = b1 * b1 - 4 * b2 * (b0 - rendObjZonaTon * fraccionObjetivo);
+  const maxAgronomico = (0 - b1k) / (b2k * 2);
+  const nObjetivo = discriminante < 0 ? maxAgronomico : Math.max(0, -1 * ((b1 * -1 + Math.sqrt(discriminante)) / (2 * -b2)));
+  const maxEconomico = (ip - b1k) / (b2k * 2);
+  const dosis = Math.min(nObjetivo - nDisponibleSuelo + credito, maxEconomico - nDisponibleSuelo);
+  return dosis < 0 ? 0 : dosis;
+}
+// Fertilización de Maíz — promedio de 7 modelos (método Peralta). Ver DECISIONES.md para el detalle.
+function calcularMaiz({
+  moPct,
+  nanPpm,
+  nNO3suelo,
+  antecesor,
+  arrancador,
+  rendObjZonaTon,
+  zona,
+  ip
+}) {
+  const credito = ANTECESOR_N_EXTRA_MAIZ[antecesor] ?? 0;
+  const nDisponible = nNO3suelo + arrancador;
+  const TASA_MIN = 0.045,
+    REQ_N = 20,
+    EFICIENCIA = 0.6,
+    reqRealN = REQ_N / EFICIENCIA;
+  const ofertaMineralizacion = moPct * 0.58 / 100 * TASA_MIN * 1.3 * 0.2 * 10000 * 1000 / 10;
+  const balanceMO = Math.max(rendObjZonaTon * reqRealN - ofertaMineralizacion - nNO3suelo + credito - arrancador, 0);
+  const FACTOR_NAN = 3.8;
+  const nanEstimado = nanPpm > 0 ? nanPpm : moPct * 13.41 + 14.04;
+  const balanceNan = Math.max(rendObjZonaTon * reqRealN - nanEstimado * FACTOR_NAN - nNO3suelo + credito - arrancador, 0);
+  const coefZona = CURVA_POR_ZONA_MAIZ[zona] || CURVA_POR_ZONA_MAIZ['Centro'];
+  const curvaZonaP75 = dosisCurvaMaiz({
+    ...coefZona,
+    rendObjZonaTon,
+    fraccionObjetivo: 0.98,
+    nDisponibleSuelo: nNO3suelo,
+    credito,
+    ip
+  });
+  const curvaUnicaP75 = dosisCurvaMaiz({
+    ...CURVA_UNICA_P75_MAIZ,
+    rendObjZonaTon,
+    fraccionObjetivo: 0.98,
+    nDisponibleSuelo: nNO3suelo,
+    credito,
+    ip
+  });
+  const objetivoKgFG = rendObjZonaTon * 1000;
+  const discFG = -31.884 * -31.884 - 4 * -0.031 * (6656.8 - objetivoKgFG);
+  const pObjetivoFG = Math.max(0, (-31.884 + Math.sqrt(Math.max(discFG, 0))) / (2 * -0.031));
+  const curvaFG = Math.max(pObjetivoFG - nNO3suelo + credito - arrancador, 0);
+  const coefRindeObj = CURVA_RINDEOBJ_P90_MAIZ[binRendMaiz(rendObjZonaTon)];
+  const curvaRindeObjP90 = dosisCurvaMaiz({
+    ...coefRindeObj,
+    rendObjZonaTon,
+    fraccionObjetivo: 0.9,
+    nDisponibleSuelo: nNO3suelo,
+    credito,
+    ip
+  });
+  const coefZonaP90 = CURVA_POR_ZONA_P90_MAIZ[zona] || CURVA_POR_ZONA_P90_MAIZ['Centro'];
+  const rendT0_zonaP75 = evaluarCurvaMaiz(coefZona, nDisponible);
+  const rendT0_zonaP90 = evaluarCurvaMaiz(coefZonaP90, nDisponible);
+  const rendT0_unicaP75 = evaluarCurvaMaiz(CURVA_UNICA_P75_MAIZ, nDisponible);
+  const rendT0_unicaP90 = evaluarCurvaMaiz(CURVA_UNICA_P90_MAIZ, nDisponible);
+  const rendT0_rindeObjP90 = evaluarCurvaMaiz(coefRindeObj, nDisponible);
+  const rendT0_balanceMO = (ofertaMineralizacion + nDisponible) / reqRealN;
+  const rendT0_balanceNan = (nanEstimado * FACTOR_NAN + nDisponible) / reqRealN;
+  const rendT0_FG = (-0.031 * nDisponible * nDisponible + 31.884 * nDisponible + 6656.8) / 1000;
+  const coefT0 = CURVA_T0_POR_RANGO_MAIZ[binRendMaiz(rendObjZonaTon)];
+  const rendT0_propioFijo = evaluarCurvaMaiz(coefT0, 60);
+  const rendT0_propioReal = evaluarCurvaMaiz(coefT0, nDisponible);
+  const ingredientesT0 = [rendT0_propioFijo, rendT0_balanceNan, rendT0_balanceMO, rendT0_FG, rendT0_propioReal, rendT0_rindeObjP90, rendT0_unicaP75, rendT0_unicaP90, rendT0_zonaP75, rendT0_zonaP90];
+  const rendT0Promedio = ingredientesT0.reduce((s, v) => s + v, 0) / ingredientesT0.length;
+  const brecha = rendObjZonaTon - rendT0Promedio;
+  const t0 = brecha < 0 ? 0 : brecha * 30;
+  const modelos = {
+    balanceMO,
+    balanceNan,
+    curvaZonaP75,
+    curvaUnicaP75,
+    curvaFG,
+    curvaRindeObjP90,
+    t0
+  };
+  const valores = Object.values(modelos);
+  const promedio = valores.reduce((s, v) => s + v, 0) / valores.length;
+  const nFertTotal = promedio < 15 ? 0 : promedio;
+  return {
+    modelos,
+    nFertTotal,
+    ureaTotal: nFertTotal / 0.46
+  };
+}
 function CalculoFertilizacion({
   lote,
   data,
@@ -2243,6 +2493,13 @@ function CalculoFertilizacion({
   } : l));
   const [calibracion, setCalibracion] = useState('original');
   const [pctZona1, setPctZona1] = useState('50');
+  // Estado especifico de Maiz (7 modelos Peralta)
+  const [zonaMaiz, setZonaMaiz] = useState('Centro');
+  const [antecesorMaiz, setAntecesorMaiz] = useState('Soja');
+  const [nanMaiz, setNanMaiz] = useState('');
+  const [arrancadorMaiz, setArrancadorMaiz] = useState('0');
+  const [precioUreaMaiz, setPrecioUreaMaiz] = useState(String(data.mercado?.urea?.precioUSDtn || ''));
+  const [precioMaizMaiz, setPrecioMaizMaiz] = useState(String(data.mercado?.granos?.find(g => g.nombre === 'Maíz')?.precioUSDtn || ''));
   const guardarBase = () => {
     if (!formBase.fecha) return;
     update('analisis', a => [...a, {
@@ -2350,7 +2607,7 @@ function CalculoFertilizacion({
       nNo3_20_60: e.target.value
     })
   })), /*#__PURE__*/React.createElement(Field, {
-    label: "M.O. (%)"
+    label: "MO %"
   }, /*#__PURE__*/React.createElement("input", {
     style: inputStyle,
     type: "number",
@@ -2371,20 +2628,14 @@ function CalculoFertilizacion({
     })
   }))), /*#__PURE__*/React.createElement("button", {
     onClick: guardarBase,
-    style: btnSecondary
-  }, "+ Guardar datos base"), fertilidadLote.length > 0 && /*#__PURE__*/React.createElement("div", {
+    style: btnPrimary
+  }, "Guardar dato base"), fertilidadLote.length > 0 && /*#__PURE__*/React.createElement("div", {
     style: {
-      marginTop: 8
+      marginTop: 8,
+      fontSize: 11,
+      color: '#888780'
     }
-  }, fertilidadLote.slice(0, 4).map(a => /*#__PURE__*/React.createElement("div", {
-    key: a.id,
-    style: {
-      fontSize: 12,
-      color: '#5f5e5a',
-      padding: '3px 0',
-      borderTop: '1px solid #e3e1d8'
-    }
-  }, a.fecha, " — N-NO3 ", a.nNo3_0_20 || 0, "/", a.nNo3_20_60 || 0, " ppm · MO ", a.mo || 0, "% · pH ", a.ph || '-'))), /*#__PURE__*/React.createElement("div", {
+  }, "Historial: ", fertilidadLote.map(f => `${f.fecha} (MO ${f.mo}%, N-NO3 ${f.nNo3_0_20}/${f.nNo3_20_60})`).join(' · ')), /*#__PURE__*/React.createElement("div", {
     style: {
       borderTop: '1px solid #e3e1d8',
       margin: '14px 0'
@@ -2395,13 +2646,146 @@ function CalculoFertilizacion({
       fontSize: 13,
       marginBottom: 4
     }
-  }, "Recomendación — Peralta-DISA"), cultivo !== 'Trigo' ? /*#__PURE__*/React.createElement("div", {
+  }, "Recomendación — Peralta-DISA"), cultivo === 'Maíz' ? zonas.length === 0 ? /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: '#888780',
+      marginBottom: 8
+    }
+  }, "Cargá datos base arriba para que aparezca la recomendación.") : /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: '#888780',
+      marginBottom: 8
+    }
+  }, zonas.length === 2 ? `Detecté 2 muestras del muestreo del ${fechaMasReciente} — Zona 1 (mejor fertilidad) y Zona 2 (rinde un poco menos).` : `Usa el dato base del ${fechaMasReciente}. Promedio de 7 modelos (método Peralta).`), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'grid',
+      gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+      gap: 8,
+      marginBottom: 10
+    }
+  }, /*#__PURE__*/React.createElement(Field, {
+    label: "Rendimiento objetivo (kg/ha)"
+  }, /*#__PURE__*/React.createElement("input", {
+    style: inputStyle,
+    type: "number",
+    value: rendObj,
+    onChange: e => setRendObj(e.target.value)
+  })), /*#__PURE__*/React.createElement(Field, {
+    label: "Zona geográfica"
+  }, /*#__PURE__*/React.createElement("select", {
+    style: inputStyle,
+    value: zonaMaiz,
+    onChange: e => setZonaMaiz(e.target.value)
+  }, ZONAS_MAIZ.map(z => /*#__PURE__*/React.createElement("option", {
+    key: z,
+    value: z
+  }, z)))), /*#__PURE__*/React.createElement(Field, {
+    label: "Antecesor"
+  }, /*#__PURE__*/React.createElement("select", {
+    style: inputStyle,
+    value: antecesorMaiz,
+    onChange: e => setAntecesorMaiz(e.target.value)
+  }, Object.keys(ANTECESOR_N_EXTRA_MAIZ).map(a => /*#__PURE__*/React.createElement("option", {
+    key: a,
+    value: a
+  }, a)))), /*#__PURE__*/React.createElement(Field, {
+    label: "Nan medido (ppm, opcional)"
+  }, /*#__PURE__*/React.createElement("input", {
+    style: inputStyle,
+    type: "number",
+    placeholder: "si no hay, se estima de MO",
+    value: nanMaiz,
+    onChange: e => setNanMaiz(e.target.value)
+  })), /*#__PURE__*/React.createElement(Field, {
+    label: "Arrancador aplicado (kgN/ha)"
+  }, /*#__PURE__*/React.createElement("input", {
+    style: inputStyle,
+    type: "number",
+    value: arrancadorMaiz,
+    onChange: e => setArrancadorMaiz(e.target.value)
+  })), /*#__PURE__*/React.createElement(Field, {
+    label: "Precio urea (USD/tn)"
+  }, /*#__PURE__*/React.createElement("input", {
+    style: inputStyle,
+    type: "number",
+    value: precioUreaMaiz,
+    onChange: e => setPrecioUreaMaiz(e.target.value)
+  })), /*#__PURE__*/React.createElement(Field, {
+    label: "Precio maíz (USD/tn)"
+  }, /*#__PURE__*/React.createElement("input", {
+    style: inputStyle,
+    type: "number",
+    value: precioMaizMaiz,
+    onChange: e => setPrecioMaizMaiz(e.target.value)
+  }))), zonas.map((z, i) => {
+    const rendObjZonaTon = (Number(rendObj) || 0) * z.rendRelativo / 1000;
+    const nNO3suelo = (Number(z.muestra.nNo3_0_20) || 0) * 1.35 * 2 + (Number(z.muestra.nNo3_20_60) || 0) * 1.3 * 4;
+    const moPct = Number(z.muestra.mo) || 0;
+    const precioUrea = Number(precioUreaMaiz) || 0;
+    const precioMaizNum = Number(precioMaizMaiz) || 0;
+    const ip = precioMaizNum > 0 ? precioUrea / precioMaizNum : 0;
+    const resultado = calcularMaiz({
+      moPct,
+      nanPpm: Number(nanMaiz) || 0,
+      nNO3suelo,
+      antecesor: antecesorMaiz,
+      arrancador: Number(arrancadorMaiz) || 0,
+      rendObjZonaTon,
+      zona: zonaMaiz,
+      ip
+    });
+    return /*#__PURE__*/React.createElement("div", {
+      key: i,
+      style: {
+        marginTop: 8,
+        padding: 12,
+        background: '#EAF3DE',
+        borderRadius: 8
+      }
+    }, z.etiqueta && /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12,
+        fontWeight: 500,
+        color: '#27500A',
+        marginBottom: 4
+      }
+    }, z.etiqueta, " — ", z.pct, "% del lote"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 22,
+        fontWeight: 500,
+        color: '#27500A'
+      }
+    }, resultado.ureaTotal.toFixed(0), " kg urea/ha"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12,
+        color: '#3B6D11'
+      }
+    }, resultado.nFertTotal.toFixed(1), " kg N/ha — promedio de 7 modelos"), /*#__PURE__*/React.createElement("details", {
+      style: {
+        marginTop: 6,
+        fontSize: 11,
+        color: '#3B6D11'
+      }
+    }, /*#__PURE__*/React.createElement("summary", {
+      style: {
+        cursor: 'pointer'
+      }
+    }, "Ver los 7 modelos por separado"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        marginTop: 4
+      }
+    }, Object.entries(resultado.modelos).map(([nombre, valor]) => /*#__PURE__*/React.createElement("div", {
+      key: nombre
+    }, nombre, ": ", valor.toFixed(1), " kgN/ha")))));
+  })) : cultivo !== 'Trigo' ? /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 12,
       color: '#854F0B',
       marginBottom: 8
     }
-  }, "La fórmula de fertilización de Maíz todavía no está cargada — avisame los parámetros cuando la tengas y la agrego. Por ahora Peralta-DISA solo corre para Trigo.") : zonas.length === 0 ? /*#__PURE__*/React.createElement("div", {
+  }, "La fórmula de fertilización para ", cultivo, " todavía no está cargada.") : zonas.length === 0 ? /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 12,
       color: '#888780',
