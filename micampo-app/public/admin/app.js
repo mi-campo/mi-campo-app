@@ -144,7 +144,7 @@ function aguaUtilPromedio(data, loteId) {
   const delUltimoMuestreo = registros.filter(r => r.fecha === ultimaFecha);
   const promedio = delUltimoMuestreo.reduce((s, r) => s + Number(r.aguaUtilMm), 0) / delUltimoMuestreo.length;
   return {
-    promedio: Math.round(promedio * 10) / 10,
+    promedio: Math.round(promedio),
     fecha: ultimaFecha,
     cantidadLecturas: delUltimoMuestreo.length
   };
@@ -3366,6 +3366,7 @@ function AguaUtilSecano({
     profundidad: '200'
   });
   const lecturas = data.analisis.filter(a => a.loteId === lote.id && a.tipo === 'Agua útil').sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''));
+  const promedio = aguaUtilPromedio(data, lote.id);
   const guardar = () => {
     if (!f.fecha || f.aguaUtilMm === '') return;
     update('analisis', a => [...a, {
@@ -3380,7 +3381,15 @@ function AguaUtilSecano({
       profundidad: '200'
     });
   };
-  return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+  return /*#__PURE__*/React.createElement("div", null, promedio && /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: '8px 12px',
+      background: '#EAF3DE',
+      borderRadius: 8,
+      marginBottom: 10,
+      fontSize: 13
+    }
+  }, /*#__PURE__*/React.createElement("strong", null, `Promedio: ${promedio.promedio}mm`), ` — última medición ${promedio.fecha}${promedio.cantidadLecturas > 1 ? ` (${promedio.cantidadLecturas} puntos)` : ''}`), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'grid',
       gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))',
@@ -3801,7 +3810,15 @@ function Riego({
           profundidad: e.target.value
         }
       }))
-    }))), /*#__PURE__*/React.createElement("button", {
+    }))), aguaUtil && /*#__PURE__*/React.createElement("div", {
+      style: {
+        padding: '8px 12px',
+        background: '#EAF3DE',
+        borderRadius: 8,
+        margin: '8px 0',
+        fontSize: 13
+      }
+    }, /*#__PURE__*/React.createElement("strong", null, `Promedio: ${aguaUtil.promedio}mm`), ` — última medición ${aguaUtil.fecha}${aguaUtil.cantidadLecturas > 1 ? ` (${aguaUtil.cantidadLecturas} puntos)` : ''}`), /*#__PURE__*/React.createElement("button", {
       onClick: () => guardarAgua(l.id),
       style: {
         ...btnPrimary,
