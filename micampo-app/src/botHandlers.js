@@ -446,21 +446,30 @@ function manejarAnalisisAgua(interpretado) {
   const data = load();
   const profundidad = interpretado.profundidad || 200; // 2m es la profundidad estandar de agua util en este sistema
   const lecturas = interpretado.lecturas || (interpretado.lote ? [{ campo: interpretado.campo, lote: interpretado.lote, aguaUtilMm: interpretado.aguaUtilMm }] : []); // compatibilidad con el formato viejo
-  const lineas = [];
+  const fecha = fechaDe(interpretado);
+  const lotesTocados = new Map(); // loteId -> lote, sin duplicados aunque haya varios puntos del mismo lote
   for (const l of lecturas) {
     const lote = buscarLotes(data, l.lote, l.campo)[0];
     if (!lote) continue;
-    data.analisis.push({ id: uid(), loteId: lote.id, cicloId: cicloActivo(data, lote.id)?.id || null, tipo: 'Agua útil', fecha: fechaDe(interpretado), aguaUtilMm: l.aguaUtilMm, profundidad, notas: '' });
+    data.analisis.push({ id: uid(), loteId: lote.id, cicloId: cicloActivo(data, lote.id)?.id || null, tipo: 'Agua útil', fecha, aguaUtilMm: l.aguaUtilMm, profundidad, notas: '' });
+    lotesTocados.set(lote.id, lote);
+  }
+  save(data);
+  if (lotesTocados.size === 0) return 'No pude cargar ninguna lectura, revisá los nombres de lote.';
+  // El dato relevante es el PROMEDIO por lote (de todos los puntos cargados hoy en ese lote), no cada punto suelto
+  const lineas = [];
+  for (const lote of lotesTocados.values()) {
+    const puntos = data.analisis.filter(a => a.loteId === lote.id && a.tipo === 'Agua útil' && a.fecha === fecha).map(r => Number(r.aguaUtilMm));
+    const promedio = Math.round(puntos.reduce((s, v) => s + v, 0) / puntos.length);
     const objetivo = Number(lote.objetivoRiego) || 0;
-    let linea = `${nombreConCampo(data, lote)} — ${l.aguaUtilMm}mm a ${profundidad}cm`;
+    let linea = `${nombreConCampo(data, lote)} — promedio ${promedio}mm a ${profundidad}cm`;
+    if (puntos.length > 1) linea += ` (${puntos.length} puntos: ${puntos.join('mm, ')}mm)`;
     if (objetivo > 0) {
-      const falta = Math.max(0, objetivo - Number(l.aguaUtilMm));
-      linea += ` (faltarían ${falta}mm del objetivo de ${objetivo}mm)`;
+      const falta = Math.max(0, objetivo - promedio);
+      linea += `\n  Faltarían ${falta}mm del objetivo de ${objetivo}mm`;
     }
     lineas.push(linea);
   }
-  save(data);
-  if (lineas.length === 0) return 'No pude cargar ninguna lectura, revisá los nombres de lote.';
   return `✅ Agua útil cargada:\n${lineas.join('\n')}`;
 }
 
