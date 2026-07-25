@@ -20,23 +20,28 @@ Sistema de gestión agrícola de Fran (CAYFE / campos propios y asociados). Dos 
 | Motor agronómico (Peralta-DISA, balance de riego) | Riego → `botHandlers.js` (servidor). Fertilización → `app.jsx` (navegador, función `CalculoFertilizacion`) |
 
 ## Vivo hoy (funciona en producción)
-Campos/lotes/ciclos/participación · Riego (balance hídrico completo) · WhatsApp (12 tipos de mensaje, multi-lote, manchoneo) · Insumos/Proveedores/Compras con stock por ubicación · Actividades · Tarifario · Usuarios/roles · Fertilización Trigo (Peralta-DISA + zonas automáticas) · Lectura de análisis por foto/PDF (WhatsApp) · Recetas/órdenes por imagen · Mercado (con fallas de estabilidad recientes, en revisión)
+Campos/lotes/ciclos/participación · Riego (balance hídrico completo, agua útil multi-lote por WhatsApp) · WhatsApp (12 tipos de mensaje, multi-lote, manchoneo, token permanente sin vencimiento) · Insumos/Proveedores/Compras con stock por ubicación · Actividades · Tarifario · Usuarios/roles · **Fertilización Trigo** (Peralta-DISA + zonas automáticas) · **Fertilización Maíz** (7 modelos Peralta promediados: Balance MO, Balance Nan, Curva por Zona P75, Curva Única P75, Curva FG/CREA, Curva x RindeObj P90, T0 — verificado contra el Excel de referencia) · Lectura de análisis por foto/PDF (WhatsApp) · Recetas/órdenes por imagen · **Mercado** (precios en vivo con historial propio, relación insumo-producto urea/grano con escala graduada, "invertís en urea vs. te devuelve el trigo" con flete editable) · **Resumen diario automático por WhatsApp** (lun-sáb 7am: 7 noticias entre mercado/clima/geopolítica y regulatorio — Boletín Oficial, Bioagroindustria Córdoba, INASE — vía `src/resumenDiario.js` + cron) · Backup automático diario del `data.json`.
 
 ## Explícitamente fuera de alcance
 Maquinaria, RRHH, combustible, facturación/AFIP, integraciones oficiales (SENASA/RENSPA), app nativa de celular. Ver diagnóstico técnico completo si hace falta más detalle.
 
 ## Riesgos activos (no resueltos todavía)
-1. `sharp` no está en `package.json` (usado en `recetaImagen.js`) — causa real de una caída de producción.
-2. ~~`app.jsx` desincronizado de `app.js`~~ → **resuelto el 24/7/2026** — se reconstruyó `app.jsx` desde el `app.js` real desplegado (verificado: compila byte a byte igual). Nota: ~32 de 59 funciones quedaron en formato compilado (`React.createElement`) en vez de JSX lindo, porque la herramienta de conversión automática no soportó ciertos patrones modernos (funciones flecha auto-ejecutadas) — funcionan igual de bien, solo son menos legibles si hay que tocarlas a mano. Sigue el hábito obligatorio: **siempre subir `app.jsx` y `app.js` juntos**, cada vez que se toque el panel.
-3. Sin backup automático de `data/data.json` — es el único lugar donde vive todo el histórico.
-4. Token de WhatsApp de prueba vence cada 24hs — sin token permanente configurado.
-5. Doble implementación de lectura de análisis (`/api/analizar-foto` del panel vs. flujo WhatsApp) — desincronizadas entre sí.
+1. Doble implementación de lectura de análisis (`/api/analizar-foto` del panel vs. flujo WhatsApp) — desincronizadas entre sí, no unificadas todavía.
+2. `.env.example` quedó subido en `src/.env.example` en vez de la raíz de `micampo-app/` — funciona igual, pero no es donde debería estar; mover cuando haya oportunidad.
+3. Auto-recarga de crédito de Anthropic **no está activada** — si se corta de nuevo el saldo, el bot y Mercado dejan de funcionar sin aviso previo. Activar en console.anthropic.com → Settings → Billing.
+4. Antecesor "Garbanzo" en la fórmula de Maíz tiene N extra = 20 (igual que gramíneas), lo cual es raro agronómicamente (las demás leguminosas están en 0) — Fran lo dejó así "por ahora", pendiente de confirmar si es un error de carga en su Excel original o es correcto.
+5. WhatsApp: la cuenta sigue en modo **de prueba** (no producción) — solo unos pocos números autorizados a la vez. Migrar a número de producción real es un paso pendiente para poder sumar a los ~10 usuarios (empleados/productores).
+6. A partir del 1° de octubre de 2026 Meta empieza a cobrar también los mensajes de servicio salientes (hoy son gratis dentro de la ventana de 24hs) — evaluar impacto cuando llegue esa fecha.
+
+## Resueltos recientemente (ya no son riesgo)
+`sharp` en `package.json` ✅ · `app.jsx` sincronizado con `app.js` real ✅ (compila idéntico, verificado) · Backup automático ✅ · Token de WhatsApp permanente ✅ · Bug de "9" en normalización de número (bot no respondía) ✅.
 
 ## Cómo se despliega
 Editar en GitHub (web) → en el servidor: `mc` (alias de `cd /root/mi-campo-app-repo/micampo-app && git pull && pm2 restart micampo`) → verificar con `pm2 status`.
 
 ## Pendientes anotados (no urgentes, no perder de vista)
-- Fórmula Peralta-DISA para Maíz.
 - Costo de riego eléctrico vía foto de factura de luz por WhatsApp.
 - Nivel de acceso "empresario" (vista de alto nivel, sin definir todavía).
 - PWA / logo (rechazado, a retomar).
+- Migrar WhatsApp a número de producción real (ver riesgo #5 arriba).
+- Considerar activar Stooq/MatbaRofex como fuente de precios CBOT real en vez de solo búsqueda por IA (evaluado, no implementado — agrega mantenimiento, ver `DECISIONES.md`).
