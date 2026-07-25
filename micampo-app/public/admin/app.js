@@ -1440,6 +1440,9 @@ function Campos({
     setClienteCampo('');
   };
   const delCampo = id => {
+    const campo = data.campos.find(x => x.id === id);
+    const nLotes = data.lotes.filter(x => x.campoId === id).length;
+    if (!confirm(`¿Borrar el campo "${campo ? campo.nombre : ''}" y sus ${nLotes} lote(s)? Esto no se puede deshacer.`)) return;
     update('campos', c => c.filter(x => x.id !== id));
     update('lotes', l => l.filter(x => x.campoId !== id));
   };
@@ -1463,7 +1466,24 @@ function Campos({
       }
     }));
   };
-  const delLote = id => update('lotes', l => l.filter(x => x.id !== id));
+  const delLote = id => {
+    const lote = data.lotes.find(x => x.id === id);
+    if (!confirm(`¿Borrar el lote "${lote ? lote.nombre : ''}"? Esto no se puede deshacer.`)) return;
+    update('lotes', l => l.filter(x => x.id !== id));
+  };
+  const ordenNatural = (a, b) => {
+    const partes = s => {
+      const m = String(s || '').match(/^(.*?)(\d+)\s*$/);
+      return m ? [m[1].trim().toLowerCase(), parseInt(m[2], 10)] : [String(s || '').trim().toLowerCase(), null];
+    };
+    const [ta, na] = partes(a.nombre);
+    const [tb, nb] = partes(b.nombre);
+    if (ta !== tb) return ta < tb ? -1 : 1;
+    if (na == null && nb == null) return 0;
+    if (na == null) return -1;
+    if (nb == null) return 1;
+    return na - nb;
+  };
   return /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
@@ -1514,7 +1534,7 @@ function Campos({
       marginTop: 6
     }
   }, "La participación de cada cliente/productor (con %, aportes, etc) se carga después, dentro del campo ya creado.")), data.campos.map(campo => {
-    const lotes = data.lotes.filter(l => l.campoId === campo.id);
+    const lotes = data.lotes.filter(l => l.campoId === campo.id).sort(ordenNatural);
     const cliente = data.clientes.find(c => c.id === campo.clienteId);
     const f = nuevoLote[campo.id] || {
       nombre: '',
