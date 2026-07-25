@@ -476,7 +476,9 @@ function manejarAnalisisAgua(interpretado) {
 function manejarAnalisisSuelo(interpretado) {
   const data = load();
   const lote = buscarLotes(data, interpretado.lote, interpretado.campo)[0];
-  data.analisis.push({ id: uid(), loteId: lote.id, cicloId: cicloActivo(data, lote.id)?.id || null, tipo: 'Fertilidad', fecha: fechaDe(interpretado), nNo3: interpretado.nNo3_0_20, p: null, mo: interpretado.mo, ph: null, notas: '' });
+  data.analisis.push({ id: uid(), loteId: lote.id, tipo: 'Fertilidad', fecha: fechaDe(interpretado), nNo3_0_20: interpretado.nNo3_0_20, nNo3_20_60: interpretado.nNo3_20_60, mo: interpretado.mo, ph: interpretado.ph || '' });
+  save(data);
+  if (interpretado.rendObj != null) data.lotes = data.lotes.map(l => l.id === lote.id ? { ...l, rendimientoObjetivo: interpretado.rendObj } : l);
   save(data);
   return `✅ Análisis de suelo cargado en ${nombreConCampo(data, lote)}. Entrá al panel para correr la calculadora Peralta-DISA con estos datos y confirmar la dosis de urea.`;
 }
@@ -585,9 +587,17 @@ async function manejarConsulta(interpretado, contacto) {
         const registrosAgua = data.analisis.filter(a => a.loteId === l.id && a.tipo === 'Agua útil' && a.aguaUtilMm !== '' && a.aguaUtilMm != null);
         const fechaUltimaAguaUtil = registrosAgua.length > 0 ? registrosAgua.reduce((max, r) => (r.fecha || '') > max ? r.fecha : max, '') : null;
         const riegoAcumulado = data.actividades.filter(a => a.loteId === l.id && a.tipo === 'Riego' && a.mm && (a.fuente || '').toLowerCase() !== 'lluvia').reduce((s, a) => s + Number(a.mm), 0);
+        const actividadesLote = data.actividades.filter(a => a.loteId === l.id);
+        const siembra = actividadesLote.filter(a => a.tipo === 'Siembra').sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''))[0];
+        const fertilizaciones = actividadesLote.filter(a => a.tipo === 'Fertilización');
+        const registrosSuelo = data.analisis.filter(a => a.loteId === l.id && a.tipo === 'Fertilidad');
+        const conflictoCiclos = data.ciclos.filter(c2 => c2.loteId === l.id && !c2.fechaFin).length > 1;
         return {
           nombre: `${c?.nombre || ''} — ${l.nombre}`, modo: l.modo || 'Riego', hectareas: l.hectareas,
-          cultivoActivo: ciclo ? ciclo.cultivo : 'Barbecho',
+          cultivoActivo: ciclo ? ciclo.cultivo : 'Barbecho', conflictoCiclosAbiertos: conflictoCiclos,
+          fechaSiembra: siembra ? siembra.fecha : null, variedadSiembra: siembra ? siembra.variedad : null,
+          cantidadFertilizaciones: fertilizaciones.length,
+          tieneAnalisisSuelo: registrosSuelo.length > 0, rendimientoObjetivo: l.rendimientoObjetivo || null,
           tieneAguaUtil: registrosAgua.length > 0, fechaUltimaAguaUtil,
           riegoAcumuladoMm: riegoAcumulado, objetivoRiegoMm: l.objetivoRiego || 0,
         };
