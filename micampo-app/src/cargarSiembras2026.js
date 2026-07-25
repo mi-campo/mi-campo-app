@@ -3,7 +3,7 @@
 //   node scripts/cargarSiembras2026.js            -> DRY RUN: solo muestra qué haría, no guarda nada
 //   node scripts/cargarSiembras2026.js --commit    -> ejecuta la carga real y guarda
 
-const { load, save, uid, buscarLotes, precioPromedio } = require('../src/db');
+const { load, save, uid, buscarLotes, precioPromedio } = require('./db');
 
 const OBJETIVO_RIEGO_POR_CULTIVO = { Garbanzo: 400, Trigo: 550, Soja: 120, Maíz: 200 };
 
