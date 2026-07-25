@@ -121,9 +121,13 @@ function validar(interpretado) {
       return { ok: true };
     }
     case 'analisis_agua': {
-      const r = resolverLote(data, interpretado.lote, interpretado.campo);
-      if (!r.ok) return r;
-      if (!interpretado.aguaUtilMm) return { ok: false, pregunta: '¿Cuántos mm de agua útil midió?', campoFaltante: 'aguaUtilMm' };
+      const lecturas = interpretado.lecturas || (interpretado.lote ? [{ campo: interpretado.campo, lote: interpretado.lote, aguaUtilMm: interpretado.aguaUtilMm }] : []); // compatibilidad con el formato viejo (un solo lote)
+      if (lecturas.length === 0) return { ok: false, pregunta: '¿En qué lote y cuántos mm de agua útil midió?', campoFaltante: 'lecturas' };
+      for (const l of lecturas) {
+        const r = resolverLote(data, l.lote, l.campo);
+        if (!r.ok) return r;
+        if (!l.aguaUtilMm) return { ok: false, pregunta: `¿Cuántos mm de agua útil midió en ${l.lote}?`, campoFaltante: 'lecturas' };
+      }
       return { ok: true };
     }
     case 'analisis_suelo': {
@@ -393,16 +397,24 @@ function manejarCosecha(interpretado) {
 
 function manejarAnalisisAgua(interpretado) {
   const data = load();
-  const lote = buscarLotes(data, interpretado.lote, interpretado.campo)[0];
-  data.analisis.push({ id: uid(), loteId: lote.id, cicloId: cicloActivo(data, lote.id)?.id || null, tipo: 'Agua útil', fecha: fechaDe(interpretado), aguaUtilMm: interpretado.aguaUtilMm, profundidad: interpretado.profundidad, notas: '' });
-  save(data);
-  const objetivo = Number(lote.objetivoRiego) || 0;
-  let texto = `✅ Análisis de agua útil cargado: ${nombreConCampo(data, lote)} — ${interpretado.aguaUtilMm}mm a ${interpretado.profundidad}cm`;
-  if (objetivo > 0) {
-    const falta = Math.max(0, objetivo - Number(interpretado.aguaUtilMm));
-    texto += `\nSegún el objetivo del lote (${objetivo}mm), faltarían ${falta}mm de reposición.`;
+  const profundidad = interpretado.profundidad || 200; // 2m es la profundidad estandar de agua util en este sistema
+  const lecturas = interpretado.lecturas || (interpretado.lote ? [{ campo: interpretado.campo, lote: interpretado.lote, aguaUtilMm: interpretado.aguaUtilMm }] : []); // compatibilidad con el formato viejo
+  const lineas = [];
+  for (const l of lecturas) {
+    const lote = buscarLotes(data, l.lote, l.campo)[0];
+    if (!lote) continue;
+    data.analisis.push({ id: uid(), loteId: lote.id, cicloId: cicloActivo(data, lote.id)?.id || null, tipo: 'Agua útil', fecha: fechaDe(interpretado), aguaUtilMm: l.aguaUtilMm, profundidad, notas: '' });
+    const objetivo = Number(lote.objetivoRiego) || 0;
+    let linea = `${nombreConCampo(data, lote)} — ${l.aguaUtilMm}mm a ${profundidad}cm`;
+    if (objetivo > 0) {
+      const falta = Math.max(0, objetivo - Number(l.aguaUtilMm));
+      linea += ` (faltarían ${falta}mm del objetivo de ${objetivo}mm)`;
+    }
+    lineas.push(linea);
   }
-  return texto;
+  save(data);
+  if (lineas.length === 0) return 'No pude cargar ninguna lectura, revisá los nombres de lote.';
+  return `✅ Agua útil cargada:\n${lineas.join('\n')}`;
 }
 
 function manejarAnalisisSuelo(interpretado) {
