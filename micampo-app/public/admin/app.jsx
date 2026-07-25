@@ -120,7 +120,9 @@ function precioPromedio(data, insumoId) {
   return totalCantidad > 0 ? totalGastado / totalCantidad : 0;
 }
 function cicloActivo(data, loteId) {
-  return (data.ciclos || []).find(c => c.loteId === loteId && !c.fechaFin) || null;
+  const abiertos = (data.ciclos || []).filter(c => c.loteId === loteId && !c.fechaFin);
+  if (abiertos.length === 0) return null;
+  return [...abiertos].sort((a, b) => (b.fechaInicio || '').localeCompare(a.fechaInicio || ''))[0];
 }
 function proximoCultivoBarbecho(data, loteId) {
   const cerrados = (data.ciclos || []).filter(c => c.loteId === loteId && c.fechaFin).sort((a, b) => (b.fechaFin || '').localeCompare(a.fechaFin || ''));
@@ -1737,7 +1739,9 @@ function Ciclos({
     alquiler: ''
   });
   const ciclos = data.ciclos.filter(c => c.loteId === lote.id).sort((a, b) => (b.fechaInicio || '').localeCompare(a.fechaInicio || ''));
-  const abierto = ciclos.find(c => !c.fechaFin);
+  const abiertos = ciclos.filter(c => !c.fechaFin);
+  const abierto = abiertos[0];
+  const hayConflicto = abiertos.length > 1;
   const hoyStr = () => new Date().toISOString().slice(0, 10);
   const abrirCiclo = () => {
     if (!form.cultivo.trim()) return;
@@ -1786,7 +1790,17 @@ function Ciclos({
       fontSize: 13,
       marginBottom: 8
     }
-  }, "Ciclos de cultivo"), abierto ? /*#__PURE__*/React.createElement("div", {
+  }, "Ciclos de cultivo"), hayConflicto && /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: 10,
+      background: '#FBE7E4',
+      border: '1px solid #A32D2D',
+      borderRadius: 8,
+      marginBottom: 10,
+      fontSize: 13,
+      color: '#A32D2D'
+    }
+  }, `⚠️ Hay ${abiertos.length} ciclos abiertos a la vez en este lote (${abiertos.map(c => c.cultivo).join(', ')}) — no debería pasar. El sistema está usando "${abierto.cultivo}" (el más reciente) para los cálculos, pero conviene que borres o cierres los que sobran abajo para que no se arrastre el error a otros cálculos.`), abierto ? /*#__PURE__*/React.createElement("div", {
     style: {
       padding: 10,
       background: '#EAF3DE',
@@ -2497,6 +2511,35 @@ function calcularMaiz({
     ureaTotal: nFertTotal / 0.46
   };
 }
+// Fertilización de Trigo (y otros no-maíz) — método Peralta-DISA, con factor de corrección opcional (-8% calibrado con datos propios)
+function calcularZonaTrigo(muestra, rendRelativo, rendObjNum, calibracion) {
+  if (!(rendObjNum > 0) || !muestra) return null;
+  const rendObjZona = rendObjNum * rendRelativo;
+  const requerimiento = 28 / 0.625 * rendObjZona / 1000;
+  const nNo3suelo = (Number(muestra.nNo3_0_20) || 0) * 1.35 * 2 + (Number(muestra.nNo3_20_60) || 0) * 1.3 * 4;
+  const moN = Number(muestra.mo) || 0;
+  const nan = 11.017 * moN + 18.43;
+  const factorNan = calibracion === 'calibrado' ? 3.404 : 3.7;
+  const mineralizacion = (factorNan * nan + moN / 100 * 0.58 * 1.3 * 0.2 * 10000 * 0.042 * 1000 / 10) / 2;
+  const nFertTotal = Math.max(0, requerimiento - nNo3suelo - mineralizacion);
+  const ureaTotal = nFertTotal / 0.46;
+  return { nFertTotal, ureaTotal, requiereSplit: ureaTotal > 235 };
+}
+// Agrupa las muestras de fertilidad más recientes de un lote en 1 o 2 "zonas" (alta/baja), igual que hace el panel por lote
+function zonasFertilidad(fertilidadLote, pctZona1) {
+  const ultima = fertilidadLote[0];
+  const fechaMasReciente = ultima?.fecha;
+  const muestrasUltimoMuestreo = fertilidadLote.filter(a => a.fecha === fechaMasReciente);
+  const scoreFertilidad = m => (Number(m.mo) || 0) * 10 + (Number(m.nNo3_0_20) || 0) / 10;
+  const muestrasOrdenadas = [...muestrasUltimoMuestreo].sort((a, b) => scoreFertilidad(b) - scoreFertilidad(a));
+  if (muestrasOrdenadas.length >= 2) return [
+    { rendRelativo: 1.03, muestra: muestrasOrdenadas[0], pct: Number(pctZona1) || 0 },
+    { rendRelativo: 0.96, muestra: muestrasOrdenadas[muestrasOrdenadas.length - 1], pct: 100 - (Number(pctZona1) || 0) },
+  ];
+  if (muestrasOrdenadas.length === 1) return [{ rendRelativo: 1, muestra: muestrasOrdenadas[0], pct: 100 }];
+  return [];
+}
+
 function CalculoFertilizacion({
   lote,
   data,
@@ -2545,46 +2588,11 @@ function CalculoFertilizacion({
 
   // Agrupa las lecturas de la fecha mas reciente: si hay 2 o mas, son distintas zonas de fertilidad dentro del mismo lote
   const fechaMasReciente = ultima?.fecha;
-  const muestrasUltimoMuestreo = fertilidadLote.filter(a => a.fecha === fechaMasReciente);
-  const scoreFertilidad = m => (Number(m.mo) || 0) * 10 + (Number(m.nNo3_0_20) || 0) / 10; // MO pesa mas, N-NO3 desempata
-  const muestrasOrdenadas = [...muestrasUltimoMuestreo].sort((a, b) => scoreFertilidad(b) - scoreFertilidad(a));
-  const zonas = muestrasOrdenadas.length >= 2 ? [{
-    etiqueta: 'Zona 1 (Alta)',
-    rendRelativo: 1.03,
-    muestra: muestrasOrdenadas[0],
-    pct: Number(pctZona1) || 0
-  }, {
-    etiqueta: 'Zona 2 (Baja)',
-    rendRelativo: 0.96,
-    muestra: muestrasOrdenadas[muestrasOrdenadas.length - 1],
-    pct: 100 - (Number(pctZona1) || 0)
-  }] : muestrasOrdenadas.length === 1 ? [{
-    etiqueta: null,
-    rendRelativo: 1,
-    muestra: muestrasOrdenadas[0],
-    pct: 100
-  }] : [];
-  const calcularZona = (muestra, rendRelativo) => {
-    const rendObjNum = Number(rendObj) || 0;
-    if (rendObjNum <= 0 || !muestra) return null;
-    const rendObjZona = rendObjNum * rendRelativo;
-    const requerimiento = 28 / 0.625 * rendObjZona / 1000;
-    const nNo3suelo = (Number(muestra.nNo3_0_20) || 0) * 1.35 * 2 + (Number(muestra.nNo3_20_60) || 0) * 1.3 * 4;
-    const moN = Number(muestra.mo) || 0;
-    const nan = 11.017 * moN + 18.43;
-    const factorNan = calibracion === 'calibrado' ? 3.404 : 3.7;
-    const mineralizacion = (factorNan * nan + moN / 100 * 0.58 * 1.3 * 0.2 * 10000 * 0.042 * 1000 / 10) / 2;
-    const nFertTotal = Math.max(0, requerimiento - nNo3suelo - mineralizacion);
-    const ureaTotal = nFertTotal / 0.46;
-    return {
-      nFertTotal,
-      ureaTotal,
-      requiereSplit: ureaTotal > 235
-    };
-  };
+  const zonasBase = zonasFertilidad(fertilidadLote, pctZona1);
+  const zonas = zonasBase.map((z, i) => ({ ...z, etiqueta: zonasBase.length === 2 ? (i === 0 ? 'Zona 1 (Alta)' : 'Zona 2 (Baja)') : null }));
   const resultadosPorZona = zonas.map(z => ({
     ...z,
-    resultado: calcularZona(z.muestra, z.rendRelativo)
+    resultado: calcularZonaTrigo(z.muestra, z.rendRelativo, Number(rendObj) || 0, calibracion)
   }));
   const ureaTotalLote = resultadosPorZona.reduce((s, z) => s + (z.resultado ? z.resultado.ureaTotal * (Number(lote.hectareas) || 0) * (z.pct / 100) : 0), 0);
   const haZona1 = zonas.length === 2 ? (Number(lote.hectareas) || 0) * (zonas[0].pct / 100) : null;
@@ -3011,13 +3019,45 @@ function Fertilizacion({
     const pb = cicloB && PRIORIDAD[cicloB.cultivo] != null ? PRIORIDAD[cicloB.cultivo] : 99;
     return pa - pb;
   });
+
+  // Resumen: urea total estimada para comprar, sumando todos los lotes de Trigo con datos base + rendimiento objetivo cargados.
+  // Usa el factor calibrado (-8%) y split 50/50 entre zonas cuando hay 2 muestras, igual que el default de cada lote.
+  const resumenUrea = lotesOrdenados.reduce((acc, l) => {
+    const ciclo = cicloActivo(data, l.id);
+    if (!ciclo || ciclo.cultivo !== 'Trigo') return acc;
+    const fertilidadLote = data.analisis.filter(a => a.loteId === l.id && a.tipo === 'Fertilidad').sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''));
+    if (fertilidadLote.length === 0 || !l.rendimientoObjetivo) return acc;
+    const zonas = zonasFertilidad(fertilidadLote, 50);
+    const kgLote = zonas.reduce((s, z) => {
+      const r = calcularZonaTrigo(z.muestra, z.rendRelativo, Number(l.rendimientoObjetivo) || 0, 'calibrado');
+      return s + (r ? r.ureaTotal * (Number(l.hectareas) || 0) * (z.pct / 100) : 0);
+    }, 0);
+    return { kgTotal: acc.kgTotal + kgLote, haTotal: acc.haTotal + (Number(l.hectareas) || 0), lotesContados: acc.lotesContados + 1 };
+  }, { kgTotal: 0, haTotal: 0, lotesContados: 0 });
+  const lotesTrigoSinDatos = lotesOrdenados.filter(l => {
+    const ciclo = cicloActivo(data, l.id);
+    if (!ciclo || ciclo.cultivo !== 'Trigo') return false;
+    const tiene = data.analisis.some(a => a.loteId === l.id && a.tipo === 'Fertilidad');
+    return !tiene || !l.rendimientoObjetivo;
+  }).length;
+
+  const lotesConConflictoCiclos = data.lotes.filter(l => data.ciclos.filter(c => c.loteId === l.id && !c.fechaFin).length > 1);
+
   return /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: 'flex',
-      flexDirection: 'column',
-      gap: 14
-    }
-  }, lotesOrdenados.map(l => {
+    style: { display: 'flex', flexDirection: 'column', gap: 14 }
+  }, lotesConConflictoCiclos.length > 0 && /*#__PURE__*/React.createElement(Card, {
+    style: { background: '#FBE7E4', borderLeft: '4px solid #A32D2D' }
+  }, /*#__PURE__*/React.createElement("div", { style: { fontWeight: 600, fontSize: 14, color: '#A32D2D' } }, `⚠️ ${lotesConConflictoCiclos.length} lote(s) con más de un ciclo de cultivo abierto a la vez`),
+  /*#__PURE__*/React.createElement("div", { style: { fontSize: 12, color: '#5f5e5a', marginTop: 4 } },
+    lotesConConflictoCiclos.map(l => `${data.campos.find(c => c.id === l.campoId)?.nombre || ''} — ${l.nombre}`).join(' · '),
+    ' — entrá a "Campos y lotes" en cada uno y borrá el ciclo que no corresponde en "Ciclos de cultivo".'
+  )), resumenUrea.lotesContados > 0 && /*#__PURE__*/React.createElement(Card, {
+    style: { background: '#EAF3DE', borderLeft: '4px solid #3B6D11' }
+  }, /*#__PURE__*/React.createElement("div", { style: { fontWeight: 600, fontSize: 15 } }, `🌾 Urea total estimada a comprar: ${(resumenUrea.kgTotal / 1000).toFixed(1)} tn (${Math.round(resumenUrea.kgTotal).toLocaleString('es-AR')}kg) — promedio ${resumenUrea.haTotal > 0 ? Math.round(resumenUrea.kgTotal / resumenUrea.haTotal) : 0}kg/ha`),
+  /*#__PURE__*/React.createElement("div", { style: { fontSize: 12, color: '#5f5e5a', marginTop: 4 } },
+    `Sumando ${resumenUrea.lotesContados} lote(s) de Trigo con datos base y rendimiento objetivo cargados — método Peralta-DISA, factor calibrado (-8%).`,
+    lotesTrigoSinDatos > 0 ? ` Hay ${lotesTrigoSinDatos} lote(s) de Trigo más sin datos base o sin rendimiento objetivo, no están incluidos en este total.` : ''
+  )), lotesOrdenados.map(l => {
     const campo = data.campos.find(c => c.id === l.campoId);
     const ciclo = cicloActivo(data, l.id);
     const esGraminea = ciclo && ['Trigo', 'Maíz'].includes(ciclo.cultivo);
