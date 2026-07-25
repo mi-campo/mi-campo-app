@@ -1,6 +1,20 @@
 const fs = require('fs');
 const path = require('path');
 
+// Distancia de edición simple (Levenshtein), para tolerar errores de tipeo en nombres de campo
+// (ej "Bustamente" vs "Bustamante") sin tener que escribirlos exacto.
+function distanciaEdicion(a, b) {
+  const m = a.length, n = b.length;
+  const dp = Array.from({ length: m + 1 }, (_, i) => [i, ...Array(n).fill(0)]);
+  for (let j = 0; j <= n; j++) dp[0][j] = j;
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      dp[i][j] = a[i - 1] === b[j - 1] ? dp[i - 1][j - 1] : 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
+    }
+  }
+  return dp[m][n];
+}
+
 const DATA_PATH = path.join(__dirname, '..', 'data', 'data.json');
 const USERS_PATH = path.join(__dirname, '..', 'data', 'users.json');
 const PEND_PATH = path.join(__dirname, '..', 'data', 'pendientes.json');
@@ -72,7 +86,12 @@ function buscarLotes(data, nombreBuscado, nombreCampo) {
   // Si viene "campo" por separado (desde el parser), filtrar primero por campo
   if (nombreCampo) {
     const campoBuscado = normalizar(nombreCampo);
-    const camposCandidatos = data.campos.filter(c => normalizar(c.nombre) === campoBuscado || normalizar(c.nombre).includes(campoBuscado) || campoBuscado.includes(normalizar(c.nombre)));
+    let camposCandidatos = data.campos.filter(c => normalizar(c.nombre) === campoBuscado || normalizar(c.nombre).includes(campoBuscado) || campoBuscado.includes(normalizar(c.nombre)));
+    // Si no matcheó por texto (ej typo tipo "Bustamente" vs "Bustamante"), probar por distancia de edición
+    if (camposCandidatos.length === 0 && campoBuscado.length >= 4) {
+      const maxDistancia = campoBuscado.length <= 6 ? 1 : 2;
+      camposCandidatos = data.campos.filter(c => distanciaEdicion(normalizar(c.nombre), campoBuscado) <= maxDistancia);
+    }
     if (camposCandidatos.length === 1) {
       const enEseCampo = data.lotes.filter(l => l.campoId === camposCandidatos[0].id);
       const exactoEnCampo = enEseCampo.filter(l => normalizar(l.nombre) === buscado);
