@@ -144,11 +144,58 @@ function validar(interpretado) {
     }
     case 'nota':
       return { ok: true };
+    case 'borrar': {
+      if (!interpretado.tipoDato) return { ok: false, pregunta: '¿Qué querés borrar? Puedo borrar un riego, una lluvia, una lectura de agua útil o una nota (compras, actividades con insumos y cosecha se corrigen desde el panel).', campoFaltante: null };
+      const r = resolverLote(data, interpretado.lote, interpretado.campo, false);
+      if (!r.ok) return r;
+      const candidatos = buscarCandidatosBorrado(data, interpretado, r.lote);
+      if (candidatos.length === 0) return { ok: false, pregunta: 'No encontré ningún registro que coincida para borrar. Decime el lote y el valor exacto (ej "264mm") para ubicarlo.', campoFaltante: null };
+      if (candidatos.length > 1) return { ok: false, pregunta: `Encontré más de uno que coincide (${candidatos.length}). Decime también el valor exacto y la fecha para identificarlo bien.`, campoFaltante: null };
+      return { ok: true, requiereConfirmacion: true, borrado: candidatos[0] };
+    }
     case 'consulta':
       return { ok: true };
     default:
       return { ok: false, pregunta: `No entendí bien de qué se trata${interpretado.motivo ? ` (${interpretado.motivo})` : ''}. Contame con más detalle: qué pasó, en qué lote y cuándo.`, campoFaltante: null };
   }
+}
+
+// Busca registros de riego/precipitación/agua útil/nota que coincidan con lo que se quiere borrar.
+// Devuelve [] si no hay ninguno, o la lista completa de coincidencias (el llamador decide si hay que desambiguar).
+function buscarCandidatosBorrado(data, interpretado, lote) {
+  const val = interpretado.valor != null && interpretado.valor !== '' ? Number(interpretado.valor) : null;
+  const fecha = interpretado.fecha;
+  let items, coleccion, campoValor, descr;
+  if (interpretado.tipoDato === 'riego' || interpretado.tipoDato === 'precipitacion') {
+    coleccion = 'actividades';
+    campoValor = 'mm';
+    const esLluvia = interpretado.tipoDato === 'precipitacion';
+    items = data.actividades.filter(a => a.tipo === 'Riego' && (!lote || a.loteId === lote.id) && ((a.fuente === 'Lluvia') === esLluvia));
+    descr = x => `${x.fecha} — ${x.mm}mm${x.fuente && x.fuente !== 'Lluvia' ? ` (${x.fuente})` : ''}`;
+  } else if (interpretado.tipoDato === 'agua_util') {
+    coleccion = 'analisis';
+    campoValor = 'aguaUtilMm';
+    items = data.analisis.filter(a => a.tipo === 'Agua útil' && (!lote || a.loteId === lote.id));
+    descr = x => `${x.fecha} — ${x.aguaUtilMm}mm (${x.profundidad || '200'}cm)`;
+  } else if (interpretado.tipoDato === 'nota') {
+    coleccion = 'notas';
+    campoValor = null;
+    items = data.notas.filter(n => (!lote || n.loteId === lote.id));
+    descr = x => `${x.fecha} — ${x.texto}`;
+  } else {
+    return [];
+  }
+  if (val != null && campoValor) items = items.filter(x => Number(x[campoValor]) === val);
+  if (fecha) items = items.filter(x => x.fecha === fecha);
+  return items
+    .sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''))
+    .map(x => ({ id: x.id, coleccion, loteNombre: lote ? nombreConCampo(data, lote) : null, descripcion: descr(x) }));
+}
+
+function borrarPorId(coleccion, id) {
+  const data = load();
+  data[coleccion] = (data[coleccion] || []).filter(x => x.id !== id);
+  save(data);
 }
 
 function aguaUtilPromedio(data, loteId) {
@@ -689,4 +736,4 @@ async function manejarAclaracionMuestras(muestrasPendientes, asignaciones, conta
   return { texto, pendientes: siguenPendientes.length > 0 ? siguenPendientes : null };
 }
 
-module.exports = { validar, procesar, manejarAnalisisDocumento, manejarAclaracionMuestras };
+module.exports = { validar, procesar, manejarAnalisisDocumento, manejarAclaracionMuestras, borrarPorId };
