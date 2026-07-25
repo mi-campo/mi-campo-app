@@ -5090,7 +5090,7 @@ function Actividades({
     })
   })), (() => {
     const loteActual = data.lotes.find(l => l.id === form.loteId);
-    const cobertura = form.haReales && loteActual?.hectareas ? Number(form.haReales) / Number(loteActual.hectareas) : null;
+    const cobertura = form.tipo === 'Pulverización' && form.haReales && loteActual?.hectareas ? Number(form.haReales) / Number(loteActual.hectareas) : null;
     if (cobertura !== null && cobertura <= 0.6) {
       return /*#__PURE__*/React.createElement("div", {
         style: {
@@ -5284,7 +5284,7 @@ function Actividades({
     const siembraInfo = act.tipo === 'Siembra' && act.cultivo ? ` — ${act.cultivo}${act.variedad ? ' ' + act.variedad : ''}${act.densidad ? ` (${act.densidad} kg/ha)` : ''}` : '';
     const riegoInfo = act.tipo === 'Riego' && act.mm ? ` — ${act.mm}mm${act.fuente ? ` (${act.fuente})` : ''}` : '';
     const paraCliente = act.paraClienteId ? data.clientes.find(c => c.id === act.paraClienteId) : null;
-    const cobertura = act.haReales && lote?.hectareas ? Number(act.haReales) / Number(lote.hectareas) : null;
+    const cobertura = act.tipo === 'Pulverización' && act.haReales && lote?.hectareas ? Number(act.haReales) / Number(lote.hectareas) : null;
     const esManchoneo = cobertura !== null && cobertura <= 0.6;
     return /*#__PURE__*/React.createElement("div", {
       key: act.id,
