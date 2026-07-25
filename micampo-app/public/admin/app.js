@@ -67,7 +67,7 @@ const OBJETIVO_RIEGO_POR_CULTIVO = {
   'Soja': 120,
   'Maíz': 200
 };
-const TIPOS_BOT = [['riego', 'Riego'], ['precipitacion', 'Lluvia'], ['siembra', 'Siembra'], ['fertilizacion', 'Fertilización'], ['pulverizacion', 'Pulverización'], ['cosecha', 'Cosecha'], ['compra', 'Compra de insumo'], ['aporte_insumo', 'Aporte de insumo'], ['analisis_agua', 'Análisis de agua'], ['analisis_suelo', 'Análisis de suelo'], ['analisis_foto', 'Análisis por foto/PDF'], ['nota', 'Nota'], ['consulta', 'Consultas / preguntas']];
+const TIPOS_BOT = [['riego', 'Riego'], ['precipitacion', 'Lluvia'], ['siembra', 'Siembra'], ['fertilizacion', 'Fertilización'], ['pulverizacion', 'Pulverización'], ['cosecha', 'Cosecha'], ['compra', 'Compra de insumo'], ['aporte_insumo', 'Aporte de insumo'], ['analisis_agua', 'Análisis de agua'], ['analisis_suelo', 'Análisis de suelo'], ['analisis_foto', 'Análisis por foto/PDF'], ['nota', 'Nota'], ['borrar', 'Borrar (riego/lluvia/agua útil/nota)'], ['consulta', 'Consultas / preguntas']];
 const inputStyle = {
   padding: '8px 10px',
   borderRadius: 6,
@@ -1776,7 +1776,10 @@ function Ciclos({
     ...c,
     fechaFin: hoyStr()
   } : c));
-  const borrarCiclo = id => update('ciclos', cs => cs.filter(c => c.id !== id));
+  const borrarCiclo = id => {
+    if (!confirm('¿Borrar este ciclo de cultivo? Esto no se puede deshacer.')) return;
+    update('ciclos', cs => cs.filter(c => c.id !== id));
+  };
   return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
     style: {
       fontWeight: 500,
@@ -1930,7 +1933,10 @@ function Cosecha({
     ...x,
     kgDestino: val
   } : x));
-  const delCarga = id => update('cargas', c => c.filter(x => x.id !== id));
+  const delCarga = id => {
+    if (!confirm('¿Borrar esta carga de cosecha? Esto no se puede deshacer.')) return;
+    update('cargas', c => c.filter(x => x.id !== id));
+  };
   const guardarPrecios = () => update('lotes', ls => ls.map(l => l.id === lote.id ? {
     ...l,
     precioEstimado: Number(precios.estimado) || 0,
@@ -3426,9 +3432,17 @@ function AguaUtilSecano({
       fontSize: 12,
       color: '#5f5e5a',
       padding: '3px 0',
-      borderTop: '1px solid #e3e1d8'
+      borderTop: '1px solid #e3e1d8',
+      display: 'flex',
+      justifyContent: 'space-between'
     }
-  }, a.fecha, " — ", a.aguaUtilMm, "mm (", a.profundidad || '200', "cm)"))));
+  }, /*#__PURE__*/React.createElement("span", null, a.fecha, " — ", a.aguaUtilMm, "mm (", a.profundidad || '200', "cm)"), /*#__PURE__*/React.createElement("button", {
+    onClick: () => {
+      if (!confirm(`¿Borrar esta lectura de agua útil (${a.fecha} — ${a.aguaUtilMm}mm)?`)) return;
+      update('analisis', arr => arr.filter(x => x.id !== a.id));
+    },
+    style: { ...btnGhost, padding: '0 6px', fontSize: 11 }
+  }, "✕")))));
 }
 function LoteDetalle({
   lote,
@@ -3441,6 +3455,10 @@ function LoteDetalle({
     texto: ''
   });
   const notasLote = data.notas.filter(n => n.loteId === lote.id).sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''));
+  const borrarNota = id => {
+    if (!confirm('¿Borrar esta nota de la bitácora? Esto no se puede deshacer.')) return;
+    update('notas', n => n.filter(x => x.id !== id));
+  };
   const guardarNota = () => {
     if (!formN.fecha || !formN.texto.trim()) return;
     update('notas', n => [...n, {
@@ -3556,9 +3574,14 @@ function LoteDetalle({
     style: {
       fontSize: 12,
       padding: '4px 0',
-      borderTop: '1px solid #e3e1d8'
+      borderTop: '1px solid #e3e1d8',
+      display: 'flex',
+      justifyContent: 'space-between'
     }
-  }, /*#__PURE__*/React.createElement("strong", null, n.tipo), " — ", n.fecha, " — ", n.texto))));
+  }, /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("strong", null, n.tipo), " — ", n.fecha, " — ", n.texto), /*#__PURE__*/React.createElement("button", {
+    onClick: () => borrarNota(n.id),
+    style: { ...btnGhost, padding: '0 6px', fontSize: 11 }
+  }, "✕")))));
 }
 
 /* ---------- RIEGO ---------- */
@@ -3794,9 +3817,17 @@ function Riego({
         fontSize: 12,
         color: '#5f5e5a',
         padding: '3px 0',
-        borderTop: '1px solid #e3e1d8'
+        borderTop: '1px solid #e3e1d8',
+        display: 'flex',
+        justifyContent: 'space-between'
       }
-    }, a.fecha, " — ", a.aguaUtilMm, "mm (", a.profundidad || '200', "cm)"))))), registrosLote.length > 0 && /*#__PURE__*/React.createElement("div", {
+    }, /*#__PURE__*/React.createElement("span", null, a.fecha, " — ", a.aguaUtilMm, "mm (", a.profundidad || '200', "cm)"), /*#__PURE__*/React.createElement("button", {
+      onClick: () => {
+        if (!confirm(`¿Borrar esta lectura de agua útil (${a.fecha} — ${a.aguaUtilMm}mm)?`)) return;
+        update('analisis', arr => arr.filter(x => x.id !== a.id));
+      },
+      style: { ...btnGhost, padding: '0 6px', fontSize: 11 }
+    }, "✕")))))), registrosLote.length > 0 && /*#__PURE__*/React.createElement("div", {
       style: {
         marginTop: 10
       }
