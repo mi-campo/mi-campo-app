@@ -5,14 +5,14 @@ const fetch = require('node-fetch');
 const { configurarSesion, requireLogin } = require('./auth');
 const apiRoutes = require('./api');
 const { interpretarMensaje, interpretarAnalisisDocumento, resolverMuestrasPorTexto } = require('./claudeParser');
-const { validar, procesar, manejarAnalisisDocumento, manejarAclaracionMuestras } = require('./botHandlers');
+const { validar, procesar, manejarAnalisisDocumento, manejarAclaracionMuestras, borrarPorId } = require('./botHandlers');
 const { sacarPendiente, guardarPendiente, load } = require('./db');
 
 const ETIQUETAS_TIPO = {
   riego: 'Riego', precipitacion: 'Lluvia', siembra: 'Siembra', fertilizacion: 'Fertilización', pulverizacion: 'Pulverización',
   cosecha: 'Cosecha', compra: 'Compra de insumo', analisis_agua: 'Análisis de agua', analisis_suelo: 'Análisis de suelo',
   nota: 'Nota', consulta: 'Consultas / preguntas', aporte_insumo: 'Aporte de insumo', analisis_foto: 'Análisis por foto/PDF',
-  receta: 'Receta / orden de aplicación',
+  receta: 'Receta / orden de aplicación', borrar: 'Borrar (riego/lluvia/agua útil/nota)',
 };
 
 function normalizarNumero(n) {
@@ -141,6 +141,19 @@ app.post('/webhook', async (req, res) => {
       return;
     }
 
+    // Si lo pendiente es una confirmación de borrado, se resuelve acá aparte (no pasa por el intérprete de nuevo)
+    if (pendiente?.tipoPendiente === 'confirmar_borrado') {
+      const textoNormalizado = textoRecibido.toLowerCase();
+      const esAfirmacion = ['si', 'sí', 'dale', 'ok', 'confirmo', 'borrar'].includes(textoNormalizado);
+      if (esAfirmacion) {
+        borrarPorId(pendiente.coleccion, pendiente.id);
+        await enviarMensajeWA(numeroRemitente, `🗑️ Borrado: ${pendiente.descripcion}`);
+      } else {
+        await enviarMensajeWA(numeroRemitente, '❌ No borré nada.');
+      }
+      return;
+    }
+
     let interpretado;
     if (pendiente) {
       const textoNormalizado = textoRecibido.toLowerCase();
@@ -168,6 +181,13 @@ app.post('/webhook', async (req, res) => {
     if (!chequeo.ok) {
       if (chequeo.campoFaltante) guardarPendiente(numeroRemitente, { interpretado, campoFaltante: chequeo.campoFaltante });
       await enviarMensajeWA(numeroRemitente, chequeo.pregunta);
+      return;
+    }
+
+    if (chequeo.requiereConfirmacion) {
+      const b = chequeo.borrado;
+      guardarPendiente(numeroRemitente, { tipoPendiente: 'confirmar_borrado', coleccion: b.coleccion, id: b.id, descripcion: `${b.loteNombre ? b.loteNombre + ' — ' : ''}${b.descripcion}` });
+      await enviarMensajeWA(numeroRemitente, `⚠️ ¿Confirmás que querés borrar esto?\n${b.loteNombre ? b.loteNombre + ' — ' : ''}${b.descripcion}\n\nRespondé SI para confirmar, o cualquier otra cosa para cancelar.`);
       return;
     }
 
