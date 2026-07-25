@@ -3043,9 +3043,58 @@ function Fertilizacion({
 
   const lotesConConflictoCiclos = data.lotes.filter(l => data.ciclos.filter(c => c.loteId === l.id && !c.fechaFin).length > 1);
 
+  const filasResumen = lotesOrdenados.map(l => {
+    const campo = data.campos.find(c => c.id === l.campoId);
+    const ciclo = cicloActivo(data, l.id);
+    const actividadesLote = data.actividades.filter(a => a.loteId === l.id);
+    const siembra = actividadesLote.filter(a => a.tipo === 'Siembra').sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''))[0];
+    const fertilizaciones = actividadesLote.filter(a => a.tipo === 'Fertilización');
+    const kgFertTotal = fertilizaciones.reduce((s, a) => s + (a.items || []).reduce((s2, it) => s2 + (Number(it.cantidad) || 0), 0), 0);
+    const fertilidadLote = data.analisis.filter(a => a.loteId === l.id && a.tipo === 'Fertilidad').sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''));
+    const ultimaFertilidad = fertilidadLote[0];
+    const agua = aguaUtilPromedio(data, l.id);
+    return {
+      nombre: `${campo?.nombre || ''} — ${l.nombre}`,
+      cultivo: ciclo?.cultivo || '—',
+      sembrado: !!siembra,
+      fechaSiembra: siembra?.fecha || '—',
+      variedad: siembra?.variedad || '—',
+      densidad: siembra?.densidad || '—',
+      nNo3: ultimaFertilidad ? `${ultimaFertilidad.nNo3_0_20 ?? '?'}/${ultimaFertilidad.nNo3_20_60 ?? '?'}` : '—',
+      rtoObj: l.rendimientoObjetivo || '—',
+      fertilizado: fertilizaciones.length > 0,
+      kgFertTotal,
+      aguaUtil: agua ? `${agua.promedio}mm` : '—',
+    };
+  });
+
   return /*#__PURE__*/React.createElement("div", {
     style: { display: 'flex', flexDirection: 'column', gap: 14 }
-  }, lotesConConflictoCiclos.length > 0 && /*#__PURE__*/React.createElement(Card, {
+  }, /*#__PURE__*/React.createElement(Card, null,
+    /*#__PURE__*/React.createElement("div", { style: { fontWeight: 600, fontSize: 14, marginBottom: 8 } }, '📋 Resumen de carga por lote'),
+    /*#__PURE__*/React.createElement("div", { style: { overflowX: 'auto' } },
+      /*#__PURE__*/React.createElement("table", { style: { borderCollapse: 'collapse', fontSize: 11.5, width: '100%' } },
+        /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", { style: { borderBottom: '2px solid #e3e1d8', textAlign: 'left' } },
+          ['Lote', 'Cultivo', 'Siembra', 'Variedad', 'Densidad', 'N-NO3 (0-20/20-60)', 'Rto obj', 'Fertiliz.', 'Agua útil'].map(h =>
+            /*#__PURE__*/React.createElement("th", { key: h, style: { padding: '4px 6px', color: '#5f5e5a', fontWeight: 600, whiteSpace: 'nowrap' } }, h)
+          )
+        )),
+        /*#__PURE__*/React.createElement("tbody", null, filasResumen.map((f, i) =>
+          /*#__PURE__*/React.createElement("tr", { key: i, style: { borderBottom: '1px solid #f1efe8' } },
+            /*#__PURE__*/React.createElement("td", { style: { padding: '4px 6px', fontWeight: 500, whiteSpace: 'nowrap' } }, f.nombre),
+            /*#__PURE__*/React.createElement("td", { style: { padding: '4px 6px' } }, f.cultivo),
+            /*#__PURE__*/React.createElement("td", { style: { padding: '4px 6px', color: f.sembrado ? '#27500A' : '#A32D2D' } }, f.sembrado ? f.fechaSiembra : '✗ no'),
+            /*#__PURE__*/React.createElement("td", { style: { padding: '4px 6px' } }, f.variedad),
+            /*#__PURE__*/React.createElement("td", { style: { padding: '4px 6px' } }, f.densidad),
+            /*#__PURE__*/React.createElement("td", { style: { padding: '4px 6px' } }, f.nNo3),
+            /*#__PURE__*/React.createElement("td", { style: { padding: '4px 6px' } }, f.rtoObj),
+            /*#__PURE__*/React.createElement("td", { style: { padding: '4px 6px', color: f.fertilizado ? '#27500A' : '#888780' } }, f.fertilizado ? `✓ ${Math.round(f.kgFertTotal)}kg` : '✗ no'),
+            /*#__PURE__*/React.createElement("td", { style: { padding: '4px 6px' } }, f.aguaUtil),
+          )
+        ))
+      )
+    )
+  ), lotesConConflictoCiclos.length > 0 && /*#__PURE__*/React.createElement(Card, {
     style: { background: '#FBE7E4', borderLeft: '4px solid #A32D2D' }
   }, /*#__PURE__*/React.createElement("div", { style: { fontWeight: 600, fontSize: 14, color: '#A32D2D' } }, `⚠️ ${lotesConConflictoCiclos.length} lote(s) con más de un ciclo de cultivo abierto a la vez`),
   /*#__PURE__*/React.createElement("div", { style: { fontSize: 12, color: '#5f5e5a', marginTop: 4 } },
