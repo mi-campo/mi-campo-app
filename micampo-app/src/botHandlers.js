@@ -578,6 +578,20 @@ async function manejarConsulta(interpretado, contacto) {
         const c = l ? data.campos.find(x => x.id === l.campoId) : null;
         return { tipo: a.tipo, fecha: a.fecha, lote: l ? `${c?.nombre || ''} — ${l.nombre}` : null };
       }),
+      // Detalle por lote — para preguntas del tipo "qué lotes tienen/no tienen tal dato cargado"
+      lotes: lotesPermitidos.map(l => {
+        const c = data.campos.find(x => x.id === l.campoId);
+        const ciclo = cicloActivo(data, l.id);
+        const registrosAgua = data.analisis.filter(a => a.loteId === l.id && a.tipo === 'Agua útil' && a.aguaUtilMm !== '' && a.aguaUtilMm != null);
+        const fechaUltimaAguaUtil = registrosAgua.length > 0 ? registrosAgua.reduce((max, r) => (r.fecha || '') > max ? r.fecha : max, '') : null;
+        const riegoAcumulado = data.actividades.filter(a => a.loteId === l.id && a.tipo === 'Riego' && a.mm && (a.fuente || '').toLowerCase() !== 'lluvia').reduce((s, a) => s + Number(a.mm), 0);
+        return {
+          nombre: `${c?.nombre || ''} — ${l.nombre}`, modo: l.modo || 'Riego', hectareas: l.hectareas,
+          cultivoActivo: ciclo ? ciclo.cultivo : 'Barbecho',
+          tieneAguaUtil: registrosAgua.length > 0, fechaUltimaAguaUtil,
+          riegoAcumuladoMm: riegoAcumulado, objetivoRiegoMm: l.objetivoRiego || 0,
+        };
+      }),
     };
   }
 
