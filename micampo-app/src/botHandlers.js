@@ -538,8 +538,8 @@ async function manejarConsulta(interpretado, contacto) {
       nombre: `${campoDelLote?.nombre || ''} — ${lote.nombre}`, hectareas: lote.hectareas, modo: lote.modo,
       cultivoActual: ciclo ? ciclo.cultivo : null, rendimientoObjetivoKgHa: lote.rendimientoObjetivo || null,
       analisisSuelo: fertilidadLote.length > 0 ? fertilidadLote.slice(0, 4).map(f => ({ fecha: f.fecha, nNo3_0_20: f.nNo3_0_20, nNo3_20_60: f.nNo3_20_60, mo: f.mo, ph: f.ph })) : 'sin análisis de suelo cargado',
-      aguaUtilPromedioMm: agua ? agua.promedio : null, fechaAguaUtil: agua ? agua.fecha : null,
-      riegoAcumuladoMm: riegos.reduce((s, a) => s + Number(a.mm), 0), objetivoRiegoMm: lote.objetivoRiego || 0,
+      aguaUtilDelSueloMm_NO_es_riego: agua ? agua.promedio : 'sin dato de agua útil cargado', fechaMuestraAguaUtil: agua ? agua.fecha : null,
+      mmDeRiegoYaAplicadosEsteCiclo: riegos.reduce((s, a) => s + Number(a.mm), 0), mmDeRiegoObjetivoTotalDelCiclo: lote.objetivoRiego || 0,
       gastoTotalUSD, costoPorHaUSD: lote.hectareas > 0 ? Math.round(gastoTotalUSD / lote.hectareas) : null,
       cosechas: actividadesLote.filter(a => a.tipo === 'Cosecha' || a.rendimiento).map(a => ({ fecha: a.fecha, rendimientoQqHa: a.rendimiento })),
       ultimasActividades: actividadesLote.slice(0, 10).map(a => ({
@@ -605,8 +605,8 @@ async function manejarConsulta(interpretado, contacto) {
           cantidadFertilizaciones: fertilizaciones.length, kgFertilizacionTotal,
           nNo3_0_20: ultimaFertilidad ? ultimaFertilidad.nNo3_0_20 : null, nNo3_20_60: ultimaFertilidad ? ultimaFertilidad.nNo3_20_60 : null,
           rendimientoObjetivo: l.rendimientoObjetivo || null,
-          tieneAguaUtil: registrosAgua.length > 0, fechaUltimaAguaUtil,
-          riegoAcumuladoMm: riegoAcumulado, objetivoRiegoMm: l.objetivoRiego || 0,
+          tieneAguaUtilDelSuelo_NO_es_riego: registrosAgua.length > 0, fechaMuestraAguaUtil: fechaUltimaAguaUtil,
+          mmDeRiegoYaAplicadosEsteCiclo: riegoAcumulado, mmDeRiegoObjetivoTotalDelCiclo: l.objetivoRiego || 0,
         };
       }),
     };
