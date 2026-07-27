@@ -1,4 +1,4 @@
-const { load, save, uid, buscarLotes, buscarLotesExacto, precioPromedio, cicloActivo } = require('./db');
+const { load, save, uid, buscarLotes, buscarLotesExacto, precioPromedio, cicloActivo, tarifaRiegoLote } = require('./db');
 const { responderConsulta } = require('./claudeParser');
 const { generarImagenReceta } = require('./recetaImagen');
 
@@ -239,7 +239,9 @@ function manejarRiego(interpretado) {
     const fecha = fechaDe(l);
     const yaCargado = data.actividades.find(a => a.loteId === lote.id && a.tipo === 'Riego' && a.fecha === fecha && Number(a.mm) === mm && (a.fuente || '').toLowerCase() !== 'lluvia');
     if (yaCargado) { lineas.push(`⚠️ ${nombreConCampo(data, lote)} — ${fecha} — ${mm}mm ya estaba cargado, no lo dupliqué`); continue; }
-    data.actividades.push({ id: uid(), loteId: lote.id, cicloId: cicloActivo(data, lote.id)?.id || null, tipo: 'Riego', fecha, mm, fuente: l.fuente || undefined, items: [], costoTotal: 0, notas: '' });
+    const tarifaMm = tarifaRiegoLote(data, lote);
+    const costoTotal = tarifaMm * mm * (Number(lote.hectareas) || 0);
+    data.actividades.push({ id: uid(), loteId: lote.id, cicloId: cicloActivo(data, lote.id)?.id || null, tipo: 'Riego', fecha, mm, fuente: l.fuente || undefined, items: [], costoTotal, notas: '' });
     lineas.push(`✅ ${nombreConCampo(data, lote)} — ${fecha} — ${mm}mm${l.fuente ? ` (${l.fuente})` : ''}${corregido ? ` (interpreté "${l.mm}" como ${mm}mm)` : ''}`);
   }
   save(data);
