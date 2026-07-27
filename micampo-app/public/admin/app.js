@@ -2969,7 +2969,12 @@ function CalculoFertilizacion({
     }, Math.round(rend).toLocaleString('es-AR'), " kg/ha"), /*#__PURE__*/React.createElement("div", {
       style: { fontSize: 12, color: '#3B6D11' }
     }, "con ", ureaFija, "kg urea/ha aplicados", rendObj ? (rend >= Number(rendObj) ? ' — llega o supera el objetivo' : ` — no llega al objetivo de ${Number(rendObj).toLocaleString('es-AR')}kg/ha`) : ''));
-  }), modoCalculo === 'recomendar' && resultadosPorZona.map((z, i) => z.resultado && /*#__PURE__*/React.createElement("div", {
+  }), modoCalculo === 'fijo' && Number(ureaFija) > 0 && /*#__PURE__*/React.createElement("div", {
+    style: { marginTop: 8, padding: 12, background: '#FFF6D6', border: '1px solid #E8C547', borderRadius: 8 }
+  }, /*#__PURE__*/React.createElement("div", { style: { fontSize: 12, color: '#8A6D00' } }, "Total para este lote"),
+  /*#__PURE__*/React.createElement("div", { style: { fontSize: 18, fontWeight: 500, color: '#8A6D00' } },
+    Math.round(Number(ureaFija) * (Number(lote.hectareas) || 0)).toLocaleString('es-AR'), " kg urea (", (Number(ureaFija) * (Number(lote.hectareas) || 0) / 1000).toFixed(1), "tn) — ", lote.hectareas, "ha × ", ureaFija, "kg/ha"
+  )), modoCalculo === 'recomendar' && resultadosPorZona.map((z, i) => z.resultado && /*#__PURE__*/React.createElement("div", {
     key: i,
     style: {
       marginTop: 8,
