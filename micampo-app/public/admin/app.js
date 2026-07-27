@@ -128,6 +128,16 @@ function cicloActivo(data, loteId) {
   if (abiertos.length === 0) return null;
   return [...abiertos].sort((a, b) => (b.fechaInicio || '').localeCompare(a.fechaInicio || ''))[0];
 }
+// Tarifa USD/mm/ha de riego para un lote: usa el grupo de riego asignado (con su modo activo, estimativo o calculado)
+// si lo tiene; si no, cae a la vieja tarifa global única (compatibilidad con lo cargado antes de tener grupos).
+function tarifaRiegoLote(data, lote) {
+  const grupo = (data.gruposRiego || []).find(g => g.id === lote.grupoRiegoId);
+  if (grupo) {
+    const val = grupo.modoActivo === 'calculado' ? grupo.tarifaCalculada : grupo.tarifaEstimativa;
+    if (val != null && val !== '') return Number(val) || 0;
+  }
+  return Number(data.tarifario?.Riego) || 0;
+}
 function proximoCultivoBarbecho(data, loteId) {
   const cerrados = (data.ciclos || []).filter(c => c.loteId === loteId && c.fechaFin).sort((a, b) => (b.fechaFin || '').localeCompare(a.fechaFin || ''));
   const ultimo = cerrados[0];
@@ -1653,7 +1663,19 @@ function Campos({
           ...x,
           modo: e.target.value
         } : x))
-      }, /*#__PURE__*/React.createElement("option", null, "Riego"), /*#__PURE__*/React.createElement("option", null, "Secano"))), /*#__PURE__*/React.createElement("div", {
+      }, /*#__PURE__*/React.createElement("option", null, "Riego"), /*#__PURE__*/React.createElement("option", null, "Secano")), (l.modo || 'Riego') === 'Riego' && /*#__PURE__*/React.createElement("select", {
+        style: {
+          ...inputStyle,
+          padding: '3px 6px',
+          fontSize: 12,
+          maxWidth: 140
+        },
+        value: l.grupoRiegoId || '',
+        onChange: e => update('lotes', ls => ls.map(x => x.id === l.id ? {
+          ...x,
+          grupoRiegoId: e.target.value || null
+        } : x))
+      }, /*#__PURE__*/React.createElement("option", { value: "" }, "Sin grupo de riego"), (data.gruposRiego || []).map(g => /*#__PURE__*/React.createElement("option", { key: g.id, value: g.id }, g.nombre || '(sin nombre)')))), /*#__PURE__*/React.createElement("div", {
         style: {
           display: 'flex',
           gap: 10
@@ -4731,57 +4753,79 @@ function Tarifario({
     ...(t || {}),
     [labor]: val ? Number(val) : null
   }));
+  const grupos = data.gruposRiego || [];
+  const agregarGrupo = () => update('gruposRiego', gs => [...(gs || []), { id: uid(), nombre: '', modoActivo: 'estimativo', tarifaEstimativa: null, tarifaCalculada: null }]);
+  const editarGrupo = (id, campo, val) => update('gruposRiego', gs => gs.map(g => g.id === id ? { ...g, [campo]: val } : g));
+  const borrarGrupo = id => {
+    if (!confirm('¿Borrar este grupo de riego? Los lotes que lo tenían asignado quedan sin grupo (vuelven a usar la tarifa vieja única).')) return;
+    update('gruposRiego', gs => gs.filter(g => g.id !== id));
+  };
   return /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       flexDirection: 'column',
       gap: 14
     }
-  }, /*#__PURE__*/React.createElement(Card, null, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontWeight: 500,
-      marginBottom: 4
-    }
-  }, "Riego"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 12,
-      color: '#888780',
-      marginBottom: 10
-    }
-  }, "El riego se cobra por mm aplicado, no por ha fija — el costo final sale de multiplicar esta tarifa × los mm regados × las hectáreas del lote."), /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: 'flex',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      padding: '8px 0',
-      borderTop: '1px solid #f1efe8'
-    }
-  }, /*#__PURE__*/React.createElement("span", {
-    style: {
-      fontSize: 14
-    }
-  }, "mm de riego"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: 'flex',
-      alignItems: 'center',
-      gap: 6
-    }
-  }, /*#__PURE__*/React.createElement("input", {
-    style: {
-      ...inputStyle,
-      width: 100
+  }, /*#__PURE__*/React.createElement(Card, null,
+    /*#__PURE__*/React.createElement("div", { style: { fontWeight: 500, marginBottom: 4 } }, "Grupos de riego"),
+    /*#__PURE__*/React.createElement("div", { style: { fontSize: 12, color: '#888780', marginBottom: 10 } },
+      "Cada fuente de agua (bomba, pozo, eléctrico) puede tener su propio costo. Asigná cada lote a un grupo desde \"Campos y lotes\". El costo final sale de multiplicar la tarifa del grupo × los mm regados × las hectáreas del lote."
+    ),
+    grupos.map(g => /*#__PURE__*/React.createElement("div", {
+      key: g.id,
+      style: { padding: '10px 0', borderTop: '1px solid #f1efe8' }
     },
-    type: "number",
-    step: "0.01",
-    placeholder: "0",
-    value: tarifario['Riego'] ?? '',
-    onChange: e => setValor('Riego', e.target.value)
-  }), /*#__PURE__*/React.createElement("span", {
-    style: {
-      fontSize: 12,
-      color: '#888780'
-    }
-  }, "USD/mm/ha")))), /*#__PURE__*/React.createElement(Card, null, /*#__PURE__*/React.createElement("div", {
+      /*#__PURE__*/React.createElement("div", { style: { display: 'flex', gap: 8, alignItems: 'center', marginBottom: 6 } },
+        /*#__PURE__*/React.createElement("input", {
+          style: { ...inputStyle, flex: 1 },
+          placeholder: "Nombre del grupo (ej Riego Candelaria)",
+          value: g.nombre,
+          onChange: e => editarGrupo(g.id, 'nombre', e.target.value)
+        }),
+        /*#__PURE__*/React.createElement("button", { onClick: () => borrarGrupo(g.id), style: btnGhost }, "✕")
+      ),
+      /*#__PURE__*/React.createElement("div", { style: { display: 'flex', gap: 14, fontSize: 13, marginBottom: 6 } },
+        ['estimativo', 'calculado'].map(modo => /*#__PURE__*/React.createElement("label", {
+          key: modo,
+          style: { display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer' }
+        },
+          /*#__PURE__*/React.createElement("input", {
+            type: "radio",
+            checked: g.modoActivo === modo,
+            onChange: () => editarGrupo(g.id, 'modoActivo', modo)
+          }),
+          modo === 'estimativo' ? 'Usar estimativo (a dedo)' : 'Usar calculado (factura)'
+        ))
+      ),
+      /*#__PURE__*/React.createElement("div", { style: { display: 'flex', gap: 16, flexWrap: 'wrap' } },
+        /*#__PURE__*/React.createElement("div", null,
+          /*#__PURE__*/React.createElement("div", { style: { fontSize: 11, color: '#888780', marginBottom: 2 } }, "Estimativo (editable)"),
+          /*#__PURE__*/React.createElement("div", { style: { display: 'flex', alignItems: 'center', gap: 6 } },
+            /*#__PURE__*/React.createElement("input", {
+              style: { ...inputStyle, width: 100 },
+              type: "number", step: "0.01", placeholder: "0",
+              value: g.tarifaEstimativa ?? '',
+              onChange: e => editarGrupo(g.id, 'tarifaEstimativa', e.target.value ? Number(e.target.value) : null)
+            }),
+            /*#__PURE__*/React.createElement("span", { style: { fontSize: 12, color: '#888780' } }, "USD/mm/ha")
+          )
+        ),
+        /*#__PURE__*/React.createElement("div", null,
+          /*#__PURE__*/React.createElement("div", { style: { fontSize: 11, color: '#888780', marginBottom: 2 } }, "Calculado (de factura — próximamente)"),
+          /*#__PURE__*/React.createElement("div", { style: { display: 'flex', alignItems: 'center', gap: 6 } },
+            /*#__PURE__*/React.createElement("input", {
+              style: { ...inputStyle, width: 100, background: '#f1efe8', color: '#888780' },
+              type: "number", step: "0.01", placeholder: "—",
+              value: g.tarifaCalculada ?? '',
+              disabled: true
+            }),
+            /*#__PURE__*/React.createElement("span", { style: { fontSize: 12, color: '#888780' } }, "USD/mm/ha")
+          )
+        )
+      )
+    )),
+    /*#__PURE__*/React.createElement("button", { onClick: agregarGrupo, style: { ...btnPrimary, marginTop: 8 } }, "+ Agregar grupo de riego")
+  ), /*#__PURE__*/React.createElement(Card, null, /*#__PURE__*/React.createElement("div", {
     style: {
       fontWeight: 500,
       marginBottom: 4
@@ -4885,9 +4929,9 @@ function Actividades({
     });
     const haFact = Number(form.haFacturadas) || Number(form.haReales) || 0;
     let costoContratista = esAplicacion && form.tarifaContratista ? Number(form.tarifaContratista) * haFact : 0;
-    if (form.tipo === 'Riego' && data.tarifario?.Riego && form.mm) {
+    if (form.tipo === 'Riego' && form.mm) {
       const loteRiego = data.lotes.find(l => l.id === form.loteId);
-      costoContratista = Number(data.tarifario.Riego) * Number(form.mm) * (Number(loteRiego?.hectareas) || 0);
+      costoContratista = loteRiego ? tarifaRiegoLote(data, loteRiego) * Number(form.mm) * (Number(loteRiego.hectareas) || 0) : 0;
     }
     const costoTotal = costoInsumos + costoContratista;
     if (editandoId) {
