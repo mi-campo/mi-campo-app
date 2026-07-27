@@ -130,13 +130,28 @@ function cicloActivo(data, loteId) {
 }
 // Tarifa USD/mm/ha de riego para un lote: usa el grupo de riego asignado (con su modo activo, estimativo o calculado)
 // si lo tiene; si no, cae a la vieja tarifa global única (compatibilidad con lo cargado antes de tener grupos).
-function tarifaRiegoLote(data, lote) {
-  const grupo = (data.gruposRiego || []).find(g => g.id === lote.grupoRiegoId);
+function normalizar(s) {
+  return String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+}
+function grupoRiegoPorFuente(data, fuenteTexto) {
+  if (!fuenteTexto) return null;
+  const t = normalizar(fuenteTexto);
+  return (data.gruposRiego || []).find(g => {
+    const n = normalizar(g.nombre);
+    return n.includes(t) || t.includes(n);
+  }) || null;
+}
+// Tarifa USD/mm/ha de riego para UN riego puntual: prioriza el grupo que corresponde a la fuente de
+// ESE riego (ej "bomba este") — un mismo lote puede regarse con bombas distintas en momentos distintos.
+// Si no hay fuente reconocible, cae al grupo por defecto del lote, y si tampoco tiene, a la vieja tarifa única.
+function tarifaRiegoLote(data, lote, fuenteTexto) {
+  const grupoPorFuente = grupoRiegoPorFuente(data, fuenteTexto);
+  const grupo = grupoPorFuente || (data.gruposRiego || []).find(g => g.id === lote.grupoRiegoId);
   if (grupo) {
     const val = grupo.modoActivo === 'calculado' ? grupo.tarifaCalculada : grupo.tarifaEstimativa;
-    if (val != null && val !== '') return Number(val) || 0;
+    if (val != null && val !== '') return { tarifa: Number(val) || 0, grupoId: grupo.id, grupoNombre: grupo.nombre };
   }
-  return Number(data.tarifario?.Riego) || 0;
+  return { tarifa: Number(data.tarifario?.Riego) || 0, grupoId: null, grupoNombre: null };
 }
 function proximoCultivoBarbecho(data, loteId) {
   const cerrados = (data.ciclos || []).filter(c => c.loteId === loteId && c.fechaFin).sort((a, b) => (b.fechaFin || '').localeCompare(a.fechaFin || ''));
@@ -4978,9 +4993,16 @@ function Actividades({
     });
     const haFact = Number(form.haFacturadas) || Number(form.haReales) || 0;
     let costoContratista = esAplicacion && form.tarifaContratista ? Number(form.tarifaContratista) * haFact : 0;
+    let grupoRiegoUsado = form.grupoRiegoId || null;
     if (form.tipo === 'Riego' && form.mm) {
       const loteRiego = data.lotes.find(l => l.id === form.loteId);
-      costoContratista = loteRiego ? tarifaRiegoLote(data, loteRiego) * Number(form.mm) * (Number(loteRiego.hectareas) || 0) : 0;
+      if (loteRiego) {
+        const r = tarifaRiegoLote(data, loteRiego, form.fuente);
+        costoContratista = r.tarifa * Number(form.mm) * (Number(loteRiego.hectareas) || 0);
+        grupoRiegoUsado = r.grupoId;
+      } else {
+        costoContratista = 0;
+      }
     }
     const costoTotal = costoInsumos + costoContratista;
     if (editandoId) {
@@ -4992,7 +5014,8 @@ function Actividades({
         items: usados,
         costoInsumos,
         costoContratista,
-        costoTotal
+        costoTotal,
+        grupoRiegoId: grupoRiegoUsado
       } : x));
       update('insumos', ins => ins.map(i => {
         const u = usados.find(x => x.insumoId === i.id);
@@ -5011,7 +5034,8 @@ function Actividades({
         items: usados,
         costoInsumos,
         costoContratista,
-        costoTotal
+        costoTotal,
+        grupoRiegoId: grupoRiegoUsado
       }]);
       update('insumos', ins => ins.map(i => {
         const u = usados.find(x => x.insumoId === i.id);
