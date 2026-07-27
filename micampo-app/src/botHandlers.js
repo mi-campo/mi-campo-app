@@ -224,9 +224,12 @@ function manejarRiego(interpretado) {
   let mm = Number(interpretado.mm);
   let corregido = false;
   if (mm > 500 && mm % 1000 === 0) { mm = mm / 1000; corregido = true; }
+  const fecha = fechaDe(interpretado);
+  const yaCargado = data.actividades.find(a => a.loteId === lote.id && a.tipo === 'Riego' && a.fecha === fecha && Number(a.mm) === mm && (a.fuente || '').toLowerCase() !== 'lluvia');
+  if (yaCargado) return `⚠️ Ya tenés cargado un riego de ${mm}mm en ${nombreConCampo(data, lote)} el ${fecha} — no lo volví a cargar para no duplicarlo. Si es una segunda pasada real (no un error), avisame explícitamente y lo agrego igual.`;
   const tarifaMm = data.tarifario && data.tarifario['Riego'] ? Number(data.tarifario['Riego']) : 0;
   const costoTotal = tarifaMm * mm * (Number(lote.hectareas) || 0);
-  data.actividades.push({ id: uid(), loteId: lote.id, cicloId: cicloActivo(data, lote.id)?.id || null, tipo: 'Riego', fecha: fechaDe(interpretado), mm, fuente: interpretado.fuente || undefined, items: [], costoTotal, notas: '' });
+  data.actividades.push({ id: uid(), loteId: lote.id, cicloId: cicloActivo(data, lote.id)?.id || null, tipo: 'Riego', fecha, mm, fuente: interpretado.fuente || undefined, items: [], costoTotal, notas: '' });
   save(data);
   const bal = balanceRiego(data, lote);
   let texto = `✅ Riego cargado: ${nombreConCampo(data, lote)} — ${mm}mm${interpretado.fuente ? ` (${interpretado.fuente})` : ''}`;
@@ -244,7 +247,10 @@ function manejarPrecipitacion(interpretado) {
   let mm = Number(interpretado.mm);
   let corregido = false;
   if (mm > 500 && mm % 1000 === 0) { mm = mm / 1000; corregido = true; }
-  data.actividades.push({ id: uid(), loteId: lote.id, cicloId: cicloActivo(data, lote.id)?.id || null, tipo: 'Riego', fecha: fechaDe(interpretado), mm, fuente: 'Lluvia', items: [], costoTotal: 0, notas: '' });
+  const fecha = fechaDe(interpretado);
+  const yaCargado = data.actividades.find(a => a.loteId === lote.id && a.tipo === 'Riego' && a.fecha === fecha && Number(a.mm) === mm && (a.fuente || '').toLowerCase() === 'lluvia');
+  if (yaCargado) return `⚠️ Ya tenés cargada una lluvia de ${mm}mm en ${nombreConCampo(data, lote)} el ${fecha} — no la volví a cargar para no duplicarla. Si de verdad llovió dos veces distinto ese mismo mm ese día, avisame explícitamente y la agrego igual.`;
+  data.actividades.push({ id: uid(), loteId: lote.id, cicloId: cicloActivo(data, lote.id)?.id || null, tipo: 'Riego', fecha, mm, fuente: 'Lluvia', items: [], costoTotal: 0, notas: '' });
   save(data);
   const bal = balanceRiego(data, lote);
   let texto = `✅ Lluvia registrada: ${nombreConCampo(data, lote)} — ${mm}mm`;
