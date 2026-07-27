@@ -59,15 +59,23 @@ function validar(interpretado) {
   const data = load();
   switch (interpretado.tipo) {
     case 'riego': {
-      const r = resolverLote(data, interpretado.lote, interpretado.campo);
-      if (!r.ok) return r;
-      if (!interpretado.mm) return { ok: false, pregunta: '¿Cuántos mm se aplicaron?', campoFaltante: 'mm' };
+      const lecturas = interpretado.lecturas || (interpretado.lote ? [interpretado] : []);
+      if (lecturas.length === 0) return { ok: false, pregunta: '¿En qué lote y cuántos mm se aplicaron?', campoFaltante: null };
+      for (const l of lecturas) {
+        const r = resolverLote(data, l.lote, l.campo);
+        if (!r.ok) return r;
+        if (!l.mm) return { ok: false, pregunta: `¿Cuántos mm se aplicaron en ${l.lote || 'ese lote'}?`, campoFaltante: 'mm' };
+      }
       return { ok: true };
     }
     case 'precipitacion': {
-      const r = resolverLote(data, interpretado.lote, interpretado.campo);
-      if (!r.ok) return r;
-      if (!interpretado.mm) return { ok: false, pregunta: '¿Cuántos mm de lluvia cayeron?', campoFaltante: 'mm' };
+      const lecturas = interpretado.lecturas || (interpretado.lote !== undefined ? [interpretado] : []);
+      if (lecturas.length === 0) return { ok: false, pregunta: '¿En qué lote y cuántos mm de lluvia cayeron?', campoFaltante: null };
+      for (const l of lecturas) {
+        const r = resolverLote(data, l.lote, l.campo);
+        if (!r.ok) return r;
+        if (!l.mm) return { ok: false, pregunta: '¿Cuántos mm de lluvia cayeron?', campoFaltante: 'mm' };
+      }
       return { ok: true };
     }
     case 'receta': {
@@ -219,44 +227,64 @@ function balanceRiego(data, lote) {
 
 function manejarRiego(interpretado) {
   const data = load();
-  const lote = buscarLotes(data, interpretado.lote, interpretado.campo)[0];
-  // Red de seguridad: un riego real nunca es de miles de mm. Si la IA interpretó mal un "mil"/"ml" como multiplicador, lo corrige acá.
-  let mm = Number(interpretado.mm);
-  let corregido = false;
-  if (mm > 500 && mm % 1000 === 0) { mm = mm / 1000; corregido = true; }
-  const fecha = fechaDe(interpretado);
-  const yaCargado = data.actividades.find(a => a.loteId === lote.id && a.tipo === 'Riego' && a.fecha === fecha && Number(a.mm) === mm && (a.fuente || '').toLowerCase() !== 'lluvia');
-  if (yaCargado) return `⚠️ Ya tenés cargado un riego de ${mm}mm en ${nombreConCampo(data, lote)} el ${fecha} — no lo volví a cargar para no duplicarlo. Si es una segunda pasada real (no un error), avisame explícitamente y lo agrego igual.`;
-  const tarifaMm = data.tarifario && data.tarifario['Riego'] ? Number(data.tarifario['Riego']) : 0;
-  const costoTotal = tarifaMm * mm * (Number(lote.hectareas) || 0);
-  data.actividades.push({ id: uid(), loteId: lote.id, cicloId: cicloActivo(data, lote.id)?.id || null, tipo: 'Riego', fecha, mm, fuente: interpretado.fuente || undefined, items: [], costoTotal, notas: '' });
+  const lecturas = interpretado.lecturas || [interpretado];
+  const lineas = [];
+  for (const l of lecturas) {
+    const lote = buscarLotes(data, l.lote, l.campo)[0];
+    if (!lote) { lineas.push(`✗ No encontré el lote "${l.lote || '?'}"`); continue; }
+    // Red de seguridad: un riego real nunca es de miles de mm. Si la IA interpretó mal un "mil"/"ml" como multiplicador, lo corrige acá.
+    let mm = Number(l.mm);
+    let corregido = false;
+    if (mm > 500 && mm % 1000 === 0) { mm = mm / 1000; corregido = true; }
+    const fecha = fechaDe(l);
+    const yaCargado = data.actividades.find(a => a.loteId === lote.id && a.tipo === 'Riego' && a.fecha === fecha && Number(a.mm) === mm && (a.fuente || '').toLowerCase() !== 'lluvia');
+    if (yaCargado) { lineas.push(`⚠️ ${nombreConCampo(data, lote)} — ${fecha} — ${mm}mm ya estaba cargado, no lo dupliqué`); continue; }
+    data.actividades.push({ id: uid(), loteId: lote.id, cicloId: cicloActivo(data, lote.id)?.id || null, tipo: 'Riego', fecha, mm, fuente: l.fuente || undefined, items: [], costoTotal: 0, notas: '' });
+    lineas.push(`✅ ${nombreConCampo(data, lote)} — ${fecha} — ${mm}mm${l.fuente ? ` (${l.fuente})` : ''}${corregido ? ` (interpreté "${l.mm}" como ${mm}mm)` : ''}`);
+  }
   save(data);
-  const bal = balanceRiego(data, lote);
-  let texto = `✅ Riego cargado: ${nombreConCampo(data, lote)} — ${mm}mm${interpretado.fuente ? ` (${interpretado.fuente})` : ''}`;
-  if (corregido) texto += `\n(interpreté "${interpretado.mm}" como ${mm}mm — avisame si no era eso)`;
-  texto += `\nRiego acumulado: ${bal.acumuladoRiego}mm`;
-  if (bal.acumuladoLluvia > 0) texto += ` · Lluvia acumulada: ${bal.acumuladoLluvia}mm`;
-  if (bal.balance !== null) texto += bal.balance >= 0 ? ` · Faltan ${bal.balance}mm para el objetivo` : ` · Sobran ${Math.abs(bal.balance)}mm sobre el objetivo`;
-  return texto;
+  if (lecturas.length === 1) {
+    const lote = buscarLotes(data, lecturas[0].lote, lecturas[0].campo)[0];
+    if (lote && lineas[0]?.startsWith('✅')) {
+      const bal = balanceRiego(data, lote);
+      let texto = lineas[0];
+      texto += `\nRiego acumulado: ${bal.acumuladoRiego}mm`;
+      if (bal.acumuladoLluvia > 0) texto += ` · Lluvia acumulada: ${bal.acumuladoLluvia}mm`;
+      if (bal.balance !== null) texto += bal.balance >= 0 ? ` · Faltan ${bal.balance}mm para el objetivo` : ` · Sobran ${Math.abs(bal.balance)}mm sobre el objetivo`;
+      return texto;
+    }
+  }
+  return `Riegos procesados (${lecturas.length}):\n${lineas.join('\n')}`;
 }
 
 function manejarPrecipitacion(interpretado) {
   const data = load();
-  const lote = buscarLotes(data, interpretado.lote, interpretado.campo)[0];
-  let mm = Number(interpretado.mm);
-  let corregido = false;
-  if (mm > 500 && mm % 1000 === 0) { mm = mm / 1000; corregido = true; }
-  const fecha = fechaDe(interpretado);
-  const yaCargado = data.actividades.find(a => a.loteId === lote.id && a.tipo === 'Riego' && a.fecha === fecha && Number(a.mm) === mm && (a.fuente || '').toLowerCase() === 'lluvia');
-  if (yaCargado) return `⚠️ Ya tenés cargada una lluvia de ${mm}mm en ${nombreConCampo(data, lote)} el ${fecha} — no la volví a cargar para no duplicarla. Si de verdad llovió dos veces distinto ese mismo mm ese día, avisame explícitamente y la agrego igual.`;
-  data.actividades.push({ id: uid(), loteId: lote.id, cicloId: cicloActivo(data, lote.id)?.id || null, tipo: 'Riego', fecha, mm, fuente: 'Lluvia', items: [], costoTotal: 0, notas: '' });
+  const lecturas = interpretado.lecturas || [interpretado];
+  const lineas = [];
+  for (const l of lecturas) {
+    const lote = buscarLotes(data, l.lote, l.campo)[0];
+    if (!lote) { lineas.push(`✗ No encontré el lote "${l.lote || '?'}"`); continue; }
+    let mm = Number(l.mm);
+    let corregido = false;
+    if (mm > 500 && mm % 1000 === 0) { mm = mm / 1000; corregido = true; }
+    const fecha = fechaDe(l);
+    const yaCargado = data.actividades.find(a => a.loteId === lote.id && a.tipo === 'Riego' && a.fecha === fecha && Number(a.mm) === mm && (a.fuente || '').toLowerCase() === 'lluvia');
+    if (yaCargado) { lineas.push(`⚠️ ${nombreConCampo(data, lote)} — ${fecha} — ${mm}mm de lluvia ya estaba cargado, no lo dupliqué`); continue; }
+    data.actividades.push({ id: uid(), loteId: lote.id, cicloId: cicloActivo(data, lote.id)?.id || null, tipo: 'Riego', fecha, mm, fuente: 'Lluvia', items: [], costoTotal: 0, notas: '' });
+    lineas.push(`✅ ${nombreConCampo(data, lote)} — ${fecha} — ${mm}mm${corregido ? ` (interpreté "${l.mm}" como ${mm}mm)` : ''}`);
+  }
   save(data);
-  const bal = balanceRiego(data, lote);
-  let texto = `✅ Lluvia registrada: ${nombreConCampo(data, lote)} — ${mm}mm`;
-  if (corregido) texto += `\n(interpreté "${interpretado.mm}" como ${mm}mm — avisame si no era eso)`;
-  texto += `\nPrecipitaciones acumuladas: ${bal.acumuladoLluvia}mm · Riego acumulado: ${bal.acumuladoRiego}mm`;
-  if (bal.balance !== null) texto += bal.balance >= 0 ? ` · Faltan ${bal.balance}mm para el objetivo` : ` · Sobran ${Math.abs(bal.balance)}mm sobre el objetivo`;
-  return texto;
+  if (lecturas.length === 1) {
+    const lote = buscarLotes(data, lecturas[0].lote, lecturas[0].campo)[0];
+    if (lote && lineas[0]?.startsWith('✅')) {
+      const bal = balanceRiego(data, lote);
+      let texto = lineas[0];
+      texto += `\nPrecipitaciones acumuladas: ${bal.acumuladoLluvia}mm · Riego acumulado: ${bal.acumuladoRiego}mm`;
+      if (bal.balance !== null) texto += bal.balance >= 0 ? ` · Faltan ${bal.balance}mm para el objetivo` : ` · Sobran ${Math.abs(bal.balance)}mm sobre el objetivo`;
+      return texto;
+    }
+  }
+  return `Lluvias procesadas (${lecturas.length}):\n${lineas.join('\n')}`;
 }
 
 async function manejarReceta(interpretado) {
