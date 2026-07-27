@@ -109,6 +109,10 @@ function fmtMoney(n) {
     maximumFractionDigits: 0
   });
 }
+function fmtMoneyHa(costoTotal, ha) {
+  const base = Number(ha) > 0 ? Number(costoTotal || 0) / Number(ha) : 0;
+  return 'USD ' + base.toLocaleString('es-AR', { maximumFractionDigits: 1 }) + '/ha';
+}
 function precioPromedio(data, insumoId) {
   const comprasInsumo = (data.compras || []).filter(c => c.insumoId === insumoId && Number(c.cantidad) > 0);
   if (comprasInsumo.length === 0) {
@@ -5394,7 +5398,7 @@ function Actividades({
         justifyContent: 'space-between',
         alignItems: 'flex-start'
       }
-    }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("strong", null, act.tipo), act.metodo ? ` (${act.metodo})` : '', " — ", lote?.nombre, " — ", act.fecha, riegoInfo, haInfo, siembraInfo, " — ", fmtMoney(act.costoTotal), paraCliente && /*#__PURE__*/React.createElement("span", {
+    }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("strong", null, act.tipo), act.metodo ? ` (${act.metodo})` : '', " — ", lote?.nombre, " — ", act.fecha, riegoInfo, haInfo, siembraInfo, " — ", fmtMoneyHa(act.costoTotal, act.haReales || lote?.hectareas), paraCliente && /*#__PURE__*/React.createElement("span", {
       style: {
         fontSize: 11,
         color: '#993C1D',
