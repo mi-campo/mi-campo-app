@@ -4867,6 +4867,13 @@ function Actividades({
   };
   const guardar = () => {
     if (!form.loteId || !form.fecha) return;
+    if (!editandoId && form.tipo === 'Riego' && form.mm) {
+      const yaExiste = data.actividades.find(a => a.loteId === form.loteId && a.tipo === 'Riego' && a.fecha === form.fecha && Number(a.mm) === Number(form.mm) && (a.fuente || '') === (form.fuente || ''));
+      if (yaExiste) {
+        const esLluvia = (form.fuente || '').toLowerCase() === 'lluvia';
+        if (!confirm(`Ya hay ${esLluvia ? 'una lluvia' : 'un riego'} de ${form.mm}mm cargado en este lote el ${form.fecha}. ¿Cargarlo igual (por ejemplo, una segunda pasada real el mismo día)?`)) return;
+      }
+    }
     const usados = items.filter(it => it.insumoId && Number(it.cantidad) > 0);
     let costoInsumos = 0;
     usados.forEach(it => {
