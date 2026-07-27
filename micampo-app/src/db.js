@@ -34,6 +34,7 @@ const emptyData = {
   ciclos: [],
   contactosBot: [],
   tarifario: {},
+  gruposRiego: [],
   mercado: null,
   recetas: [],
   hectareasAplicables: {},
@@ -177,8 +178,19 @@ function cicloActivo(data, loteId) {
   return [...abiertos].sort((a, b) => (b.fechaInicio || '').localeCompare(a.fechaInicio || ''))[0];
 }
 
+// Tarifa USD/mm/ha de riego para un lote: usa el grupo de riego asignado (con su modo activo, estimativo o calculado)
+// si lo tiene; si no, cae a la vieja tarifa global única (compatibilidad con lo cargado antes de tener grupos).
+function tarifaRiegoLote(data, lote) {
+  const grupo = (data.gruposRiego || []).find(g => g.id === lote.grupoRiegoId);
+  if (grupo) {
+    const val = grupo.modoActivo === 'calculado' ? grupo.tarifaCalculada : grupo.tarifaEstimativa;
+    if (val != null && val !== '') return Number(val) || 0;
+  }
+  return Number(data.tarifario?.Riego) || 0;
+}
+
 module.exports = {
-  load, save, uid, buscarLotes, buscarLotesExacto, precioPromedio, cicloActivo, emptyData,
+  load, save, uid, buscarLotes, buscarLotesExacto, precioPromedio, cicloActivo, tarifaRiegoLote, emptyData,
   cargarPendientes, guardarPendiente, sacarPendiente,
   loadUsers, saveUsers,
 };
