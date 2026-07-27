@@ -189,15 +189,33 @@ function cicloActivo(data, loteId) {
   return [...abiertos].sort((a, b) => (b.fechaInicio || '').localeCompare(a.fechaInicio || ''))[0];
 }
 
-// Tarifa USD/mm/ha de riego para un lote: usa el grupo de riego asignado (con su modo activo, estimativo o calculado)
-// si lo tiene; si no, cae a la vieja tarifa global única (compatibilidad con lo cargado antes de tener grupos).
-function tarifaRiegoLote(data, lote) {
-  const grupo = (data.gruposRiego || []).find(g => g.id === lote.grupoRiegoId);
+function normalizar(s) {
+  return String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+}
+
+// Busca el grupo de riego que corresponde a un texto de "fuente" (ej "bomba este", "bomba oeste") —
+// para el caso de un lote que puede regarse con distintas bombas en distintos momentos (ej El Rosario).
+function grupoRiegoPorFuente(data, fuenteTexto) {
+  if (!fuenteTexto) return null;
+  const t = normalizar(fuenteTexto);
+  return (data.gruposRiego || []).find(g => {
+    const n = normalizar(g.nombre);
+    return n.includes(t) || t.includes(n);
+  }) || null;
+}
+
+// Tarifa USD/mm/ha de riego para UN riego puntual: prioriza el grupo que corresponde a la fuente de
+// ESE riego (ej si dijeron "bomba este", usa la tarifa de "Bomba Este" aunque el lote tenga otro grupo
+// por defecto — un mismo lote puede regarse con bombas distintas en momentos distintos). Si no hay fuente
+// reconocible, cae al grupo por defecto asignado al lote, y si tampoco tiene, a la vieja tarifa única global.
+function tarifaRiegoLote(data, lote, fuenteTexto) {
+  const grupoPorFuente = grupoRiegoPorFuente(data, fuenteTexto);
+  const grupo = grupoPorFuente || (data.gruposRiego || []).find(g => g.id === lote.grupoRiegoId);
   if (grupo) {
     const val = grupo.modoActivo === 'calculado' ? grupo.tarifaCalculada : grupo.tarifaEstimativa;
-    if (val != null && val !== '') return Number(val) || 0;
+    if (val != null && val !== '') return { tarifa: Number(val) || 0, grupoId: grupo.id, grupoNombre: grupo.nombre };
   }
-  return Number(data.tarifario?.Riego) || 0;
+  return { tarifa: Number(data.tarifario?.Riego) || 0, grupoId: null, grupoNombre: null };
 }
 
 module.exports = {
