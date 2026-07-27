@@ -2566,6 +2566,18 @@ function zonasFertilidad(fertilidadLote, pctZona1) {
   return [];
 }
 
+// Inverso de calcularZonaTrigo: dado un kg de urea/ha FIJO (no calculado), ¿qué rendimiento se alcanza?
+function rendimientoConUreaFija(muestra, ureaFijaKgHa, calibracion) {
+  if (!muestra || !(ureaFijaKgHa > 0)) return null;
+  const nAportado = ureaFijaKgHa * 0.46;
+  const nNo3suelo = (Number(muestra.nNo3_0_20) || 0) * 1.35 * 2 + (Number(muestra.nNo3_20_60) || 0) * 1.3 * 4;
+  const moN = Number(muestra.mo) || 0;
+  const nan = 11.017 * moN + 18.43;
+  const factorNan = calibracion === 'calibrado' ? 3.404 : 3.7;
+  const mineralizacion = (factorNan * nan + moN / 100 * 0.58 * 1.3 * 0.2 * 10000 * 0.042 * 1000 / 10) / 2;
+  const nTotalDisponible = nAportado + nNo3suelo + mineralizacion;
+  return nTotalDisponible * 1000 * 0.625 / 28;
+}
 function CalculoFertilizacion({
   lote,
   data,
@@ -2588,6 +2600,8 @@ function CalculoFertilizacion({
   } : l));
   const [calibracion, setCalibracion] = useState('calibrado');
   const [pctZona1, setPctZona1] = useState('50');
+  const [modoCalculo, setModoCalculo] = useState('recomendar'); // 'recomendar' (dosis para objetivo) | 'fijo' (rendimiento con dosis fija)
+  const [ureaFija, setUreaFija] = useState('300');
   // Estado especifico de Maiz (7 modelos Peralta)
   const [zonaMaiz, setZonaMaiz] = useState('Centro');
   const [antecesorMaiz, setAntecesorMaiz] = useState('Soja');
@@ -2907,7 +2921,25 @@ function CalculoFertilizacion({
       color: calibracion === 'calibrado' ? '#27500A' : '#5f5e5a',
       fontWeight: calibracion === 'calibrado' ? 600 : 400
     }
-  }, "Peralta −8%"))), zonas.length === 2 && /*#__PURE__*/React.createElement(Field, {
+  }, "Peralta −8%"))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: { fontSize: 12, color: '#888780', marginBottom: 4 }
+  }, "¿Qué querés ver?"), /*#__PURE__*/React.createElement("div", { style: { display: 'flex', gap: 4 } },
+    /*#__PURE__*/React.createElement("button", {
+      onClick: () => setModoCalculo('recomendar'),
+      style: { padding: '8px 14px', borderRadius: 6, border: 'none', cursor: 'pointer', fontSize: 13, background: modoCalculo === 'recomendar' ? '#EAF3DE' : '#f0efe8', color: modoCalculo === 'recomendar' ? '#27500A' : '#5f5e5a', fontWeight: modoCalculo === 'recomendar' ? 600 : 400 }
+    }, "Dosis para el objetivo"),
+    /*#__PURE__*/React.createElement("button", {
+      onClick: () => setModoCalculo('fijo'),
+      style: { padding: '8px 14px', borderRadius: 6, border: 'none', cursor: 'pointer', fontSize: 13, background: modoCalculo === 'fijo' ? '#EAF3DE' : '#f0efe8', color: modoCalculo === 'fijo' ? '#27500A' : '#5f5e5a', fontWeight: modoCalculo === 'fijo' ? 600 : 400 }
+    }, "Rendimiento con dosis fija")
+  )), modoCalculo === 'fijo' && /*#__PURE__*/React.createElement(Field, {
+    label: "Urea fija a aplicar (kg/ha)"
+  }, /*#__PURE__*/React.createElement("input", {
+    style: { ...inputStyle, width: 100 },
+    type: "number",
+    value: ureaFija,
+    onChange: e => setUreaFija(e.target.value)
+  })), zonas.length === 2 && /*#__PURE__*/React.createElement(Field, {
     label: "% Zona 1 del lote"
   }, /*#__PURE__*/React.createElement("input", {
     style: {
@@ -2925,7 +2957,19 @@ function CalculoFertilizacion({
       color: '#888780',
       marginBottom: 8
     }
-  }, "Zona 1: ", haZona1?.toFixed(0), "ha (", zonas[0].pct, "%) · Zona 2: ", ((Number(lote.hectareas) || 0) - haZona1).toFixed(0), "ha (", zonas[1].pct, "%)"), resultadosPorZona.map((z, i) => z.resultado && /*#__PURE__*/React.createElement("div", {
+  }, "Zona 1: ", haZona1?.toFixed(0), "ha (", zonas[0].pct, "%) · Zona 2: ", ((Number(lote.hectareas) || 0) - haZona1).toFixed(0), "ha (", zonas[1].pct, "%)"), modoCalculo === 'fijo' && zonas.map((z, i) => {
+    const rend = rendimientoConUreaFija(z.muestra, Number(ureaFija) || 0, calibracion);
+    return rend == null ? null : /*#__PURE__*/React.createElement("div", {
+      key: i,
+      style: { marginTop: 8, padding: 12, background: '#EAF3DE', borderRadius: 8 }
+    }, z.etiqueta && /*#__PURE__*/React.createElement("div", {
+      style: { fontSize: 12, fontWeight: 500, color: '#27500A', marginBottom: 4 }
+    }, z.etiqueta, " — ", z.pct, "% del lote"), /*#__PURE__*/React.createElement("div", {
+      style: { fontSize: 22, fontWeight: 500, color: '#27500A' }
+    }, Math.round(rend).toLocaleString('es-AR'), " kg/ha"), /*#__PURE__*/React.createElement("div", {
+      style: { fontSize: 12, color: '#3B6D11' }
+    }, "con ", ureaFija, "kg urea/ha aplicados", rendObj ? (rend >= Number(rendObj) ? ' — llega o supera el objetivo' : ` — no llega al objetivo de ${Number(rendObj).toLocaleString('es-AR')}kg/ha`) : ''));
+  }), modoCalculo === 'recomendar' && resultadosPorZona.map((z, i) => z.resultado && /*#__PURE__*/React.createElement("div", {
     key: i,
     style: {
       marginTop: 8,
@@ -2957,7 +3001,7 @@ function CalculoFertilizacion({
       color: '#854F0B',
       marginTop: 6
     }
-  }, "Supera 235 kg/ha, repartir en 1ª y 2ª fertilización."))), ureaTotalLote > 0 && /*#__PURE__*/React.createElement("div", {
+  }, "Supera 235 kg/ha, repartir en 1ª y 2ª fertilización."))), modoCalculo === 'recomendar' && ureaTotalLote > 0 && /*#__PURE__*/React.createElement("div", {
     style: {
       marginTop: 8,
       padding: 12,
