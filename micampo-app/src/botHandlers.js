@@ -237,7 +237,6 @@ function manejarRiego(interpretado) {
   texto += `\nRiego acumulado: ${bal.acumuladoRiego}mm`;
   if (bal.acumuladoLluvia > 0) texto += ` · Lluvia acumulada: ${bal.acumuladoLluvia}mm`;
   if (bal.balance !== null) texto += bal.balance >= 0 ? ` · Faltan ${bal.balance}mm para el objetivo` : ` · Sobran ${Math.abs(bal.balance)}mm sobre el objetivo`;
-  if (costoTotal > 0) texto += `\nCosto: USD ${costoTotal.toFixed(0)}`;
   return texto;
 }
 
@@ -331,10 +330,6 @@ function manejarAplicacion(interpretado, tipo) {
   });
   if (haFacturadas && haFacturadas !== haReales) texto += `\n${haReales}ha reales / ${haFacturadas}ha facturadas al contratista`;
   else if (haReales) texto += `\n${haReales}ha`;
-  if (costoTotal > 0) {
-    texto += `\nCosto: USD ${costoTotal.toFixed(0)}`;
-    if (costoContratista > 0) texto += ` (insumos USD ${costoInsumos.toFixed(0)} + contratista USD ${costoContratista.toFixed(0)})`;
-  }
   return texto;
 }
 
@@ -375,7 +370,7 @@ function manejarPulverizacion(interpretado) {
       tarifaContratista: tarifa || '', items: itemsLote, costoInsumos: Math.round(costoInsumosLote), costoContratista: Math.round(costoContratistaLote), costoTotal: Math.round(costoTotalLote),
       notas: lotesResueltos.length > 1 ? `Aplicación conjunta con ${lotesResueltos.length - 1} lote(s) más — ${haReales}ha de ${totalHaReales}ha reales totales (${(proporcion * 100).toFixed(0)}%)` : '',
     });
-    textoLotes += `\n· ${nombreConCampo(data, lote)}: ${haReales}ha (${(proporcion * 100).toFixed(0)}%) — USD ${costoTotalLote.toFixed(0)}`;
+    textoLotes += `\n· ${nombreConCampo(data, lote)}: ${haReales}ha (${(proporcion * 100).toFixed(0)}%)`;
   });
   save(data);
 
@@ -384,10 +379,8 @@ function manejarPulverizacion(interpretado) {
     const dosis = totalHaReales > 0 ? (cantidad / totalHaReales).toFixed(2) : null;
     texto += `\n${insumo.nombre}: ${cantidad}${insumo.unidad} total${dosis ? ` (${dosis}${insumo.unidad}/ha)` : ''}`;
   });
-  const costoTotalGlobal = costoInsumosGlobal + costoContratistaGlobal;
   texto += `\nTotal: ${totalHaReales}ha reales`;
   if (haFacturadasTotal !== totalHaReales) texto += ` / ${haFacturadasTotal}ha facturadas`;
-  if (costoTotalGlobal > 0) texto += ` — USD ${costoTotalGlobal.toFixed(0)}`;
   return texto;
 }
 
@@ -421,9 +414,8 @@ function manejarSiembra(interpretado) {
   }
   save(data);
   let texto = `✅ Siembra cargada: ${nombreConCampo(data, lote)} — ${interpretado.cultivo}${interpretado.variedad ? ` ${interpretado.variedad}` : ''}${interpretado.metodo ? ` (${interpretado.metodo})` : ''}`;
-  if (interpretado.densidad) texto += `\nDensidad: ${interpretado.densidad} kg/ha`;
+  if (interpretado.densidad) texto += `\nDensidad: ${interpretado.densidad} ${interpretado.cultivo === 'Garbanzo' ? 'semillas/ha' : 'kg/ha'}`;
   if (haReales) texto += `\n${haReales}ha` + (haFacturadas !== haReales ? ` reales / ${haFacturadas}ha facturadas` : '');
-  if (costoContratista > 0) texto += `\nCosto contratista: USD ${costoContratista.toFixed(0)}`;
   if (objetivoAuto && (lote.modo || 'Riego') === 'Riego') texto += `\nObjetivo de riego seteado en ${objetivoAuto}mm (agua útil a 2m + riego + lluvia)`;
   return texto;
 }
