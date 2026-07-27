@@ -60,6 +60,17 @@ function load() {
   for (const key of Object.keys(emptyData)) {
     if (!data[key]) data[key] = [];
   }
+  // Primera vez que existe el sistema de grupos de riego: se cargan los 4 grupos reales de Fran con un valor
+  // estimativo inicial de 1.1 USD/mm/ha (editable). Solo pasa una vez, si ya hay grupos cargados no se toca nada.
+  if (data.gruposRiego.length === 0) {
+    data.gruposRiego = [
+      { id: uid(), nombre: 'Riego Candelaria', modoActivo: 'estimativo', tarifaEstimativa: 1.1, tarifaCalculada: null },
+      { id: uid(), nombre: 'La Nazarena', modoActivo: 'estimativo', tarifaEstimativa: 1.1, tarifaCalculada: null },
+      { id: uid(), nombre: 'El Rosario — Bomba Oeste', modoActivo: 'estimativo', tarifaEstimativa: 1.1, tarifaCalculada: null },
+      { id: uid(), nombre: 'El Rosario — Bomba Este', modoActivo: 'estimativo', tarifaEstimativa: 1.1, tarifaCalculada: null },
+    ];
+    save(data);
+  }
   return data;
 }
 
