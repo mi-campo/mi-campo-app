@@ -420,6 +420,47 @@ function manejarFertilizacion(interpretado) {
 
 const OBJETIVO_RIEGO_POR_CULTIVO = { 'Garbanzo': 400, 'Trigo': 550, 'Soja': 120, 'Maíz': 200 };
 
+// Fertilización de Trigo (y otros no-maíz) — método Peralta-DISA. Mismas fórmulas que en el panel (app.jsx).
+function calcularZonaTrigo(muestra, rendRelativo, rendObjNum, calibracion) {
+  if (!(rendObjNum > 0) || !muestra) return null;
+  const rendObjZona = rendObjNum * rendRelativo;
+  const requerimiento = 28 / 0.625 * rendObjZona / 1000;
+  const nNo3suelo = (Number(muestra.nNo3_0_20) || 0) * 1.35 * 2 + (Number(muestra.nNo3_20_60) || 0) * 1.3 * 4;
+  const moN = Number(muestra.mo) || 0;
+  const nan = 11.017 * moN + 18.43;
+  const factorNan = calibracion === 'calibrado' ? 3.404 : 3.7;
+  const mineralizacion = (factorNan * nan + moN / 100 * 0.58 * 1.3 * 0.2 * 10000 * 0.042 * 1000 / 10) / 2;
+  const nFertTotal = Math.max(0, requerimiento - nNo3suelo - mineralizacion);
+  return { nFertTotal, ureaTotal: nFertTotal / 0.46 };
+}
+function zonasFertilidad(fertilidadLote, pctZona1) {
+  const ultima = fertilidadLote[0];
+  const muestrasUltimoMuestreo = fertilidadLote.filter(a => a.fecha === ultima?.fecha);
+  const score = m => (Number(m.mo) || 0) * 10 + (Number(m.nNo3_0_20) || 0) / 10;
+  const ordenadas = [...muestrasUltimoMuestreo].sort((a, b) => score(b) - score(a));
+  if (ordenadas.length >= 2) return [
+    { rendRelativo: 1.03, muestra: ordenadas[0], pct: pctZona1 },
+    { rendRelativo: 0.96, muestra: ordenadas[ordenadas.length - 1], pct: 100 - pctZona1 },
+  ];
+  if (ordenadas.length === 1) return [{ rendRelativo: 1, muestra: ordenadas[0], pct: 100 }];
+  return [];
+}
+// Urea promedio ponderada (kg/ha) para un lote de Trigo, con el factor calibrado (-8%). null si falta algún dato.
+function ureaPromedioLote(data, lote) {
+  const ciclo = cicloActivo(data, lote.id);
+  if (!ciclo || ciclo.cultivo !== 'Trigo' || !lote.rendimientoObjetivo) return null;
+  const fertilidadLote = data.analisis.filter(a => a.loteId === lote.id && a.tipo === 'Fertilidad').sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''));
+  if (fertilidadLote.length === 0) return null;
+  const zonas = zonasFertilidad(fertilidadLote, 50);
+  let total = 0;
+  for (const z of zonas) {
+    const r = calcularZonaTrigo(z.muestra, z.rendRelativo, Number(lote.rendimientoObjetivo) || 0, 'calibrado');
+    if (!r) return null;
+    total += r.ureaTotal * (z.pct / 100);
+  }
+  return Math.round(total);
+}
+
 function manejarSiembra(interpretado) {
   const data = load();
   const lote = buscarLotes(data, interpretado.lote, interpretado.campo)[0];
@@ -557,18 +598,25 @@ async function manejarConsulta(interpretado, contacto) {
       return '🚫 Ese lote no es de tus campos, no tengo permitido darte esa información.';
     }
     const actividadesLote = data.actividades.filter(a => a.loteId === lote.id).sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''));
-    const riegos = actividadesLote.filter(a => a.tipo === 'Riego' && a.mm);
+    const riegos = actividadesLote.filter(a => a.tipo === 'Riego' && a.mm && (a.fuente || '').toLowerCase() !== 'lluvia');
     const gastoTotalUSD = actividadesLote.reduce((s, a) => s + (a.costoTotal || 0), 0);
+    const gastoRiegoUSD = riegos.reduce((s, a) => s + (a.costoTotal || 0), 0);
     const ciclo = cicloActivo(data, lote.id);
     const fertilidadLote = data.analisis.filter(a => a.loteId === lote.id && a.tipo === 'Fertilidad').sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''));
-    const agua = aguaUtilPromedio(data, lote.id);
+    const registrosAgua = data.analisis.filter(a => a.loteId === lote.id && a.tipo === 'Agua útil' && a.aguaUtilMm !== '' && a.aguaUtilMm != null);
+    const fechaUltimaAguaUtil = registrosAgua.length > 0 ? registrosAgua.reduce((max, r) => (r.fecha || '') > max ? r.fecha : max, '') : null;
+    const aguaUtilProm = registrosAgua.length > 0 ? Math.round(registrosAgua.filter(r => r.fecha === fechaUltimaAguaUtil).reduce((s, r) => s + Number(r.aguaUtilMm), 0) / registrosAgua.filter(r => r.fecha === fechaUltimaAguaUtil).length) : null;
+    const mmAplicados = riegos.reduce((s, a) => s + Number(a.mm), 0);
+    const objetivoRiegoMm = lote.objetivoRiego || 0;
     contexto.lote = {
       nombre: `${campoDelLote?.nombre || ''} — ${lote.nombre}`, hectareas: lote.hectareas, modo: lote.modo,
       cultivoActual: ciclo ? ciclo.cultivo : null, rendimientoObjetivoKgHa: lote.rendimientoObjetivo || null,
-      analisisSuelo: fertilidadLote.length > 0 ? fertilidadLote.slice(0, 4).map(f => ({ fecha: f.fecha, nNo3_0_20: f.nNo3_0_20, nNo3_20_60: f.nNo3_20_60, mo: f.mo, ph: f.ph })) : 'sin análisis de suelo cargado',
-      aguaUtilDelSueloMm_NO_es_riego: agua ? agua.promedio : 'sin dato de agua útil cargado', fechaMuestraAguaUtil: agua ? agua.fecha : null,
-      mmDeRiegoYaAplicadosEsteCiclo: riegos.reduce((s, a) => s + Number(a.mm), 0), mmDeRiegoObjetivoTotalDelCiclo: lote.objetivoRiego || 0,
-      gastoTotalUSD, costoPorHaUSD: lote.hectareas > 0 ? Math.round(gastoTotalUSD / lote.hectareas) : null,
+      analisisSueloCargado: fertilidadLote.length > 0,
+      fertilizanteAAplicarKgUreaHa_metodoPeraltaDISAcalibrado: ureaPromedioLote(data, lote),
+      aguaUtilDelSueloMm_NO_es_riego: aguaUtilProm != null ? aguaUtilProm : 'sin dato de agua útil cargado', fechaMuestraAguaUtil: fechaUltimaAguaUtil,
+      mmDeRiegoYaAplicadosEsteCiclo: mmAplicados, mmDeRiegoFaltantesParaElObjetivo: objetivoRiegoMm > 0 ? Math.max(0, objetivoRiegoMm - mmAplicados) : null, mmDeRiegoObjetivoTotalDelCiclo: objetivoRiegoMm,
+      gastoTotalUSD, gastoRiegoUSD, gastoRiegoPorHaUSD: lote.hectareas > 0 && gastoRiegoUSD > 0 ? Math.round((gastoRiegoUSD / lote.hectareas) * 10) / 10 : null,
+      costoPorHaUSD: lote.hectareas > 0 ? Math.round(gastoTotalUSD / lote.hectareas) : null,
       cosechas: actividadesLote.filter(a => a.tipo === 'Cosecha' || a.rendimiento).map(a => ({ fecha: a.fecha, rendimientoQqHa: a.rendimiento })),
       ultimasActividades: actividadesLote.slice(0, 10).map(a => ({
         tipo: a.tipo, fecha: a.fecha, metodo: a.metodo || undefined, mm: a.mm || undefined,
@@ -626,15 +674,19 @@ async function manejarConsulta(interpretado, contacto) {
         const ultimaFertilidad = registrosSuelo[0];
         const kgFertilizacionTotal = fertilizaciones.reduce((s, a) => s + (a.items || []).reduce((s2, it) => s2 + (Number(it.cantidad) || 0), 0), 0);
         const conflictoCiclos = data.ciclos.filter(c2 => c2.loteId === l.id && !c2.fechaFin).length > 1;
+        const riegosLote = actividadesLote.filter(a => a.tipo === 'Riego' && a.mm && (a.fuente || '').toLowerCase() !== 'lluvia');
+        const gastoRiegoUSD = riegosLote.reduce((s, a) => s + (a.costoTotal || 0), 0);
+        const aguaUtilProm = registrosAgua.length > 0 ? Math.round(registrosAgua.filter(r => r.fecha === fechaUltimaAguaUtil).reduce((s, r) => s + Number(r.aguaUtilMm), 0) / registrosAgua.filter(r => r.fecha === fechaUltimaAguaUtil).length) : null;
         return {
           nombre: `${c?.nombre || ''} — ${l.nombre}`, modo: l.modo || 'Riego', hectareas: l.hectareas,
           cultivoActivo: ciclo ? ciclo.cultivo : 'Barbecho', conflictoCiclosAbiertos: conflictoCiclos,
           fechaSiembra: siembra ? siembra.fecha : null, variedadSiembra: siembra ? siembra.variedad : null, densidadSiembra: siembra ? siembra.densidad : null,
           cantidadFertilizaciones: fertilizaciones.length, kgFertilizacionTotal,
-          nNo3_0_20: ultimaFertilidad ? ultimaFertilidad.nNo3_0_20 : null, nNo3_20_60: ultimaFertilidad ? ultimaFertilidad.nNo3_20_60 : null,
+          fertilizanteAAplicarKgUreaHa_metodoPeraltaDISAcalibrado: ureaPromedioLote(data, l),
           rendimientoObjetivo: l.rendimientoObjetivo || null,
-          tieneAguaUtilDelSuelo_NO_es_riego: registrosAgua.length > 0, fechaMuestraAguaUtil: fechaUltimaAguaUtil,
-          mmDeRiegoYaAplicadosEsteCiclo: riegoAcumulado, mmDeRiegoObjetivoTotalDelCiclo: l.objetivoRiego || 0,
+          aguaUtilDelSueloMm_NO_es_riego: aguaUtilProm != null ? aguaUtilProm : null, fechaMuestraAguaUtil: fechaUltimaAguaUtil,
+          mmDeRiegoYaAplicadosEsteCiclo: riegoAcumulado, mmDeRiegoFaltantesParaElObjetivo: l.objetivoRiego > 0 ? Math.max(0, l.objetivoRiego - riegoAcumulado) : null, mmDeRiegoObjetivoTotalDelCiclo: l.objetivoRiego || 0,
+          gastoRiegoPorHaUSD: l.hectareas > 0 && gastoRiegoUSD > 0 ? Math.round((gastoRiegoUSD / l.hectareas) * 10) / 10 : null,
         };
       }),
     };
