@@ -165,7 +165,7 @@ Campo — Lote
   Agua útil: <valor>mm  (o "✗ sin dato")
 Una línea en blanco entre lote y lote. Sin introducción ni cierre, directo al primer lote. Omití un campo del bloque solo si ese lote no tiene ningún dato relacionado en absoluto (ej no está sembrado y no tiene fertilidad: no hace falta forzar todas las líneas).
 Si el JSON no tiene la información necesaria para responder, decilo claramente en vez de inventar.
-Usá números redondeados y unidades (mm, kg, ha, USD) donde corresponda. No uses markdown, es un mensaje de WhatsApp.`,
+Usá números redondeados y unidades (mm, kg, ha, USD) donde corresponda. La "densidad" de siembra que viene en los datos es un número sin unidad — vos le agregás la unidad correcta según el cultivo: en Trigo (y cereales en general) es **kg/ha**, en Garbanzo es **semillas/ha**. Nunca inventes otra unidad (como "pl/m2") que no esté en los datos ni en esta instrucción. No uses markdown, es un mensaje de WhatsApp.`,
       messages: [{ role: 'user', content: `Pregunta: ${pregunta}\n\nDatos disponibles:\n${JSON.stringify(contextoDatos)}` }],
     }),
   });
