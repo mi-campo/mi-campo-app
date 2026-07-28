@@ -613,7 +613,7 @@ async function manejarConsulta(interpretado, contacto) {
       cultivoActual: ciclo ? ciclo.cultivo : null, rendimientoObjetivoKgHa: lote.rendimientoObjetivo || null,
       analisisSueloCargado: fertilidadLote.length > 0,
       fertilizanteAAplicarKgUreaHa_metodoPeraltaDISAcalibrado: ureaPromedioLote(data, lote),
-      aguaUtilDelSueloMm_NO_es_riego: aguaUtilProm != null ? aguaUtilProm : 'sin dato de agua útil cargado', fechaMuestraAguaUtil: fechaUltimaAguaUtil,
+      aguaUtilDelSueloMm_NO_es_riego: aguaUtilProm != null ? aguaUtilProm : 'sin dato de agua útil cargado',
       mmDeRiegoYaAplicadosEsteCiclo: mmAplicados, mmDeRiegoFaltantesParaElObjetivo_yaDescontaAguaUtilYLluvia: bal.balance != null ? Math.max(0, bal.balance) : null, mmDeRiegoObjetivoTotalDelCiclo: bal.objetivo,
       gastoTotalUSD, gastoRiegoUSD, gastoRiegoPorHaUSD: lote.hectareas > 0 && gastoRiegoUSD > 0 ? Math.round((gastoRiegoUSD / lote.hectareas) * 10) / 10 : null,
       costoPorHaUSD: lote.hectareas > 0 ? Math.round(gastoTotalUSD / lote.hectareas) : null,
@@ -685,7 +685,7 @@ async function manejarConsulta(interpretado, contacto) {
           cantidadFertilizaciones: fertilizaciones.length, kgFertilizacionTotal,
           fertilizanteAAplicarKgUreaHa_metodoPeraltaDISAcalibrado: ureaPromedioLote(data, l),
           rendimientoObjetivo: l.rendimientoObjetivo || null,
-          aguaUtilDelSueloMm_NO_es_riego: aguaUtilProm != null ? aguaUtilProm : null, fechaMuestraAguaUtil: fechaUltimaAguaUtil,
+          aguaUtilDelSueloMm_NO_es_riego: aguaUtilProm != null ? aguaUtilProm : null,
           mmDeRiegoYaAplicadosEsteCiclo: riegoAcumulado, mmDeRiegoFaltantesParaElObjetivo_yaDescontaAguaUtilYLluvia: balLote.balance != null ? Math.max(0, balLote.balance) : null, mmDeRiegoObjetivoTotalDelCiclo: l.objetivoRiego || 0,
           gastoRiegoPorHaUSD: l.hectareas > 0 && gastoRiegoUSD > 0 ? Math.round((gastoRiegoUSD / l.hectareas) * 10) / 10 : null,
         };
