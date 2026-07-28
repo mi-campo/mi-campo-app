@@ -607,14 +607,14 @@ async function manejarConsulta(interpretado, contacto) {
     const fechaUltimaAguaUtil = registrosAgua.length > 0 ? registrosAgua.reduce((max, r) => (r.fecha || '') > max ? r.fecha : max, '') : null;
     const aguaUtilProm = registrosAgua.length > 0 ? Math.round(registrosAgua.filter(r => r.fecha === fechaUltimaAguaUtil).reduce((s, r) => s + Number(r.aguaUtilMm), 0) / registrosAgua.filter(r => r.fecha === fechaUltimaAguaUtil).length) : null;
     const mmAplicados = riegos.reduce((s, a) => s + Number(a.mm), 0);
-    const objetivoRiegoMm = lote.objetivoRiego || 0;
+    const bal = balanceRiego(data, lote);
     contexto.lote = {
       nombre: `${campoDelLote?.nombre || ''} — ${lote.nombre}`, hectareas: lote.hectareas, modo: lote.modo,
       cultivoActual: ciclo ? ciclo.cultivo : null, rendimientoObjetivoKgHa: lote.rendimientoObjetivo || null,
       analisisSueloCargado: fertilidadLote.length > 0,
       fertilizanteAAplicarKgUreaHa_metodoPeraltaDISAcalibrado: ureaPromedioLote(data, lote),
       aguaUtilDelSueloMm_NO_es_riego: aguaUtilProm != null ? aguaUtilProm : 'sin dato de agua útil cargado', fechaMuestraAguaUtil: fechaUltimaAguaUtil,
-      mmDeRiegoYaAplicadosEsteCiclo: mmAplicados, mmDeRiegoFaltantesParaElObjetivo: objetivoRiegoMm > 0 ? Math.max(0, objetivoRiegoMm - mmAplicados) : null, mmDeRiegoObjetivoTotalDelCiclo: objetivoRiegoMm,
+      mmDeRiegoYaAplicadosEsteCiclo: mmAplicados, mmDeRiegoFaltantesParaElObjetivo_yaDescontaAguaUtilYLluvia: bal.balance != null ? Math.max(0, bal.balance) : null, mmDeRiegoObjetivoTotalDelCiclo: bal.objetivo,
       gastoTotalUSD, gastoRiegoUSD, gastoRiegoPorHaUSD: lote.hectareas > 0 && gastoRiegoUSD > 0 ? Math.round((gastoRiegoUSD / lote.hectareas) * 10) / 10 : null,
       costoPorHaUSD: lote.hectareas > 0 ? Math.round(gastoTotalUSD / lote.hectareas) : null,
       cosechas: actividadesLote.filter(a => a.tipo === 'Cosecha' || a.rendimiento).map(a => ({ fecha: a.fecha, rendimientoQqHa: a.rendimiento })),
@@ -677,6 +677,7 @@ async function manejarConsulta(interpretado, contacto) {
         const riegosLote = actividadesLote.filter(a => a.tipo === 'Riego' && a.mm && (a.fuente || '').toLowerCase() !== 'lluvia');
         const gastoRiegoUSD = riegosLote.reduce((s, a) => s + (a.costoTotal || 0), 0);
         const aguaUtilProm = registrosAgua.length > 0 ? Math.round(registrosAgua.filter(r => r.fecha === fechaUltimaAguaUtil).reduce((s, r) => s + Number(r.aguaUtilMm), 0) / registrosAgua.filter(r => r.fecha === fechaUltimaAguaUtil).length) : null;
+        const balLote = balanceRiego(data, l);
         return {
           nombre: `${c?.nombre || ''} — ${l.nombre}`, modo: l.modo || 'Riego', hectareas: l.hectareas,
           cultivoActivo: ciclo ? ciclo.cultivo : 'Barbecho', conflictoCiclosAbiertos: conflictoCiclos,
@@ -685,7 +686,7 @@ async function manejarConsulta(interpretado, contacto) {
           fertilizanteAAplicarKgUreaHa_metodoPeraltaDISAcalibrado: ureaPromedioLote(data, l),
           rendimientoObjetivo: l.rendimientoObjetivo || null,
           aguaUtilDelSueloMm_NO_es_riego: aguaUtilProm != null ? aguaUtilProm : null, fechaMuestraAguaUtil: fechaUltimaAguaUtil,
-          mmDeRiegoYaAplicadosEsteCiclo: riegoAcumulado, mmDeRiegoFaltantesParaElObjetivo: l.objetivoRiego > 0 ? Math.max(0, l.objetivoRiego - riegoAcumulado) : null, mmDeRiegoObjetivoTotalDelCiclo: l.objetivoRiego || 0,
+          mmDeRiegoYaAplicadosEsteCiclo: riegoAcumulado, mmDeRiegoFaltantesParaElObjetivo_yaDescontaAguaUtilYLluvia: balLote.balance != null ? Math.max(0, balLote.balance) : null, mmDeRiegoObjetivoTotalDelCiclo: l.objetivoRiego || 0,
           gastoRiegoPorHaUSD: l.hectareas > 0 && gastoRiegoUSD > 0 ? Math.round((gastoRiegoUSD / l.hectareas) * 10) / 10 : null,
         };
       }),
