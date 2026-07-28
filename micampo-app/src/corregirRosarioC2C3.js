@@ -23,8 +23,8 @@ function main() {
   }
 
   const correcciones = [
-    { lote: c2, cultivo: 'Trigo', variedad: 'Pehuen', densidad: '145', fechaInicio: '2026-06-12', fechaFin: '2026-06-14' },
-    { lote: c3, cultivo: 'Garbanzo', variedad: 'Norteño', densidad: '298000 semillas/ha', fechaInicio: '2026-06-14', fechaFin: '2026-06-16' },
+    { lote: c2, cultivo: 'Garbanzo', variedad: 'Norteño', densidad: '298000 semillas/ha', fechaInicio: '2026-06-14', fechaFin: '2026-06-16' },
+    { lote: c3, cultivo: 'Trigo', variedad: 'Pehuen', densidad: '145', fechaInicio: '2026-06-12', fechaFin: '2026-06-14' },
   ];
 
   console.log(`\n=== ${commit ? 'EJECUTANDO CORRECCIÓN' : 'DRY RUN'} ===\n`);
