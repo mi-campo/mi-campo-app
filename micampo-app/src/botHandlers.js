@@ -718,11 +718,9 @@ function manejarAporteInsumo(interpretado) {
   const campoDelLote = data.campos.find(c => c.id === lote.campoId);
 
   // Resolver el cliente aportante: primero entre los participantes de ese campo, si no entre todos los clientes
-  const normalizar = (s) => (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
-  const buscado = normalizar(interpretado.clienteAportante);
   const participantesCampo = campoDelLote?.participantes || [];
-  let cliente = participantesCampo.map(p => data.clientes.find(c => c.id === p.clienteId)).find(c => c && normalizar(c.nombre).includes(buscado));
-  if (!cliente) cliente = data.clientes.find(c => normalizar(c.nombre).includes(buscado));
+  const clientesDelCampo = participantesCampo.map(p => data.clientes.find(c => c.id === p.clienteId)).filter(Boolean);
+  let cliente = encontrarTolerante(clientesDelCampo, interpretado.clienteAportante) || encontrarTolerante(data.clientes, interpretado.clienteAportante);
   if (!cliente) {
     cliente = { id: uid(), nombre: interpretado.clienteAportante };
     data.clientes.push(cliente);
