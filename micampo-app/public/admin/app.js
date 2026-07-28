@@ -4935,7 +4935,21 @@ function Tarifario({
       fontSize: 12,
       color: '#888780'
     }
-  }, "USD/ha"))))));
+  }, "USD/ha"))))), /*#__PURE__*/React.createElement(Card, null,
+    /*#__PURE__*/React.createElement("div", { style: { fontWeight: 500, marginBottom: 4 } }, "Gastos de administración y estructura"),
+    /*#__PURE__*/React.createElement("div", { style: { fontSize: 12, color: '#888780', marginBottom: 10 } },
+      "Un valor único (USD/año) que se aplica a todos los lotes. Si un lote tuvo 2 ciclos de cultivo en el año se divide entre los dos; si tuvo uno solo, va entero. Pendiente: todavía no se aplica automáticamente a los cálculos de costo, se está guardando para usarlo pronto."
+    ),
+    /*#__PURE__*/React.createElement("div", { style: { display: 'flex', alignItems: 'center', gap: 6 } },
+      /*#__PURE__*/React.createElement("input", {
+        style: { ...inputStyle, width: 140 },
+        type: "number", step: "0.01", placeholder: "0",
+        value: tarifario['GastosAdministracion'] ?? '',
+        onChange: e => setValor('GastosAdministracion', e.target.value)
+      }),
+      /*#__PURE__*/React.createElement("span", { style: { fontSize: 12, color: '#888780' } }, "USD/año, por lote")
+    )
+  ));
 }
 function Actividades({
   data,
