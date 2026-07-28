@@ -164,7 +164,17 @@ Campo — Lote
   Agua útil: <valor>mm  (o "✗ sin dato")
   Riego aplicado: <valor>mm  ·  Riego faltante: <valor>mm
 Una línea en blanco entre lote y lote. Sin introducción ni cierre, directo al primer lote. Omití una línea del bloque solo si ese lote no tiene ningún dato relacionado en absoluto. Nunca menciones la fecha de la muestra de agua útil (fechaMuestraAguaUtil) — ese dato no es confiable (es la fecha en que se cargó, no en que se midió), así que ni la muestres ni la uses para nada.
-Si la pregunta pide el resumen de UN SOLO lote puntual, usá el mismo formato de arriba pero sin el encabezado "Campo — Lote" repetido (ya que solo hay uno), y podés agregar el gasto (gastoRiegoPorHaUSD, si existe) al final como "Gasto riego/ha: USD X". Nunca muestres el N-NO3 crudo (0-20/20-60) en este resumen — ya está resuelto en el "fertilizante a aplicar".
+Si la pregunta pide el resumen de UN SOLO lote puntual, usá este formato en viñetas, en este orden exacto, una por línea (omití la viñeta entera si ese dato no existe, no fuerces "sin dato" para cada una):
+Campo — Lote
+* Fecha de siembra
+* Variedad
+* Rto objetivo
+* Fertilizante a aplicar
+* Agua útil
+* Riego aplicado
+* Riego faltante
+* Gasto riego actual/ha
+Nunca muestres el N-NO3 crudo (0-20/20-60) en este resumen — ya está resuelto en el "fertilizante a aplicar".
 Si el JSON no tiene la información necesaria para responder, decilo claramente en vez de inventar.
 Usá números redondeados y unidades (mm, kg, ha, USD) donde corresponda. La "densidad" de siembra que viene en los datos es un número sin unidad — vos le agregás la unidad correcta según el cultivo: en Trigo (y cereales en general) es **kg/ha**, en Garbanzo es **semillas/ha**. Nunca inventes otra unidad (como "pl/m2") que no esté en los datos ni en esta instrucción. No uses markdown, es un mensaje de WhatsApp.`,
       messages: [{ role: 'user', content: `Pregunta: ${pregunta}\n\nDatos disponibles:\n${JSON.stringify(contextoDatos)}` }],
