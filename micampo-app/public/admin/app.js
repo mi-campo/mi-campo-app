@@ -4,7 +4,7 @@ const {
   useMemo
 } = React;
 const uid = () => Math.random().toString(36).slice(2, 10);
-const TIPOS_ACTIVIDAD = ['Siembra', 'Fertilización', 'Pulverización', 'Riego', 'Cosecha', 'Aporte'];
+const TIPOS_ACTIVIDAD = ['Siembra', 'Fertilización', 'Pulverización', 'Riego', 'Cosecha', 'Monitoreo', 'Aporte'];
 const METODOS_POR_TIPO = {
   Siembra: ['Sembradora', 'Drone'],
   Fertilización: ['Voleo', 'Drone', 'Con siembra'],
@@ -14,6 +14,7 @@ const METODOS_POR_TIPO = {
 const TIPOS_CON_APLICACION = [...Object.keys(METODOS_POR_TIPO), 'Cosecha'];
 function laborKey(tipo, metodo) {
   if (tipo === 'Cosecha') return 'Cosecha';
+  if (tipo === 'Monitoreo') return 'Monitoreo';
   if (tipo === 'Siembra') {
     if (metodo === 'Drone') return 'Siembra con drone';
     return 'Siembra';
@@ -1164,7 +1165,7 @@ function Resumen({
 /* ---------- CAMPOS Y LOTES ---------- */
 const GRUPOS_APORTE = {
   'Insumos': ['Insumos'],
-  'Labores': ['Siembra', 'Siembra con fertilización', 'Siembra con drone', 'Fertilización voleo', 'Fertilización drone', 'Pulverización terrestre', 'Pulverización avión', 'Pulverización drone', 'Cosecha'],
+  'Labores': ['Siembra', 'Siembra con fertilización', 'Siembra con drone', 'Fertilización voleo', 'Fertilización drone', 'Pulverización terrestre', 'Pulverización avión', 'Pulverización drone', 'Cosecha', 'Monitoreo'],
   'Otros rubros': ['Alquiler', 'Riego']
 };
 const TIPOS_APORTE = Object.values(GRUPOS_APORTE).flat();
@@ -4993,7 +4994,7 @@ function Actividades({
       costoInsumos += Number(it.cantidad) * precioPromedio(data, it.insumoId);
     });
     const haFact = Number(form.haFacturadas) || Number(form.haReales) || 0;
-    let costoContratista = esAplicacion && form.tarifaContratista ? Number(form.tarifaContratista) * haFact : 0;
+    let costoContratista = (esAplicacion || form.tipo === 'Monitoreo') && form.tarifaContratista ? Number(form.tarifaContratista) * haFact : 0;
     let grupoRiegoUsado = form.grupoRiegoId || null;
     if (form.tipo === 'Riego' && form.mm) {
       const loteRiego = data.lotes.find(l => l.id === form.loteId);
@@ -5222,7 +5223,7 @@ function Actividades({
   }, "Todos (compartido)"), participantesDelLote.map(p => /*#__PURE__*/React.createElement("option", {
     key: p.clienteId,
     value: p.clienteId
-  }, data.clientes.find(c => c.id === p.clienteId)?.nombre || '?'))))), (form.tipo === 'Riego' || form.tipo === 'Cosecha' || form.tipo === 'Siembra' || esAplicacion) && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+  }, data.clientes.find(c => c.id === p.clienteId)?.nombre || '?'))))), (form.tipo === 'Riego' || form.tipo === 'Cosecha' || form.tipo === 'Siembra' || form.tipo === 'Monitoreo' || esAplicacion) && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,
       color: '#aaa89f',
@@ -5296,7 +5297,7 @@ function Actividades({
     value: "kg/ha"
   }, "kg/ha"), /*#__PURE__*/React.createElement("option", {
     value: "semillas/ha"
-  }, "semillas/ha")))), esAplicacion && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(Field, {
+  }, "semillas/ha")))), (esAplicacion || form.tipo === 'Monitoreo') && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(Field, {
     label: "Ha reales (dosis)"
   }, /*#__PURE__*/React.createElement(InputUnidad, {
     unidad: "ha",
