@@ -130,13 +130,28 @@ function cicloActivo(data, loteId) {
 }
 // Tarifa USD/mm/ha de riego para un lote: usa el grupo de riego asignado (con su modo activo, estimativo o calculado)
 // si lo tiene; si no, cae a la vieja tarifa global única (compatibilidad con lo cargado antes de tener grupos).
-function tarifaRiegoLote(data, lote) {
-  const grupo = (data.gruposRiego || []).find(g => g.id === lote.grupoRiegoId);
+function normalizar(s) {
+  return String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+}
+function grupoRiegoPorFuente(data, fuenteTexto) {
+  if (!fuenteTexto) return null;
+  const t = normalizar(fuenteTexto);
+  return (data.gruposRiego || []).find(g => {
+    const n = normalizar(g.nombre);
+    return n.includes(t) || t.includes(n);
+  }) || null;
+}
+// Tarifa USD/mm/ha de riego para UN riego puntual: prioriza el grupo que corresponde a la fuente de
+// ESE riego (ej "bomba este") — un mismo lote puede regarse con bombas distintas en momentos distintos.
+// Si no hay fuente reconocible, cae al grupo por defecto del lote, y si tampoco tiene, a la vieja tarifa única.
+function tarifaRiegoLote(data, lote, fuenteTexto) {
+  const grupoPorFuente = grupoRiegoPorFuente(data, fuenteTexto);
+  const grupo = grupoPorFuente || (data.gruposRiego || []).find(g => g.id === lote.grupoRiegoId);
   if (grupo) {
     const val = grupo.modoActivo === 'calculado' ? grupo.tarifaCalculada : grupo.tarifaEstimativa;
-    if (val != null && val !== '') return Number(val) || 0;
+    if (val != null && val !== '') return { tarifa: Number(val) || 0, grupoId: grupo.id, grupoNombre: grupo.nombre };
   }
-  return Number(data.tarifario?.Riego) || 0;
+  return { tarifa: Number(data.tarifario?.Riego) || 0, grupoId: null, grupoNombre: null };
 }
 function proximoCultivoBarbecho(data, loteId) {
   const cerrados = (data.ciclos || []).filter(c => c.loteId === loteId && c.fechaFin).sort((a, b) => (b.fechaFin || '').localeCompare(a.fechaFin || ''));
@@ -864,13 +879,97 @@ function Resumen({
       lotesInvierno
     };
   }, [data]);
+
+  const lotesConConflictoCiclos = data.lotes.filter(l => data.ciclos.filter(c => c.loteId === l.id && !c.fechaFin).length > 1);
+
+  // Urea total estimada para comprar, sumando todos los lotes de Trigo con datos base + rendimiento objetivo cargados.
+  const resumenUrea = data.lotes.reduce((acc, l) => {
+    const ciclo = cicloActivo(data, l.id);
+    if (!ciclo || ciclo.cultivo !== 'Trigo') return acc;
+    const fertilidadLote = data.analisis.filter(a => a.loteId === l.id && a.tipo === 'Fertilidad').sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''));
+    if (fertilidadLote.length === 0 || !l.rendimientoObjetivo) return acc;
+    const zonas = zonasFertilidad(fertilidadLote, 50);
+    const kgPara = calib => zonas.reduce((s, z) => {
+      const r = calcularZonaTrigo(z.muestra, z.rendRelativo, Number(l.rendimientoObjetivo) || 0, calib);
+      return s + (r ? r.ureaTotal * (Number(l.hectareas) || 0) * (z.pct / 100) : 0);
+    }, 0);
+    return { kgCalibrado: acc.kgCalibrado + kgPara('calibrado'), kgOriginal: acc.kgOriginal + kgPara('original'), haTotal: acc.haTotal + (Number(l.hectareas) || 0), lotesContados: acc.lotesContados + 1 };
+  }, { kgCalibrado: 0, kgOriginal: 0, haTotal: 0, lotesContados: 0 });
+  const lotesTrigoSinDatos = data.lotes.filter(l => {
+    const ciclo = cicloActivo(data, l.id);
+    if (!ciclo || ciclo.cultivo !== 'Trigo') return false;
+    const tiene = data.analisis.some(a => a.loteId === l.id && a.tipo === 'Fertilidad');
+    return !tiene || !l.rendimientoObjetivo;
+  }).length;
+
+  const filasResumen = [...data.lotes].sort((a, b) => a.nombre.localeCompare(b.nombre)).map(l => {
+    const campo = data.campos.find(c => c.id === l.campoId);
+    const ciclo = cicloActivo(data, l.id);
+    const conflicto = data.ciclos.filter(c => c.loteId === l.id && !c.fechaFin).length > 1;
+    const actividadesLote = data.actividades.filter(a => a.loteId === l.id);
+    const siembra = actividadesLote.filter(a => a.tipo === 'Siembra').sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''))[0];
+    const fertilizaciones = actividadesLote.filter(a => a.tipo === 'Fertilización');
+    const kgFertTotal = fertilizaciones.reduce((s, a) => s + (a.items || []).reduce((s2, it) => s2 + (Number(it.cantidad) || 0), 0), 0);
+    const fertilidadLote = data.analisis.filter(a => a.loteId === l.id && a.tipo === 'Fertilidad').sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''));
+    const ultimaFertilidad = fertilidadLote[0];
+    const agua = aguaUtilPromedio(data, l.id);
+    return {
+      nombre: `${campo?.nombre || ''} — ${l.nombre}`,
+      cultivo: ciclo?.cultivo || '—', conflicto,
+      sembrado: !!siembra,
+      fechaSiembra: siembra?.fecha || '—',
+      variedad: siembra?.variedad || '—',
+      densidad: siembra?.densidad || '—',
+      nNo3: ultimaFertilidad ? `${ultimaFertilidad.nNo3_0_20 ?? '?'}/${ultimaFertilidad.nNo3_20_60 ?? '?'}` : '—',
+      rtoObj: l.rendimientoObjetivo || '—',
+      fertilizado: fertilizaciones.length > 0,
+      kgFertTotal,
+      aguaUtil: agua ? `${agua.promedio}mm` : '—',
+    };
+  });
+
   return /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       flexDirection: 'column',
       gap: 16
     }
-  }, /*#__PURE__*/React.createElement("div", {
+  }, lotesConConflictoCiclos.length > 0 && /*#__PURE__*/React.createElement(Card, {
+    style: { background: '#FBE7E4', borderLeft: '4px solid #A32D2D' }
+  }, /*#__PURE__*/React.createElement("div", { style: { fontWeight: 600, fontSize: 14, color: '#A32D2D' } }, `⚠️ ${lotesConConflictoCiclos.length} lote(s) con más de un ciclo de cultivo abierto a la vez`),
+  /*#__PURE__*/React.createElement("div", { style: { fontSize: 12, color: '#5f5e5a', marginTop: 4 } },
+    lotesConConflictoCiclos.map(l => `${data.campos.find(c => c.id === l.campoId)?.nombre || ''} — ${l.nombre}`).join(' · '),
+    ' — entrá a "Campos y lotes" en cada uno y borrá el ciclo que no corresponde en "Ciclos de cultivo".'
+  )), resumenUrea.lotesContados > 0 && /*#__PURE__*/React.createElement(Card, {
+    style: { background: '#EAF3DE', borderLeft: '4px solid #3B6D11' }
+  }, /*#__PURE__*/React.createElement("div", { style: { fontWeight: 600, fontSize: 15 } }, `🌾 Urea a comprar: ${(resumenUrea.kgCalibrado / 1000).toFixed(1)} tn (${resumenUrea.haTotal > 0 ? Math.round(resumenUrea.kgCalibrado / resumenUrea.haTotal) : 0}kg/ha) · Calibrado -8%`),
+  /*#__PURE__*/React.createElement("div", { style: { fontSize: 12, color: '#5f5e5a', marginTop: 2 } },
+    `Sin calibrar: ${(resumenUrea.kgOriginal / 1000).toFixed(1)}tn (${resumenUrea.haTotal > 0 ? Math.round(resumenUrea.kgOriginal / resumenUrea.haTotal) : 0}kg/ha) · ${resumenUrea.lotesContados} lote(s)${lotesTrigoSinDatos > 0 ? `, ${lotesTrigoSinDatos} sin datos` : ''}`
+  )), /*#__PURE__*/React.createElement(Card, null,
+    /*#__PURE__*/React.createElement("div", { style: { fontWeight: 600, fontSize: 14, marginBottom: 8 } }, '📋 Resumen de carga por lote'),
+    /*#__PURE__*/React.createElement("div", { style: { overflowX: 'auto' } },
+      /*#__PURE__*/React.createElement("table", { style: { borderCollapse: 'collapse', fontSize: 11.5, width: '100%' } },
+        /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", { style: { borderBottom: '2px solid #e3e1d8', textAlign: 'left' } },
+          ['Lote', 'Cultivo', 'Siembra', 'Variedad', 'Densidad', 'N-NO3 (0-20/20-60)', 'Rto obj', 'Fertiliz.', 'Agua útil'].map(h =>
+            /*#__PURE__*/React.createElement("th", { key: h, style: { padding: '4px 6px', color: '#5f5e5a', fontWeight: 600, whiteSpace: 'nowrap' } }, h)
+          )
+        )),
+        /*#__PURE__*/React.createElement("tbody", null, filasResumen.map((f, i) =>
+          /*#__PURE__*/React.createElement("tr", { key: i, style: { borderBottom: '1px solid #f1efe8', background: f.conflicto ? '#FBE7E4' : 'transparent' } },
+            /*#__PURE__*/React.createElement("td", { style: { padding: '4px 6px', fontWeight: 500, whiteSpace: 'nowrap' } }, f.conflicto ? '⚠️ ' : '', f.nombre),
+            /*#__PURE__*/React.createElement("td", { style: { padding: '4px 6px', color: f.conflicto ? '#A32D2D' : 'inherit' } }, f.conflicto ? '2 ciclos a la vez' : f.cultivo),
+            /*#__PURE__*/React.createElement("td", { style: { padding: '4px 6px', color: f.sembrado ? '#27500A' : '#A32D2D' } }, f.sembrado ? f.fechaSiembra : '✗ no'),
+            /*#__PURE__*/React.createElement("td", { style: { padding: '4px 6px' } }, f.variedad),
+            /*#__PURE__*/React.createElement("td", { style: { padding: '4px 6px' } }, f.densidad),
+            /*#__PURE__*/React.createElement("td", { style: { padding: '4px 6px' } }, f.nNo3),
+            /*#__PURE__*/React.createElement("td", { style: { padding: '4px 6px' } }, f.rtoObj),
+            /*#__PURE__*/React.createElement("td", { style: { padding: '4px 6px', color: f.fertilizado ? '#27500A' : '#888780' } }, f.fertilizado ? `✓ ${Math.round(f.kgFertTotal)}kg` : '✗ no'),
+            /*#__PURE__*/React.createElement("td", { style: { padding: '4px 6px' } }, f.aguaUtil),
+          )
+        ))
+      )
+    )
+  ), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'grid',
       gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
@@ -3095,92 +3194,9 @@ function Fertilizacion({
     return pa - pb;
   });
 
-  // Resumen: urea total estimada para comprar, sumando todos los lotes de Trigo con datos base + rendimiento objetivo cargados.
-  // Usa el factor calibrado (-8%) y split 50/50 entre zonas cuando hay 2 muestras, igual que el default de cada lote.
-  const resumenUrea = lotesOrdenados.reduce((acc, l) => {
-    const ciclo = cicloActivo(data, l.id);
-    if (!ciclo || ciclo.cultivo !== 'Trigo') return acc;
-    const fertilidadLote = data.analisis.filter(a => a.loteId === l.id && a.tipo === 'Fertilidad').sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''));
-    if (fertilidadLote.length === 0 || !l.rendimientoObjetivo) return acc;
-    const zonas = zonasFertilidad(fertilidadLote, 50);
-    const kgPara = calib => zonas.reduce((s, z) => {
-      const r = calcularZonaTrigo(z.muestra, z.rendRelativo, Number(l.rendimientoObjetivo) || 0, calib);
-      return s + (r ? r.ureaTotal * (Number(l.hectareas) || 0) * (z.pct / 100) : 0);
-    }, 0);
-    return { kgCalibrado: acc.kgCalibrado + kgPara('calibrado'), kgOriginal: acc.kgOriginal + kgPara('original'), haTotal: acc.haTotal + (Number(l.hectareas) || 0), lotesContados: acc.lotesContados + 1 };
-  }, { kgCalibrado: 0, kgOriginal: 0, haTotal: 0, lotesContados: 0 });
-  const lotesTrigoSinDatos = lotesOrdenados.filter(l => {
-    const ciclo = cicloActivo(data, l.id);
-    if (!ciclo || ciclo.cultivo !== 'Trigo') return false;
-    const tiene = data.analisis.some(a => a.loteId === l.id && a.tipo === 'Fertilidad');
-    return !tiene || !l.rendimientoObjetivo;
-  }).length;
-
-  const lotesConConflictoCiclos = data.lotes.filter(l => data.ciclos.filter(c => c.loteId === l.id && !c.fechaFin).length > 1);
-
-  const filasResumen = lotesOrdenados.map(l => {
-    const campo = data.campos.find(c => c.id === l.campoId);
-    const ciclo = cicloActivo(data, l.id);
-    const actividadesLote = data.actividades.filter(a => a.loteId === l.id);
-    const siembra = actividadesLote.filter(a => a.tipo === 'Siembra').sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''))[0];
-    const fertilizaciones = actividadesLote.filter(a => a.tipo === 'Fertilización');
-    const kgFertTotal = fertilizaciones.reduce((s, a) => s + (a.items || []).reduce((s2, it) => s2 + (Number(it.cantidad) || 0), 0), 0);
-    const fertilidadLote = data.analisis.filter(a => a.loteId === l.id && a.tipo === 'Fertilidad').sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''));
-    const ultimaFertilidad = fertilidadLote[0];
-    const agua = aguaUtilPromedio(data, l.id);
-    return {
-      nombre: `${campo?.nombre || ''} — ${l.nombre}`,
-      cultivo: ciclo?.cultivo || '—',
-      sembrado: !!siembra,
-      fechaSiembra: siembra?.fecha || '—',
-      variedad: siembra?.variedad || '—',
-      densidad: siembra?.densidad || '—',
-      nNo3: ultimaFertilidad ? `${ultimaFertilidad.nNo3_0_20 ?? '?'}/${ultimaFertilidad.nNo3_20_60 ?? '?'}` : '—',
-      rtoObj: l.rendimientoObjetivo || '—',
-      fertilizado: fertilizaciones.length > 0,
-      kgFertTotal,
-      aguaUtil: agua ? `${agua.promedio}mm` : '—',
-    };
-  });
-
   return /*#__PURE__*/React.createElement("div", {
     style: { display: 'flex', flexDirection: 'column', gap: 14 }
-  }, /*#__PURE__*/React.createElement(Card, null,
-    /*#__PURE__*/React.createElement("div", { style: { fontWeight: 600, fontSize: 14, marginBottom: 8 } }, '📋 Resumen de carga por lote'),
-    /*#__PURE__*/React.createElement("div", { style: { overflowX: 'auto' } },
-      /*#__PURE__*/React.createElement("table", { style: { borderCollapse: 'collapse', fontSize: 11.5, width: '100%' } },
-        /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", { style: { borderBottom: '2px solid #e3e1d8', textAlign: 'left' } },
-          ['Lote', 'Cultivo', 'Siembra', 'Variedad', 'Densidad', 'N-NO3 (0-20/20-60)', 'Rto obj', 'Fertiliz.', 'Agua útil'].map(h =>
-            /*#__PURE__*/React.createElement("th", { key: h, style: { padding: '4px 6px', color: '#5f5e5a', fontWeight: 600, whiteSpace: 'nowrap' } }, h)
-          )
-        )),
-        /*#__PURE__*/React.createElement("tbody", null, filasResumen.map((f, i) =>
-          /*#__PURE__*/React.createElement("tr", { key: i, style: { borderBottom: '1px solid #f1efe8' } },
-            /*#__PURE__*/React.createElement("td", { style: { padding: '4px 6px', fontWeight: 500, whiteSpace: 'nowrap' } }, f.nombre),
-            /*#__PURE__*/React.createElement("td", { style: { padding: '4px 6px' } }, f.cultivo),
-            /*#__PURE__*/React.createElement("td", { style: { padding: '4px 6px', color: f.sembrado ? '#27500A' : '#A32D2D' } }, f.sembrado ? f.fechaSiembra : '✗ no'),
-            /*#__PURE__*/React.createElement("td", { style: { padding: '4px 6px' } }, f.variedad),
-            /*#__PURE__*/React.createElement("td", { style: { padding: '4px 6px' } }, f.densidad),
-            /*#__PURE__*/React.createElement("td", { style: { padding: '4px 6px' } }, f.nNo3),
-            /*#__PURE__*/React.createElement("td", { style: { padding: '4px 6px' } }, f.rtoObj),
-            /*#__PURE__*/React.createElement("td", { style: { padding: '4px 6px', color: f.fertilizado ? '#27500A' : '#888780' } }, f.fertilizado ? `✓ ${Math.round(f.kgFertTotal)}kg` : '✗ no'),
-            /*#__PURE__*/React.createElement("td", { style: { padding: '4px 6px' } }, f.aguaUtil),
-          )
-        ))
-      )
-    )
-  ), lotesConConflictoCiclos.length > 0 && /*#__PURE__*/React.createElement(Card, {
-    style: { background: '#FBE7E4', borderLeft: '4px solid #A32D2D' }
-  }, /*#__PURE__*/React.createElement("div", { style: { fontWeight: 600, fontSize: 14, color: '#A32D2D' } }, `⚠️ ${lotesConConflictoCiclos.length} lote(s) con más de un ciclo de cultivo abierto a la vez`),
-  /*#__PURE__*/React.createElement("div", { style: { fontSize: 12, color: '#5f5e5a', marginTop: 4 } },
-    lotesConConflictoCiclos.map(l => `${data.campos.find(c => c.id === l.campoId)?.nombre || ''} — ${l.nombre}`).join(' · '),
-    ' — entrá a "Campos y lotes" en cada uno y borrá el ciclo que no corresponde en "Ciclos de cultivo".'
-  )), resumenUrea.lotesContados > 0 && /*#__PURE__*/React.createElement(Card, {
-    style: { background: '#EAF3DE', borderLeft: '4px solid #3B6D11' }
-  }, /*#__PURE__*/React.createElement("div", { style: { fontWeight: 600, fontSize: 15 } }, `🌾 Urea a comprar: ${(resumenUrea.kgCalibrado / 1000).toFixed(1)} tn (${resumenUrea.haTotal > 0 ? Math.round(resumenUrea.kgCalibrado / resumenUrea.haTotal) : 0}kg/ha) · Calibrado -8%`),
-  /*#__PURE__*/React.createElement("div", { style: { fontSize: 12, color: '#5f5e5a', marginTop: 2 } },
-    `Sin calibrar: ${(resumenUrea.kgOriginal / 1000).toFixed(1)}tn (${resumenUrea.haTotal > 0 ? Math.round(resumenUrea.kgOriginal / resumenUrea.haTotal) : 0}kg/ha) · ${resumenUrea.lotesContados} lote(s)${lotesTrigoSinDatos > 0 ? `, ${lotesTrigoSinDatos} sin datos` : ''}`
-  )), lotesOrdenados.map(l => {
+  }, lotesOrdenados.map(l => {
     const campo = data.campos.find(c => c.id === l.campoId);
     const ciclo = cicloActivo(data, l.id);
     const esGraminea = ciclo && ['Trigo', 'Maíz'].includes(ciclo.cultivo);
@@ -4978,9 +4994,16 @@ function Actividades({
     });
     const haFact = Number(form.haFacturadas) || Number(form.haReales) || 0;
     let costoContratista = esAplicacion && form.tarifaContratista ? Number(form.tarifaContratista) * haFact : 0;
+    let grupoRiegoUsado = form.grupoRiegoId || null;
     if (form.tipo === 'Riego' && form.mm) {
       const loteRiego = data.lotes.find(l => l.id === form.loteId);
-      costoContratista = loteRiego ? tarifaRiegoLote(data, loteRiego) * Number(form.mm) * (Number(loteRiego.hectareas) || 0) : 0;
+      if (loteRiego) {
+        const r = tarifaRiegoLote(data, loteRiego, form.fuente);
+        costoContratista = r.tarifa * Number(form.mm) * (Number(loteRiego.hectareas) || 0);
+        grupoRiegoUsado = r.grupoId;
+      } else {
+        costoContratista = 0;
+      }
     }
     const costoTotal = costoInsumos + costoContratista;
     if (editandoId) {
@@ -4992,7 +5015,8 @@ function Actividades({
         items: usados,
         costoInsumos,
         costoContratista,
-        costoTotal
+        costoTotal,
+        grupoRiegoId: grupoRiegoUsado
       } : x));
       update('insumos', ins => ins.map(i => {
         const u = usados.find(x => x.insumoId === i.id);
@@ -5011,7 +5035,8 @@ function Actividades({
         items: usados,
         costoInsumos,
         costoContratista,
-        costoTotal
+        costoTotal,
+        grupoRiegoId: grupoRiegoUsado
       }]);
       update('insumos', ins => ins.map(i => {
         const u = usados.find(x => x.insumoId === i.id);
