@@ -1,4 +1,20 @@
-const { load, save, uid, buscarLotes, buscarLotesExacto, precioPromedio, cicloActivo, tarifaRiegoLote } = require('./db');
+const { load, save, uid, buscarLotes, buscarLotesExacto, precioPromedio, cicloActivo, tarifaRiegoLote, distanciaEdicion } = require('./db');
+
+// Busca por nombre tolerando errores de tipeo chicos (ej "latirigoyen" -> "Lartirigoyen", "ura" no matchea "urea" por
+// substring pero sí por distancia de edición). Evita crear duplicados de proveedores/insumos por un typo.
+function normalizarTexto(s) {
+  return String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+}
+function encontrarTolerante(lista, nombreBuscado) {
+  const buscado = normalizarTexto(nombreBuscado);
+  let match = lista.find(x => normalizarTexto(x.nombre).includes(buscado) || buscado.includes(normalizarTexto(x.nombre)));
+  if (match) return match;
+  if (buscado.length >= 3) {
+    const maxDistancia = buscado.length <= 6 ? 1 : 2;
+    match = lista.find(x => distanciaEdicion(normalizarTexto(x.nombre), buscado) <= maxDistancia);
+  }
+  return match || null;
+}
 const { responderConsulta } = require('./claudeParser');
 const { generarImagenReceta } = require('./recetaImagen');
 
@@ -321,7 +337,7 @@ async function manejarReceta(interpretado) {
 function resolverInsumos(data, items) {
   const resueltos = [];
   items.forEach(it => {
-    let insumo = data.insumos.find(i => i.nombre.toLowerCase().includes(it.producto.toLowerCase()));
+    let insumo = encontrarTolerante(data.insumos, it.producto);
     if (!insumo) {
       insumo = { id: uid(), nombre: it.producto, categoria: 'Otro', especificar: '', unidad: it.unidad || 'L', stock: 0, stockMinimo: 0, costoUnitario: 0, clienteId: null };
       data.insumos.push(insumo);
@@ -554,12 +570,12 @@ function manejarAnalisisSuelo(interpretado) {
 
 function manejarCompra(interpretado) {
   const data = load();
-  let proveedor = data.proveedores.find(p => p.nombre.toLowerCase().includes(interpretado.proveedor.toLowerCase()));
+  let proveedor = encontrarTolerante(data.proveedores, interpretado.proveedor);
   if (!proveedor) {
     proveedor = { id: uid(), nombre: interpretado.proveedor, contacto: '' };
     data.proveedores.push(proveedor);
   }
-  let insumo = data.insumos.find(i => i.nombre.toLowerCase().includes(interpretado.insumo.toLowerCase()));
+  let insumo = encontrarTolerante(data.insumos, interpretado.insumo);
   if (!insumo) {
     insumo = { id: uid(), nombre: interpretado.insumo, unidad: interpretado.unidad || 'L', stock: 0, stockMinimo: 0, costoUnitario: 0, clienteId: null };
     data.insumos.push(insumo);
@@ -713,7 +729,7 @@ function manejarAporteInsumo(interpretado) {
   }
 
   // Resolver o crear el insumo
-  let insumo = data.insumos.find(i => i.nombre.toLowerCase().includes(interpretado.producto.toLowerCase()));
+  let insumo = encontrarTolerante(data.insumos, interpretado.producto);
   if (!insumo) {
     const esSemilla = /maiz|maíz|soja|trigo|garbanzo|semilla/i.test(interpretado.producto);
     insumo = { id: uid(), nombre: interpretado.producto, categoria: esSemilla ? 'Semilla' : 'Otro', especificar: '', unidad: interpretado.unidad || 'kg', stock: 0, stockMinimo: 0, costoUnitario: interpretado.precioUnitario || 0, clienteId: null };
