@@ -92,7 +92,7 @@ function saveUsers(users) {
 
 function buscarLotes(data, nombreBuscado, nombreCampo) {
   if (!nombreBuscado) return [];
-  const normalizar = (s) => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+  const normalizar = (s) => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[()]/g, ' ').replace(/\s+/g, ' ').trim();
   const buscado = normalizar(nombreBuscado);
 
   // Si viene "campo" por separado (desde el parser), filtrar primero por campo
@@ -134,7 +134,7 @@ function buscarLotes(data, nombreBuscado, nombreCampo) {
 // No adivina por parecido — se usa para decidir si hace falta pedir confirmacion antes de cargar algo automaticamente.
 function buscarLotesExacto(data, nombreBuscado, nombreCampo) {
   if (!nombreBuscado) return [];
-  const normalizar = (s) => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+  const normalizar = (s) => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[()]/g, ' ').replace(/\s+/g, ' ').trim();
   const buscado = normalizar(nombreBuscado);
   if (nombreCampo) {
     const campoBuscado = normalizar(nombreCampo);
@@ -221,5 +221,5 @@ function tarifaRiegoLote(data, lote, fuenteTexto) {
 module.exports = {
   load, save, uid, buscarLotes, buscarLotesExacto, precioPromedio, cicloActivo, tarifaRiegoLote, emptyData,
   cargarPendientes, guardarPendiente, sacarPendiente,
-  loadUsers, saveUsers,
+  loadUsers, saveUsers, distanciaEdicion,
 };
