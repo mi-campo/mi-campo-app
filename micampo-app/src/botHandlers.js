@@ -144,6 +144,10 @@ function validar(interpretado) {
       if (!interpretado.proveedor) return { ok: false, pregunta: '¿A qué proveedor?', campoFaltante: 'proveedor' };
       return { ok: true };
     }
+    case 'marcar_retiro': {
+      if (!interpretado.proveedor && !interpretado.insumo) return { ok: false, pregunta: '¿De qué proveedor o qué insumo retiraste?', campoFaltante: null };
+      return { ok: true };
+    }
     case 'analisis_agua': {
       const lecturas = interpretado.lecturas || (interpretado.lote ? [{ campo: interpretado.campo, lote: interpretado.lote, aguaUtilMm: interpretado.aguaUtilMm }] : []); // compatibilidad con el formato viejo (un solo lote)
       if (lecturas.length === 0) return { ok: false, pregunta: '¿En qué lote y cuántos mm de agua útil midió?', campoFaltante: 'lecturas' };
@@ -583,7 +587,7 @@ function manejarCompra(interpretado) {
   const cantidad = Number(interpretado.cantidad);
   const precioUnitario = Number(interpretado.precioUnitario);
   const retirado = !!interpretado.retirado;
-  data.compras.push({ id: uid(), proveedorId: proveedor.id, insumoId: insumo.id, cantidad, precioUnitario, montoTotal: cantidad * precioUnitario, condicion: interpretado.condicion || '', fecha: fechaDe(interpretado), ubicacion: interpretado.ubicacion || '', retirado, vencimiento: interpretado.vencimiento || '' });
+  data.compras.push({ id: uid(), proveedorId: proveedor.id, insumoId: insumo.id, cantidad, unidad: interpretado.unidad || insumo.unidad || '', precioUnitario, montoTotal: cantidad * precioUnitario, condicion: interpretado.condicion || '', fecha: fechaDe(interpretado), ubicacion: interpretado.ubicacion || '', retirado, vencimiento: interpretado.vencimiento || '' });
   if (retirado) insumo.stock = (Number(insumo.stock) || 0) + cantidad;
   insumo.costoUnitario = precioUnitario || insumo.costoUnitario;
   save(data);
@@ -592,6 +596,30 @@ function manejarCompra(interpretado) {
   if (interpretado.vencimiento) texto += ` · Vence: ${interpretado.vencimiento}`;
   texto += retirado ? '\n📦 Ya sumado al stock (retirado)' : `\n⏳ Pendiente de retiro${interpretado.ubicacion ? ` en ${interpretado.ubicacion}` : ''} — no suma stock hasta que lo retires`;
   return texto;
+}
+
+function manejarMarcarRetiro(interpretado) {
+  const data = load();
+  const proveedor = interpretado.proveedor ? encontrarTolerante(data.proveedores, interpretado.proveedor) : null;
+  const insumoFiltro = interpretado.insumo ? encontrarTolerante(data.insumos, interpretado.insumo) : null;
+  if (interpretado.proveedor && !proveedor) return `No encontré ningún proveedor "${interpretado.proveedor}".`;
+  if (interpretado.insumo && !insumoFiltro) return `No encontré ningún insumo "${interpretado.insumo}".`;
+
+  const pendientes = data.compras.filter(c => !c.retirado
+    && (!proveedor || c.proveedorId === proveedor.id)
+    && (!insumoFiltro || c.insumoId === insumoFiltro.id));
+
+  if (pendientes.length === 0) return `No encontré ninguna compra pendiente de retiro${proveedor ? ` de ${proveedor.nombre}` : ''}${insumoFiltro ? ` de ${insumoFiltro.nombre}` : ''}.`;
+
+  const lineas = [];
+  for (const c of pendientes) {
+    const insumo = data.insumos.find(i => i.id === c.insumoId);
+    c.retirado = true;
+    if (insumo) insumo.stock = (Number(insumo.stock) || 0) + Number(c.cantidad);
+    lineas.push(`✓ ${insumo?.nombre || '?'} — ${c.cantidad}${insumo?.unidad || ''}`);
+  }
+  save(data);
+  return `📦 Marcadas como retiradas (${pendientes.length}), ya suman al stock:\n${lineas.join('\n')}`;
 }
 
 function tieneAccesoCampo(campo, clienteId) {
@@ -770,6 +798,7 @@ async function procesar(interpretado, contacto) {
     case 'fertilizacion': return manejarFertilizacion(interpretado);
     case 'cosecha': return manejarCosecha(interpretado);
     case 'compra': return manejarCompra(interpretado);
+    case 'marcar_retiro': return manejarMarcarRetiro(interpretado);
     case 'analisis_agua': return manejarAnalisisAgua(interpretado);
     case 'analisis_suelo': return manejarAnalisisSuelo(interpretado);
     case 'aporte_insumo': return manejarAporteInsumo(interpretado);
