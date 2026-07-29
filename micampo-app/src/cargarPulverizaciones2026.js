@@ -61,11 +61,11 @@ const REGISTROS = [
   { campo: 'Efrain', lotes: ['C4'], fecha: '2026-07-24', ha: 82, items: [it('flurocloridona', 40, 'L'), it('mcpa amina', 65, 'L')] },
 ];
 
-function encontrarOCrearInsumo(data, nombre) {
+function encontrarOCrearInsumo(data, nombre, unidad) {
   let insumo = data.insumos.find(i => i.nombre.toLowerCase() === nombre.toLowerCase());
   if (!insumo) insumo = data.insumos.find(i => i.nombre.toLowerCase().includes(nombre.toLowerCase()) || nombre.toLowerCase().includes(i.nombre.toLowerCase()));
   if (!insumo) {
-    insumo = { id: uid(), nombre, categoria: 'Herbicida', especificar: '', unidad: 'L', stock: 0, stockMinimo: 0, costoUnitario: 0, clienteId: null };
+    insumo = { id: uid(), nombre, categoria: 'Herbicida', especificar: '', unidad: unidad || 'L', stock: 0, stockMinimo: 0, costoUnitario: 0, clienteId: null };
     data.insumos.push(insumo);
   }
   return insumo;
@@ -100,9 +100,9 @@ function main() {
 
       if (commit) {
         const itemsResueltos = items.map(i => {
-          const insumo = encontrarOCrearInsumo(data, i.nombre);
+          const insumo = encontrarOCrearInsumo(data, i.nombre, i.unidad);
           insumo.stock = (Number(insumo.stock) || 0) - i.cantidad;
-          return { insumoId: insumo.id, cantidad: i.cantidad };
+          return { insumoId: insumo.id, cantidad: i.cantidad, unidad: i.unidad };
         });
         data.actividades.push({
           id: uid(), loteId: lote.id, cicloId: cicloActivo(data, lote.id)?.id || null, tipo: 'Pulverización', fecha: r.fecha, metodo: '',
