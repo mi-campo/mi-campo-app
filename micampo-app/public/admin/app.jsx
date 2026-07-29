@@ -4518,11 +4518,11 @@ function Proveedores({
           key: c.id,
           style: { padding: '8px 0', borderTop: '1px solid #f1efe8', fontSize: 13, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }
         }, /*#__PURE__*/React.createElement("span", null,
-          /*#__PURE__*/React.createElement("strong", null, insumo?.nombre || '?'), ` — ${c.cantidad}${insumo?.unidad || ''} — ${proveedor?.nombre || '?'} — ${c.fecha}`,
+          /*#__PURE__*/React.createElement("strong", null, insumo?.nombre || '?'), ` — ${c.cantidad}${c.unidad || insumo?.unidad || ''} — ${proveedor?.nombre || '?'} — ${c.fecha}`,
           c.ubicacion && /*#__PURE__*/React.createElement("span", { style: { color: '#888780' } }, ` (${c.ubicacion})`)
         ), /*#__PURE__*/React.createElement("button", {
           onClick: () => {
-            if (!confirm(`¿Marcar como retirado? Se van a sumar ${c.cantidad}${insumo?.unidad || ''} de ${insumo?.nombre || 'este insumo'} al stock.`)) return;
+            if (!confirm(`¿Marcar como retirado? Se van a sumar ${c.cantidad}${c.unidad || insumo?.unidad || ''} de ${insumo?.nombre || 'este insumo'} al stock.`)) return;
             update('compras', cs => cs.map(x => x.id === c.id ? { ...x, retirado: true } : x));
             update('insumos', ins => ins.map(i => i.id === c.insumoId ? { ...i, stock: (Number(i.stock) || 0) + Number(c.cantidad) } : i));
           },
