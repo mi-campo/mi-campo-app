@@ -4494,9 +4494,18 @@ function Proveedores({
       style: {
         padding: '8px 0',
         borderTop: '1px solid #f1efe8',
-        fontSize: 13
+        fontSize: 13,
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center'
       }
-    }, /*#__PURE__*/React.createElement("strong", null, p.nombre), " — ", comprasProv.length, " compra(s)");
+    }, /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("strong", null, p.nombre), " — ", comprasProv.length, " compra(s)"), comprasProv.length === 0 && /*#__PURE__*/React.createElement("button", {
+      onClick: () => {
+        if (!confirm(`¿Borrar el proveedor "${p.nombre}"?`)) return;
+        update('proveedores', ps => ps.filter(x => x.id !== p.id));
+      },
+      style: btnGhost
+    }, "✕"));
   })), /*#__PURE__*/React.createElement(Card, null, /*#__PURE__*/React.createElement("div", {
     style: {
       fontWeight: 500,
