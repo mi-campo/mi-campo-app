@@ -77,16 +77,18 @@ function main() {
       if (commit) data.insumos.push(insumo);
     }
 
-    const yaExiste = data.compras.some(c => (r.factura ? c.numeroFactura === r.factura : true) && c.insumoId === insumo.id && Number(c.cantidad) === r.cantidad && c.fecha === r.fecha && Number(c.precioUnitario) === r.precioUnitario);
-    if (yaExiste) {
-      resumen.push(`⏭️  ${r.fecha} — ${r.insumo} — fact. ${r.factura} — ya estaba cargada, se salteó`);
+    const compraExistente = data.compras.find(c => (r.factura ? c.numeroFactura === r.factura : true) && c.insumoId === insumo.id && Number(c.cantidad) === r.cantidad && c.fecha === r.fecha && Number(c.precioUnitario) === r.precioUnitario);
+    if (compraExistente) {
+      const faltabaUnidad = commit && !compraExistente.unidad;
+      if (faltabaUnidad) compraExistente.unidad = r.unidad; // completa la unidad si faltaba de una carga anterior
+      resumen.push(`⏭️  ${r.fecha} — ${r.insumo} — fact. ${r.factura} — ya estaba cargada, se salteó${faltabaUnidad ? ' (unidad completada)' : ''}`);
       continue;
     }
 
     if (commit) {
       data.compras.push({
         id: uid(), proveedorId: proveedor.id, insumoId: insumo.id,
-        cantidad: r.cantidad, precioUnitario: r.precioUnitario, montoTotal: r.cantidad * r.precioUnitario,
+        cantidad: r.cantidad, unidad: r.unidad, precioUnitario: r.precioUnitario, montoTotal: r.cantidad * r.precioUnitario,
         condicion: r.condicion, fecha: r.fecha, ubicacion: r.retirado ? '' : 'Depósito Lartirigoyen',
         retirado: r.retirado, vencimiento: r.vencimiento, numeroFactura: r.factura, notas: r.notas,
       });
@@ -95,6 +97,12 @@ function main() {
     }
 
     resumen.push(`✓ ${r.fecha} — ${r.insumo} — ${r.cantidad}${r.unidad} × USD ${r.precioUnitario} = USD ${(r.cantidad * r.precioUnitario).toFixed(2)} — ${r.retirado ? 'retirado (suma stock)' : 'pendiente (no suma stock)'} — fact. ${r.factura}`);
+  }
+
+  // Corrección puntual: Atrazina quedó con unidad "L" por defecto (bug de otro script), siempre se compra/aplica en kg.
+  if (commit) {
+    const atrazina = data.insumos.find(i => i.nombre.toLowerCase() === 'atrazina');
+    if (atrazina && atrazina.unidad !== 'kg') { atrazina.unidad = 'kg'; console.log('\n🔧 Corregido: unidad por defecto de Atrazina pasó a kg.'); }
   }
 
   console.log(`\n=== ${commit ? 'EJECUTANDO CARGA' : 'DRY RUN'} (${REGISTROS.length} compras) ===\n`);
