@@ -560,7 +560,12 @@ function Mercado() {
         marginTop: 8
       }
     }, g.comentario));
-  })), mercado?.urea && mercado.granos && (() => {
+  })), mercado?.urea && /*#__PURE__*/React.createElement(Card, {
+    style: { borderLeft: '4px solid #E8C547' }
+  }, /*#__PURE__*/React.createElement("div", { style: { fontWeight: 500 } }, "Urea"),
+  /*#__PURE__*/React.createElement("div", { style: { fontSize: 24, fontWeight: 600, marginTop: 6 } }, "USD ", mercado.urea.precioUSDtn, "/tn"),
+  /*#__PURE__*/React.createElement("div", { style: { fontSize: 11, color: '#888780' } }, mercado.urea.fuente)
+  ), mercado?.urea && mercado.granos && (() => {
     const trigo = mercado.granos.find(g => g.nombre === 'Trigo');
     if (!trigo) return null;
     const KG_UREA_POR_TN_TRIGO = 97.4; // 28kgN/tn / 0.625 eficiencia / 0.46 urea — requerimiento BRUTO, antes de descontar suelo
@@ -683,6 +688,41 @@ function Mercado() {
         color: '#888780'
       }
     }, "te queda — ya descontado flete/comercialización del trigo y la urea"))));
+  })(), mercado?.urea && mercado.granos && (() => {
+    const maiz = mercado.granos.find(g => g.nombre === 'Maíz');
+    if (!maiz) return null;
+    const RENDOBJ_REFERENCIA_TN = 10; // 100qq/ha, referencia genérica
+    const precioUreaPuestaEnZona = tipoPrecioUrea === 'retirar' ? mercado.urea.precioUSDtn + (Number(fleteUrea) || 0) : mercado.urea.precioUSDtn;
+    const ip = maiz.precioUSDtn > 0 ? precioUreaPuestaEnZona / maiz.precioUSDtn : 0;
+    const resultado = calcularMaiz({
+      moPct: 0, nanPpm: 0, nNO3suelo: 0, antecesor: 'Soja', arrancador: 0,
+      rendObjZonaTon: RENDOBJ_REFERENCIA_TN, zona: 'Centro', ip,
+    });
+    const kgUreaPorTn = resultado.ureaTotal / RENDOBJ_REFERENCIA_TN;
+    const costoUreaPorTn = kgUreaPorTn / 1000 * precioUreaPuestaEnZona;
+    const precioNetoMaiz = maiz.precioUSDtn - (Number(fleteComercializacion) || 0);
+    const margenNeto = precioNetoMaiz - costoUreaPorTn;
+    const col = margenNeto > precioNetoMaiz * 0.5 ? COLOR_TENDENCIA.Alcista : margenNeto > 0 ? COLOR_TENDENCIA.Neutral : COLOR_TENDENCIA.Bajista;
+    return /*#__PURE__*/React.createElement(Card, {
+      style: { borderLeft: `4px solid ${col.borde}` }
+    }, /*#__PURE__*/React.createElement("div", { style: { fontWeight: 500, marginBottom: 4 } }, "Invertís en urea vs. te devuelve el maíz — 1tn"),
+    /*#__PURE__*/React.createElement("div", { style: { fontSize: 11, color: '#888780', marginBottom: 10 } },
+      "Referencia genérica (no es un lote real): 100qq/ha objetivo, zona Centro, antecesor Soja, sin arrancador, sin descontar agua útil/N del suelo — método de las 7 curvas (Peralta), ", Math.round(kgUreaPorTn), "kg urea/tn en este escenario."
+    ),
+    /*#__PURE__*/React.createElement("div", { style: { display: 'flex', gap: 24, flexWrap: 'wrap' } },
+      /*#__PURE__*/React.createElement("div", null,
+        /*#__PURE__*/React.createElement("div", { style: { fontSize: 22, fontWeight: 600 } }, "USD ", costoUreaPorTn.toFixed(0)),
+        /*#__PURE__*/React.createElement("div", { style: { fontSize: 11, color: '#888780' } }, "invertís en urea (", Math.round(kgUreaPorTn), "kg/tn", tipoPrecioUrea === 'retirar' ? ', con flete puesta en tu zona' : ', ya puesta en tu zona', ")")
+      ),
+      /*#__PURE__*/React.createElement("div", null,
+        /*#__PURE__*/React.createElement("div", { style: { fontSize: 22, fontWeight: 600 } }, "USD ", precioNetoMaiz.toFixed(0)),
+        /*#__PURE__*/React.createElement("div", { style: { fontSize: 11, color: '#888780' } }, "te devuelve esa tonelada (neto de flete/comercialización)")
+      ),
+      /*#__PURE__*/React.createElement("div", null,
+        /*#__PURE__*/React.createElement("div", { style: { fontSize: 22, fontWeight: 600, color: col.texto } }, "USD ", margenNeto.toFixed(0)),
+        /*#__PURE__*/React.createElement("div", { style: { fontSize: 11, color: '#888780' } }, "te queda — ya descontado flete/comercialización del maíz y la urea")
+      )
+    ));
   })(), mercado?.relaciones && mercado.relaciones.length > 0 && /*#__PURE__*/React.createElement(Card, null, /*#__PURE__*/React.createElement("div", {
     style: {
       fontWeight: 500,
