@@ -4506,7 +4506,31 @@ function Proveedores({
       },
       style: btnGhost
     }, "✕"));
-  })), /*#__PURE__*/React.createElement(Card, null, /*#__PURE__*/React.createElement("div", {
+  })), /*#__PURE__*/React.createElement(Card, null,
+    /*#__PURE__*/React.createElement("div", { style: { fontWeight: 500, marginBottom: 4 } }, "Compras pendientes de retiro"),
+    (() => {
+      const pendientes = data.compras.filter(c => !c.retirado);
+      if (pendientes.length === 0) return /*#__PURE__*/React.createElement("div", { style: { fontSize: 13, color: '#888780' } }, "No hay ninguna pendiente — todo lo comprado ya está retirado.");
+      return pendientes.map(c => {
+        const insumo = data.insumos.find(i => i.id === c.insumoId);
+        const proveedor = data.proveedores.find(p => p.id === c.proveedorId);
+        return /*#__PURE__*/React.createElement("div", {
+          key: c.id,
+          style: { padding: '8px 0', borderTop: '1px solid #f1efe8', fontSize: 13, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }
+        }, /*#__PURE__*/React.createElement("span", null,
+          /*#__PURE__*/React.createElement("strong", null, insumo?.nombre || '?'), ` — ${c.cantidad}${insumo?.unidad || ''} — ${proveedor?.nombre || '?'} — ${c.fecha}`,
+          c.ubicacion && /*#__PURE__*/React.createElement("span", { style: { color: '#888780' } }, ` (${c.ubicacion})`)
+        ), /*#__PURE__*/React.createElement("button", {
+          onClick: () => {
+            if (!confirm(`¿Marcar como retirado? Se van a sumar ${c.cantidad}${insumo?.unidad || ''} de ${insumo?.nombre || 'este insumo'} al stock.`)) return;
+            update('compras', cs => cs.map(x => x.id === c.id ? { ...x, retirado: true } : x));
+            update('insumos', ins => ins.map(i => i.id === c.insumoId ? { ...i, stock: (Number(i.stock) || 0) + Number(c.cantidad) } : i));
+          },
+          style: { ...btnPrimary, padding: '4px 10px', fontSize: 12 }
+        }, "Marcar retirado"));
+      });
+    })()
+  ), /*#__PURE__*/React.createElement(Card, null, /*#__PURE__*/React.createElement("div", {
     style: {
       fontWeight: 500,
       marginBottom: 4
