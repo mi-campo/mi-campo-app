@@ -452,7 +452,7 @@ function Sparkline({
 function Mercado() {
   const [mercado, setMercado] = useState(null);
   const [fleteComercializacion, setFleteComercializacion] = useState('40');
-  const [fleteUrea, setFleteUrea] = useState('0');
+  const [fleteUrea, setFleteUrea] = useState('150');
   const [tipoPrecioUrea, setTipoPrecioUrea] = useState('retirar'); // 'retirar' | 'puesto'
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState('');
@@ -650,7 +650,9 @@ function Mercado() {
       type: "number",
       value: fleteUrea,
       onChange: e => setFleteUrea(e.target.value)
-    }))), /*#__PURE__*/React.createElement("div", {
+    })), /*#__PURE__*/React.createElement("div", {
+      style: { fontSize: 10, color: '#aaa89f', marginTop: 2 }
+    }, "Regla: CFR + 150 USD/tn puesta en tu zona (125 diferencia CFR/productor + 25 flete) — editable")), /*#__PURE__*/React.createElement("div", {
       style: {
         display: 'flex',
         gap: 24,
