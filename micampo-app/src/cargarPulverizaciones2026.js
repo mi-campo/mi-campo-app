@@ -63,7 +63,6 @@ const REGISTROS = [
 
 function encontrarOCrearInsumo(data, nombre, unidad) {
   let insumo = data.insumos.find(i => i.nombre.toLowerCase() === nombre.toLowerCase());
-  if (!insumo) insumo = data.insumos.find(i => i.nombre.toLowerCase().includes(nombre.toLowerCase()) || nombre.toLowerCase().includes(i.nombre.toLowerCase()));
   if (!insumo) {
     insumo = { id: uid(), nombre, categoria: 'Herbicida', especificar: '', unidad: unidad || 'L', stock: 0, stockMinimo: 0, costoUnitario: 0, clienteId: null };
     data.insumos.push(insumo);
