@@ -168,10 +168,11 @@ function actualizarHistorialYPromedios(data, mercado) {
   const historial = data.mercado?.historial || [];
   const hoy = new Date().toISOString().slice(0, 10);
   const sinHoy = historial.filter(h => h.fecha !== hoy); // evita duplicar si se actualiza mas de una vez el mismo dia
+  const precioRef = g => g.precioRosarioUSDtn != null ? g.precioRosarioUSDtn : g.precioChicagoUSDtn;
   const nuevoHistorial = mercado.granos && mercado.granos.length > 0
     ? [...sinHoy, {
         fecha: hoy,
-        granos: mercado.granos.map(g => ({ nombre: g.nombre, precioUSDtn: g.precioUSDtn })),
+        granos: mercado.granos.map(g => ({ nombre: g.nombre, precioUSDtn: precioRef(g) })),
         ureaUSDtn: mercado.urea?.precioUSDtn || null,
       }].slice(-90) // guarda como mucho los ultimos 90 dias
     : historial;
@@ -183,7 +184,8 @@ function actualizarHistorialYPromedios(data, mercado) {
       const promedioPropio = lecturas.reduce((s, v) => s + v, 0) / lecturas.length;
       g.promedioPropio = Math.round(promedioPropio);
       g.cantidadLecturas = lecturas.length;
-      g.vsPromedio = g.precioUSDtn > promedioPropio * 1.02 ? 'por encima' : g.precioUSDtn < promedioPropio * 0.98 ? 'por debajo' : 'en línea';
+      const precioActual = precioRef(g);
+      if (precioActual != null) g.vsPromedio = precioActual > promedioPropio * 1.02 ? 'por encima' : precioActual < promedioPropio * 0.98 ? 'por debajo' : 'en línea';
     }
   });
 
@@ -191,7 +193,7 @@ function actualizarHistorialYPromedios(data, mercado) {
   const serieCostoUreaTrigo = nuevoHistorial
     .map(h => {
       const trigo = h.granos.find(g => g.nombre === 'Trigo');
-      if (!trigo || !h.ureaUSDtn) return null;
+      if (!trigo || !h.ureaUSDtn || !trigo.precioUSDtn) return null;
       const costoUreaPorTn = (KG_UREA_POR_TN_TRIGO / 1000) * h.ureaUSDtn;
       return { fecha: h.fecha, porcentaje: (costoUreaPorTn / trigo.precioUSDtn) * 100 };
     })
