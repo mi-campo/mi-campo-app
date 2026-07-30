@@ -543,17 +543,23 @@ function Mercado() {
         padding: '2px 8px'
       }
     }, g.tendencia)), /*#__PURE__*/React.createElement("div", {
-      style: {
-        fontSize: 24,
-        fontWeight: 600,
-        marginTop: 6
-      }
-    }, "USD ", g.precioUSDtn, "/tn"), /*#__PURE__*/React.createElement("div", {
+      style: { display: 'flex', gap: 20, marginTop: 6, flexWrap: 'wrap' }
+    },
+      /*#__PURE__*/React.createElement("div", null,
+        /*#__PURE__*/React.createElement("div", { style: { fontSize: 22, fontWeight: 600 } }, g.precioRosarioUSDtn != null ? `USD ${g.precioRosarioUSDtn}` : '—'),
+        /*#__PURE__*/React.createElement("div", { style: { fontSize: 11, color: '#888780' } }, "Pizarra Rosario /tn")
+      ),
+      /*#__PURE__*/React.createElement("div", null,
+        /*#__PURE__*/React.createElement("div", { style: { fontSize: 22, fontWeight: 600 } }, g.precioChicagoUSDtn != null ? `USD ${g.precioChicagoUSDtn}` : '—'),
+        /*#__PURE__*/React.createElement("div", { style: { fontSize: 11, color: '#888780' } }, "Chicago (CBOT) /tn")
+      )
+    ), /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 11,
-        color: '#888780'
+        color: '#888780',
+        marginTop: 6
       }
-    }, g.fuente, " · ", g.vsPromedio, " del promedio", g.promedioPropio ? /*#__PURE__*/React.createElement(React.Fragment, null, " (propio, USD ", g.promedioPropio, "/tn — ", g.cantidadLecturas, " lecturas)") : /*#__PURE__*/React.createElement(React.Fragment, null, " (estimado por búsqueda web)")), g.comentario && /*#__PURE__*/React.createElement("div", {
+    }, g.vsPromedio ? `${g.vsPromedio} del promedio (Rosario)` : '', g.promedioPropio ? /*#__PURE__*/React.createElement(React.Fragment, null, " · propio USD ", g.promedioPropio, "/tn — ", g.cantidadLecturas, " lecturas") : null), g.comentario && /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 13,
         color: '#5f5e5a',
@@ -690,41 +696,6 @@ function Mercado() {
         color: '#888780'
       }
     }, "te queda — ya descontado flete/comercialización del trigo y la urea"))));
-  })(), mercado?.urea && mercado.granos && (() => {
-    const maiz = mercado.granos.find(g => g.nombre === 'Maíz');
-    if (!maiz) return null;
-    const RENDOBJ_REFERENCIA_TN = 10; // 100qq/ha, referencia genérica
-    const precioUreaPuestaEnZona = tipoPrecioUrea === 'retirar' ? mercado.urea.precioUSDtn + (Number(fleteUrea) || 0) : mercado.urea.precioUSDtn;
-    const ip = maiz.precioUSDtn > 0 ? precioUreaPuestaEnZona / maiz.precioUSDtn : 0;
-    const resultado = calcularMaiz({
-      moPct: 0, nanPpm: 0, nNO3suelo: 0, antecesor: 'Soja', arrancador: 0,
-      rendObjZonaTon: RENDOBJ_REFERENCIA_TN, zona: 'Centro', ip,
-    });
-    const kgUreaPorTn = resultado.ureaTotal / RENDOBJ_REFERENCIA_TN;
-    const costoUreaPorTn = kgUreaPorTn / 1000 * precioUreaPuestaEnZona;
-    const precioNetoMaiz = maiz.precioUSDtn - (Number(fleteComercializacion) || 0);
-    const margenNeto = precioNetoMaiz - costoUreaPorTn;
-    const col = margenNeto > precioNetoMaiz * 0.5 ? COLOR_TENDENCIA.Alcista : margenNeto > 0 ? COLOR_TENDENCIA.Neutral : COLOR_TENDENCIA.Bajista;
-    return /*#__PURE__*/React.createElement(Card, {
-      style: { borderLeft: `4px solid ${col.borde}` }
-    }, /*#__PURE__*/React.createElement("div", { style: { fontWeight: 500, marginBottom: 4 } }, "Invertís en urea vs. te devuelve el maíz — 1tn"),
-    /*#__PURE__*/React.createElement("div", { style: { fontSize: 11, color: '#888780', marginBottom: 10 } },
-      "Referencia genérica (no es un lote real): 100qq/ha objetivo, zona Centro, antecesor Soja, sin arrancador, sin descontar agua útil/N del suelo — método de las 7 curvas (Peralta), ", Math.round(kgUreaPorTn), "kg urea/tn en este escenario."
-    ),
-    /*#__PURE__*/React.createElement("div", { style: { display: 'flex', gap: 24, flexWrap: 'wrap' } },
-      /*#__PURE__*/React.createElement("div", null,
-        /*#__PURE__*/React.createElement("div", { style: { fontSize: 22, fontWeight: 600 } }, "USD ", costoUreaPorTn.toFixed(0)),
-        /*#__PURE__*/React.createElement("div", { style: { fontSize: 11, color: '#888780' } }, "invertís en urea (", Math.round(kgUreaPorTn), "kg/tn", tipoPrecioUrea === 'retirar' ? ', con flete puesta en tu zona' : ', ya puesta en tu zona', ")")
-      ),
-      /*#__PURE__*/React.createElement("div", null,
-        /*#__PURE__*/React.createElement("div", { style: { fontSize: 22, fontWeight: 600 } }, "USD ", precioNetoMaiz.toFixed(0)),
-        /*#__PURE__*/React.createElement("div", { style: { fontSize: 11, color: '#888780' } }, "te devuelve esa tonelada (neto de flete/comercialización)")
-      ),
-      /*#__PURE__*/React.createElement("div", null,
-        /*#__PURE__*/React.createElement("div", { style: { fontSize: 22, fontWeight: 600, color: col.texto } }, "USD ", margenNeto.toFixed(0)),
-        /*#__PURE__*/React.createElement("div", { style: { fontSize: 11, color: '#888780' } }, "te queda — ya descontado flete/comercialización del maíz y la urea")
-      )
-    ));
   })(), mercado?.relaciones && mercado.relaciones.length > 0 && /*#__PURE__*/React.createElement(Card, null, /*#__PURE__*/React.createElement("div", {
     style: {
       fontWeight: 500,
@@ -910,7 +881,8 @@ function Resumen({
       lote: l,
       campo: data.campos.find(c => c.id === l.campoId),
       ciclo: cicloActivo(data, l.id)
-    })).filter(x => x.ciclo && ['Trigo', 'Garbanzo'].includes(x.ciclo.cultivo));
+    })).filter(x => x.ciclo && ['Trigo', 'Garbanzo'].includes(x.ciclo.cultivo))
+      .sort((a, b) => a.ciclo.cultivo.localeCompare(b.ciclo.cultivo) || (a.campo?.nombre || '').localeCompare(b.campo?.nombre || ''));
     return {
       haTotal,
       gastoTotal,
@@ -925,52 +897,6 @@ function Resumen({
 
   const lotesConConflictoCiclos = data.lotes.filter(l => data.ciclos.filter(c => c.loteId === l.id && !c.fechaFin).length > 1);
 
-  // Urea total estimada para comprar, sumando todos los lotes de Trigo con datos base + rendimiento objetivo cargados.
-  const resumenUrea = data.lotes.reduce((acc, l) => {
-    const ciclo = cicloActivo(data, l.id);
-    if (!ciclo || ciclo.cultivo !== 'Trigo') return acc;
-    const fertilidadLote = data.analisis.filter(a => a.loteId === l.id && a.tipo === 'Fertilidad').sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''));
-    if (fertilidadLote.length === 0 || !l.rendimientoObjetivo) return acc;
-    const zonas = zonasFertilidad(fertilidadLote, 50);
-    const kgPara = calib => zonas.reduce((s, z) => {
-      const r = calcularZonaTrigo(z.muestra, z.rendRelativo, Number(l.rendimientoObjetivo) || 0, calib);
-      return s + (r ? r.ureaTotal * (Number(l.hectareas) || 0) * (z.pct / 100) : 0);
-    }, 0);
-    return { kgCalibrado: acc.kgCalibrado + kgPara('calibrado'), kgOriginal: acc.kgOriginal + kgPara('original'), haTotal: acc.haTotal + (Number(l.hectareas) || 0), lotesContados: acc.lotesContados + 1 };
-  }, { kgCalibrado: 0, kgOriginal: 0, haTotal: 0, lotesContados: 0 });
-  const lotesTrigoSinDatos = data.lotes.filter(l => {
-    const ciclo = cicloActivo(data, l.id);
-    if (!ciclo || ciclo.cultivo !== 'Trigo') return false;
-    const tiene = data.analisis.some(a => a.loteId === l.id && a.tipo === 'Fertilidad');
-    return !tiene || !l.rendimientoObjetivo;
-  }).length;
-
-  const filasResumen = [...data.lotes].sort((a, b) => a.nombre.localeCompare(b.nombre)).map(l => {
-    const campo = data.campos.find(c => c.id === l.campoId);
-    const ciclo = cicloActivo(data, l.id);
-    const conflicto = data.ciclos.filter(c => c.loteId === l.id && !c.fechaFin).length > 1;
-    const actividadesLote = data.actividades.filter(a => a.loteId === l.id);
-    const siembra = actividadesLote.filter(a => a.tipo === 'Siembra').sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''))[0];
-    const fertilizaciones = actividadesLote.filter(a => a.tipo === 'Fertilización');
-    const kgFertTotal = fertilizaciones.reduce((s, a) => s + (a.items || []).reduce((s2, it) => s2 + (Number(it.cantidad) || 0), 0), 0);
-    const fertilidadLote = data.analisis.filter(a => a.loteId === l.id && a.tipo === 'Fertilidad').sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''));
-    const ultimaFertilidad = fertilidadLote[0];
-    const agua = aguaUtilPromedio(data, l.id);
-    return {
-      nombre: `${campo?.nombre || ''} — ${l.nombre}`,
-      cultivo: ciclo?.cultivo || '—', conflicto,
-      sembrado: !!siembra,
-      fechaSiembra: siembra?.fecha || '—',
-      variedad: siembra?.variedad || '—',
-      densidad: siembra?.densidad || '—',
-      nNo3: ultimaFertilidad ? `${ultimaFertilidad.nNo3_0_20 ?? '?'}/${ultimaFertilidad.nNo3_20_60 ?? '?'}` : '—',
-      rtoObj: l.rendimientoObjetivo || '—',
-      fertilizado: fertilizaciones.length > 0,
-      kgFertTotal,
-      aguaUtil: agua ? `${agua.promedio}mm` : '—',
-    };
-  });
-
   return /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
@@ -983,36 +909,7 @@ function Resumen({
   /*#__PURE__*/React.createElement("div", { style: { fontSize: 12, color: '#5f5e5a', marginTop: 4 } },
     lotesConConflictoCiclos.map(l => `${data.campos.find(c => c.id === l.campoId)?.nombre || ''} — ${l.nombre}`).join(' · '),
     ' — entrá a "Campos y lotes" en cada uno y borrá el ciclo que no corresponde en "Ciclos de cultivo".'
-  )), resumenUrea.lotesContados > 0 && /*#__PURE__*/React.createElement(Card, {
-    style: { background: '#EAF3DE', borderLeft: '4px solid #3B6D11' }
-  }, /*#__PURE__*/React.createElement("div", { style: { fontWeight: 600, fontSize: 15 } }, `🌾 Urea a comprar: ${(resumenUrea.kgCalibrado / 1000).toFixed(1)} tn (${resumenUrea.haTotal > 0 ? Math.round(resumenUrea.kgCalibrado / resumenUrea.haTotal) : 0}kg/ha) · Calibrado -8%`),
-  /*#__PURE__*/React.createElement("div", { style: { fontSize: 12, color: '#5f5e5a', marginTop: 2 } },
-    `Sin calibrar: ${(resumenUrea.kgOriginal / 1000).toFixed(1)}tn (${resumenUrea.haTotal > 0 ? Math.round(resumenUrea.kgOriginal / resumenUrea.haTotal) : 0}kg/ha) · ${resumenUrea.lotesContados} lote(s)${lotesTrigoSinDatos > 0 ? `, ${lotesTrigoSinDatos} sin datos` : ''}`
-  )), /*#__PURE__*/React.createElement(Card, null,
-    /*#__PURE__*/React.createElement("div", { style: { fontWeight: 600, fontSize: 14, marginBottom: 8 } }, '📋 Resumen de carga por lote'),
-    /*#__PURE__*/React.createElement("div", { style: { overflowX: 'auto' } },
-      /*#__PURE__*/React.createElement("table", { style: { borderCollapse: 'collapse', fontSize: 11.5, width: '100%' } },
-        /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", { style: { borderBottom: '2px solid #e3e1d8', textAlign: 'left' } },
-          ['Lote', 'Cultivo', 'Siembra', 'Variedad', 'Densidad', 'N-NO3 (0-20/20-60)', 'Rto obj', 'Fertiliz.', 'Agua útil'].map(h =>
-            /*#__PURE__*/React.createElement("th", { key: h, style: { padding: '4px 6px', color: '#5f5e5a', fontWeight: 600, whiteSpace: 'nowrap' } }, h)
-          )
-        )),
-        /*#__PURE__*/React.createElement("tbody", null, filasResumen.map((f, i) =>
-          /*#__PURE__*/React.createElement("tr", { key: i, style: { borderBottom: '1px solid #f1efe8', background: f.conflicto ? '#FBE7E4' : 'transparent' } },
-            /*#__PURE__*/React.createElement("td", { style: { padding: '4px 6px', fontWeight: 500, whiteSpace: 'nowrap' } }, f.conflicto ? '⚠️ ' : '', f.nombre),
-            /*#__PURE__*/React.createElement("td", { style: { padding: '4px 6px', color: f.conflicto ? '#A32D2D' : 'inherit' } }, f.conflicto ? '2 ciclos a la vez' : f.cultivo),
-            /*#__PURE__*/React.createElement("td", { style: { padding: '4px 6px', color: f.sembrado ? '#27500A' : '#A32D2D' } }, f.sembrado ? f.fechaSiembra : '✗ no'),
-            /*#__PURE__*/React.createElement("td", { style: { padding: '4px 6px' } }, f.variedad),
-            /*#__PURE__*/React.createElement("td", { style: { padding: '4px 6px' } }, f.densidad),
-            /*#__PURE__*/React.createElement("td", { style: { padding: '4px 6px' } }, f.nNo3),
-            /*#__PURE__*/React.createElement("td", { style: { padding: '4px 6px' } }, f.rtoObj),
-            /*#__PURE__*/React.createElement("td", { style: { padding: '4px 6px', color: f.fertilizado ? '#27500A' : '#888780' } }, f.fertilizado ? `✓ ${Math.round(f.kgFertTotal)}kg` : '✗ no'),
-            /*#__PURE__*/React.createElement("td", { style: { padding: '4px 6px' } }, f.aguaUtil),
-          )
-        ))
-      )
-    )
-  ), /*#__PURE__*/React.createElement("div", {
+  )), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'grid',
       gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
@@ -1131,23 +1028,6 @@ function Resumen({
       fontWeight: 500,
       marginBottom: 8
     }
-  }, "Presupuesto"), stats.camposPasados.length === 0 && /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 13,
-      color: '#888780'
-    }
-  }, "Ningún campo se pasó del presupuesto."), stats.camposPasados.map(c => /*#__PURE__*/React.createElement("div", {
-    key: c.id,
-    style: {
-      fontSize: 13,
-      color: '#A32D2D',
-      padding: '4px 0'
-    }
-  }, c.nombre, ": ", fmtMoney(stats.gastoPorCampo[c.nombre]?.gasto), " de ", fmtMoney(c.presupuesto)))), /*#__PURE__*/React.createElement(Card, null, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontWeight: 500,
-      marginBottom: 8
-    }
   }, "Stock crítico"), stats.stockBajo.length === 0 && /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 13,
@@ -1160,48 +1040,7 @@ function Resumen({
       color: '#A32D2D',
       padding: '4px 0'
     }
-  }, i.nombre, ": quedan ", i.stock, " ", i.unidad))), /*#__PURE__*/React.createElement(Card, null, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontWeight: 500,
-      marginBottom: 8
-    }
-  }, "Actividad reciente"), data.actividades.length === 0 && /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 13,
-      color: '#888780'
-    }
-  }, "Sin actividades todavía."), [...data.actividades].sort((a, b) => (b.fecha || '').localeCompare(a.fecha || '')).slice(0, 5).map(act => {
-    const lote = data.lotes.find(l => l.id === act.loteId);
-    const campo = data.campos.find(c => c.id === lote?.campoId);
-    return /*#__PURE__*/React.createElement("div", {
-      key: act.id,
-      style: {
-        fontSize: 13,
-        padding: '4px 0'
-      }
-    }, /*#__PURE__*/React.createElement("strong", null, act.tipo), " — ", campo?.nombre, "/", lote?.nombre, " — ", act.fecha);
-  }))), /*#__PURE__*/React.createElement(Card, null, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontWeight: 500,
-      marginBottom: 10
-    }
-  }, "Gasto por campo"), Object.entries(stats.gastoPorCampo).map(([nombre, v]) => {
-    const pasado = v.presupuesto > 0 && v.gasto > v.presupuesto;
-    return /*#__PURE__*/React.createElement("div", {
-      key: nombre,
-      style: {
-        display: 'flex',
-        justifyContent: 'space-between',
-        padding: '8px 0',
-        borderBottom: '1px solid #f1efe8',
-        fontSize: 14
-      }
-    }, /*#__PURE__*/React.createElement("span", null, nombre), /*#__PURE__*/React.createElement("span", {
-      style: {
-        color: pasado ? '#A32D2D' : '#5f5e5a'
-      }
-    }, fmtMoney(v.gasto), v.presupuesto > 0 ? ` / ${fmtMoney(v.presupuesto)}` : '', v.ha > 0 ? ` · ${(v.gasto / v.ha).toFixed(1)} USD/ha` : ''));
-  })));
+  }, i.nombre, ": quedan ", i.stock, " ", i.unidad)))));
 }
 
 /* ---------- CAMPOS Y LOTES ---------- */
@@ -3237,9 +3076,34 @@ function Fertilizacion({
     return pa - pb;
   });
 
+  // Urea total estimada para comprar, sumando todos los lotes de Trigo con datos base + rendimiento objetivo cargados.
+  const resumenUrea = data.lotes.reduce((acc, l) => {
+    const ciclo = cicloActivo(data, l.id);
+    if (!ciclo || ciclo.cultivo !== 'Trigo') return acc;
+    const fertilidadLote = data.analisis.filter(a => a.loteId === l.id && a.tipo === 'Fertilidad').sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''));
+    if (fertilidadLote.length === 0 || !l.rendimientoObjetivo) return acc;
+    const zonas = zonasFertilidad(fertilidadLote, 50);
+    const kgPara = calib => zonas.reduce((s, z) => {
+      const r = calcularZonaTrigo(z.muestra, z.rendRelativo, Number(l.rendimientoObjetivo) || 0, calib);
+      return s + (r ? r.ureaTotal * (Number(l.hectareas) || 0) * (z.pct / 100) : 0);
+    }, 0);
+    return { kgCalibrado: acc.kgCalibrado + kgPara('calibrado'), kgOriginal: acc.kgOriginal + kgPara('original'), haTotal: acc.haTotal + (Number(l.hectareas) || 0), lotesContados: acc.lotesContados + 1 };
+  }, { kgCalibrado: 0, kgOriginal: 0, haTotal: 0, lotesContados: 0 });
+  const lotesTrigoSinDatos = data.lotes.filter(l => {
+    const ciclo = cicloActivo(data, l.id);
+    if (!ciclo || ciclo.cultivo !== 'Trigo') return false;
+    const tiene = data.analisis.some(a => a.loteId === l.id && a.tipo === 'Fertilidad');
+    return !tiene || !l.rendimientoObjetivo;
+  }).length;
+
   return /*#__PURE__*/React.createElement("div", {
     style: { display: 'flex', flexDirection: 'column', gap: 14 }
-  }, lotesOrdenados.map(l => {
+  }, resumenUrea.lotesContados > 0 && /*#__PURE__*/React.createElement(Card, {
+    style: { background: '#EAF3DE', borderLeft: '4px solid #3B6D11' }
+  }, /*#__PURE__*/React.createElement("div", { style: { fontWeight: 600, fontSize: 15 } }, `🌾 Urea a comprar: ${(resumenUrea.kgCalibrado / 1000).toFixed(1)} tn (${resumenUrea.haTotal > 0 ? Math.round(resumenUrea.kgCalibrado / resumenUrea.haTotal) : 0}kg/ha) · Calibrado -8%`),
+  /*#__PURE__*/React.createElement("div", { style: { fontSize: 12, color: '#5f5e5a', marginTop: 2 } },
+    `Sin calibrar: ${(resumenUrea.kgOriginal / 1000).toFixed(1)}tn (${resumenUrea.haTotal > 0 ? Math.round(resumenUrea.kgOriginal / resumenUrea.haTotal) : 0}kg/ha) · ${resumenUrea.lotesContados} lote(s)${lotesTrigoSinDatos > 0 ? `, ${lotesTrigoSinDatos} sin datos` : ''}`
+  )), lotesOrdenados.map(l => {
     const campo = data.campos.find(c => c.id === l.campoId);
     const ciclo = cicloActivo(data, l.id);
     const esGraminea = ciclo && ['Trigo', 'Maíz'].includes(ciclo.cultivo);
@@ -4209,24 +4073,30 @@ function Insumos({
       fontWeight: 500,
       marginBottom: 10
     }
-  }, "Stock"), data.insumos.map(i => /*#__PURE__*/React.createElement("div", {
-    key: i.id,
-    style: {
-      display: 'flex',
-      justifyContent: 'space-between',
-      padding: '8px 0',
-      borderTop: '1px solid #f1efe8',
-      fontSize: 14
-    }
-  }, /*#__PURE__*/React.createElement("span", null, i.nombre, " ", /*#__PURE__*/React.createElement("span", {
-    style: {
-      fontSize: 11,
-      color: '#888780'
-    }
-  }, "(", i.categoria, i.categoria === 'Otro' && i.especificar ? ': ' + i.especificar : '', ")")), /*#__PURE__*/React.createElement("span", null, i.stock, " ", i.unidad, " · ", fmtMoney(precioPromedio(data, i.id)), "/", i.unidad, " promedio ", /*#__PURE__*/React.createElement("button", {
-    onClick: () => del(i.id),
-    style: btnGhost
-  }, "🗑"))))));
+  }, "Stock"), data.insumos.map(function(i) {
+    const stockCol = Number(i.stock) < 0 ? '#A32D2D' : '#27500A';
+    const stockTxt = (Number(i.stock) >= 0 ? '+' : '') + i.stock + ' ' + i.unidad;
+    return /*#__PURE__*/React.createElement("div", {
+      key: i.id,
+      style: {
+        display: 'flex',
+        justifyContent: 'space-between',
+        padding: '8px 0',
+        borderTop: '1px solid #f1efe8',
+        fontSize: 14
+      }
+    }, /*#__PURE__*/React.createElement("span", null,
+        i.nombre, " ",
+        /*#__PURE__*/React.createElement("span", { style: { fontSize: 11, color: '#888780' } },
+          "(", i.categoria, i.categoria === 'Otro' && i.especificar ? ': ' + i.especificar : '', ")"
+        )
+      ),
+      /*#__PURE__*/React.createElement("span", { style: { display: 'flex', alignItems: 'center', gap: 8 } },
+        /*#__PURE__*/React.createElement("span", { style: { fontWeight: 600, color: stockCol } }, stockTxt),
+        /*#__PURE__*/React.createElement("button", { onClick: function() { del(i.id); }, style: btnGhost }, "🗑")
+      )
+    );
+  })));
 }
 
 /* ---------- PROVEEDORES ---------- */
@@ -4560,8 +4430,7 @@ function Proveedores({
           key: c.id,
           style: { padding: '8px 0', borderTop: '1px solid #f1efe8', fontSize: 13, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }
         }, /*#__PURE__*/React.createElement("span", null,
-          /*#__PURE__*/React.createElement("strong", null, insumo?.nombre || '?'), ` — ${c.cantidad}${c.unidad || insumo?.unidad || ''} — ${proveedor?.nombre || '?'} — ${c.fecha}`,
-          c.ubicacion && /*#__PURE__*/React.createElement("span", { style: { color: '#888780' } }, ` (${c.ubicacion})`)
+          /*#__PURE__*/React.createElement("strong", null, insumo?.nombre || '?'), ` — ${c.cantidad}${c.unidad || insumo?.unidad || ''} — ${proveedor?.nombre || '?'}`
         ), /*#__PURE__*/React.createElement("button", {
           onClick: () => {
             if (!confirm(`¿Marcar como retirado? Se van a sumar ${c.cantidad}${c.unidad || insumo?.unidad || ''} de ${insumo?.nombre || 'este insumo'} al stock.`)) return;
