@@ -344,10 +344,10 @@ async function consultarPrecios() {
     timeoutMs: 45000,
     system: `Sos un analista de mercado de granos con el estilo directo de los analistas argentinos de bolsa de cereales (tipo Nóvitas/Enrique Erize): concreto, sin adornos.
 
-Buscá en la web los precios ACTUALES de soja, maíz y trigo. La fuente PRIORITARIA es siempre la pizarra física de la Bolsa de Comercio de Rosario (BCR) — buscá específicamente términos como "pizarra Rosario hoy soja maíz trigo" o "BCR precios pizarra" antes que nada, y usá ese valor si lo encontrás con fecha reciente (últimos 2-3 días hábiles). Solo si genuinamente no encontrás un dato de Rosario actualizado, recurrí como último recurso al futuro más cercano de Chicago (CBOT) y dejalo bien aclarado en "fuente". Nunca pongas un precio de Chicago con la fuente en blanco o ambigua — si es Chicago, "fuente" tiene que decir "CBOT" explícito para que quede claro que no es Rosario. Compará cada uno contra el promedio de las últimas 2-4 semanas. Buscá también el precio actual de la urea (USD/tn, FOB o precio de referencia en Argentina).
+Buscá en la web los precios ACTUALES de soja, maíz y trigo — necesito LOS DOS, comparados, no uno como reemplazo del otro: (1) la pizarra física de la Bolsa de Comercio de Rosario (BCR) — buscá "pizarra Rosario hoy soja maíz trigo" o "BCR precios pizarra" — y (2) el futuro más cercano de Chicago (CBOT), convertido a USD/tn. Si genuinamente no encontrás uno de los dos actualizado, dejalo en null en vez de inventarlo o repetir el otro valor. Compará cada uno (el de Rosario) contra el promedio de las últimas 2-4 semanas. Buscá también el precio actual de la urea (USD/tn, FOB o precio de referencia en Argentina).
 
 Devolvé SOLO un JSON, sin texto antes ni después, sin \`\`\`, con esta forma exacta:
-{"granos":[{"nombre":"Soja","precioUSDtn":<numero>,"fuente":"<ej 'Pizarra Rosario' o 'CBOT'>","vsPromedio":"por encima"|"por debajo"|"en línea","tendencia":"Alcista"|"Bajista"|"Neutral","comentario":"<1 frase corta, máximo 15 palabras>"}],"urea":{"precioUSDtn":<numero>,"fuente":"<ej 'FOB US Gulf' o 'Precio de referencia Argentina'>"}}
+{"granos":[{"nombre":"Soja","precioRosarioUSDtn":<numero o null>,"precioChicagoUSDtn":<numero o null>,"vsPromedio":"por encima"|"por debajo"|"en línea"|null,"tendencia":"Alcista"|"Bajista"|"Neutral","comentario":"<1 frase corta, máximo 15 palabras>"}],"urea":{"precioUSDtn":<numero>,"fuente":"<ej 'FOB US Gulf' o 'Precio de referencia Argentina'>"}}
 
 Reglas:
 - Un grano por elemento: Soja, Maíz, Trigo. No inventes precios — si no encontrás algo confiable, omitilo (dejá "urea" en null si no encontrás nada confiable).
@@ -355,7 +355,7 @@ Reglas:
 - "comentario" es texto plano, corto — NUNCA incluyas citas, referencias ni etiquetas (nada de <cite>, [1], corchetes, ni similares). Es para mostrarse tal cual en una pantalla.`,
     mensaje: 'Dame los precios actuales de soja, maíz, trigo y urea para un productor agropecuario argentino, comparados con el promedio reciente.',
   });
-  const granos = ((resultado && resultado.granos) || []).map(g => ({ ...g, comentario: limpiarCitas(g.comentario), fuente: limpiarCitas(g.fuente) }));
+  const granos = ((resultado && resultado.granos) || []).map(g => ({ ...g, comentario: limpiarCitas(g.comentario) }));
   const urea = resultado && resultado.urea ? { ...resultado.urea, fuente: limpiarCitas(resultado.urea.fuente) } : null;
   return { granos, urea };
 }
