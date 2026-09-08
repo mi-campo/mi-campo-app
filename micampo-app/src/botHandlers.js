@@ -109,6 +109,15 @@ function validar(interpretado) {
         lotesResueltosVal.push({ ...l, loteObj: r.lote });
       }
       if (!interpretado.items || interpretado.items.length === 0 || !interpretado.items[0].producto) return { ok: false, pregunta: '¿Qué producto(s) se aplicó y cuánto de cada uno? Mandá el mensaje de nuevo con esos datos.', campoFaltante: null };
+      // Si el mismo producto aparece con unidades distintas, puede ser en realidad dos productos comerciales
+      // distintos (ej glifosato líquido vs. granulado) — mejor preguntar que asumir.
+      const porNombre = {};
+      interpretado.items.forEach(it => { (porNombre[it.producto] = porNombre[it.producto] || new Set()).add(it.unidad); });
+      const conUnidadesMixtas = Object.entries(porNombre).find(([, unidades]) => unidades.size > 1);
+      if (conUnidadesMixtas) {
+        const [nombre, unidades] = conUnidadesMixtas;
+        return { ok: false, pregunta: `Pusiste "${nombre}" en ${[...unidades].join(' y ')} en el mismo mensaje — ¿son dos productos comerciales distintos (ej uno líquido y otro sólido/granulado)? Si es así, aclarame el nombre completo de cada uno por separado. Si es un error de tipeo y es uno solo, mandalo de nuevo con una sola unidad.`, campoFaltante: null };
+      }
       return { ok: true };
     }
     case 'siembra': {
