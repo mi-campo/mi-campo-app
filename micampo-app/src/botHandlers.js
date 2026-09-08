@@ -354,6 +354,13 @@ function resolverInsumos(data, items) {
 function manejarAplicacion(interpretado, tipo) {
   const data = load();
   const lote = buscarLotes(data, interpretado.lote, interpretado.campo)[0];
+  const fecha = fechaDe(interpretado);
+  const firma = (interpretado.items || []).map(it => `${it.producto}|${it.cantidadTotal}|${it.unidad}`).sort().join(',');
+  const yaExiste = data.actividades.find(a => a.loteId === lote.id && a.tipo === tipo && a.fecha === fecha && (a.items || []).map(it => {
+    const ins = data.insumos.find(i => i.id === it.insumoId);
+    return `${ins?.nombre}|${it.cantidad}|${it.unidad}`;
+  }).sort().join(',') === firma);
+  if (yaExiste) return `⚠️ Ya tenés cargada una ${tipo.toLowerCase()} igual (mismos productos y cantidades) en ${nombreConCampo(data, lote)} el ${fecha} — no la volví a cargar para no duplicarla. Si es una segunda pasada real ese mismo día, avisame explícitamente y la agrego igual.`;
   const resueltos = resolverInsumos(data, interpretado.items);
   let costoInsumos = 0;
   const items = resueltos.map(({ insumo, cantidad, unidad }) => {
@@ -369,7 +376,7 @@ function manejarAplicacion(interpretado, tipo) {
   const costoTotal = costoInsumos + costoContratista;
   data.actividades.push({
     id: uid(), loteId: lote.id, cicloId: cicloActivo(data, lote.id)?.id || null, tipo,
-    fecha: fechaDe(interpretado), metodo: interpretado.metodo || '', haReales: interpretado.haReales || '', haFacturadas: interpretado.haFacturadas || '',
+    fecha, metodo: interpretado.metodo || '', haReales: interpretado.haReales || '', haFacturadas: interpretado.haFacturadas || '',
     tarifaContratista: tarifa || '', items, costoInsumos, costoContratista, costoTotal, notas: '',
   });
   save(data);
@@ -395,12 +402,23 @@ function manejarPulverizacion(interpretado) {
   const haFacturadasTotal = Number(interpretado.haFacturadas) || totalHaReales;
   const tarifa = interpretado.tarifaContratista ? Number(interpretado.tarifaContratista) : tarifaAutomatica(data, 'Pulverización', interpretado.metodo);
 
+  const fecha = fechaDe(interpretado);
   let textoLotes = '';
   let costoInsumosGlobal = 0, costoContratistaGlobal = 0;
+  const lineasDuplicadas = [];
 
   lotesResueltos.forEach(({ lote, haReales }) => {
     const proporcion = totalHaReales > 0 ? haReales / totalHaReales : 1 / lotesResueltos.length;
     const haFacturadasLote = haFacturadasTotal * proporcion;
+
+    // Chequeo de duplicado: mismo lote, misma fecha, mismos productos y cantidades (redondeadas) ya cargados antes
+    const firmaEsperada = resueltosInsumos.map(({ insumo, cantidad }) => `${insumo.nombre}|${Math.round(cantidad * proporcion * 100) / 100}`).sort().join(',');
+    const yaExiste = data.actividades.find(a => a.loteId === lote.id && a.tipo === 'Pulverización' && a.fecha === fecha && (a.items || []).map(it => {
+      const ins = data.insumos.find(i => i.id === it.insumoId);
+      return `${ins?.nombre}|${it.cantidad}`;
+    }).sort().join(',') === firmaEsperada);
+    if (yaExiste) { lineasDuplicadas.push(`⚠️ ${nombreConCampo(data, lote)} — ya estaba cargada igual el ${fecha}, no se dupicó`); return; }
+
     let costoInsumosLote = 0;
     const itemsLote = resueltosInsumos.map(({ insumo, cantidad, unidad }) => {
       const cantidadLote = Math.round(cantidad * proporcion * 100) / 100;
@@ -416,13 +434,15 @@ function manejarPulverizacion(interpretado) {
 
     data.actividades.push({
       id: uid(), loteId: lote.id, cicloId: cicloActivo(data, lote.id)?.id || null, tipo: 'Pulverización',
-      fecha: fechaDe(interpretado), metodo: interpretado.metodo || '', haReales: Math.round(haReales * 100) / 100, haFacturadas: Math.round(haFacturadasLote * 100) / 100,
+      fecha, metodo: interpretado.metodo || '', haReales: Math.round(haReales * 100) / 100, haFacturadas: Math.round(haFacturadasLote * 100) / 100,
       tarifaContratista: tarifa || '', items: itemsLote, costoInsumos: Math.round(costoInsumosLote), costoContratista: Math.round(costoContratistaLote), costoTotal: Math.round(costoTotalLote),
       notas: lotesResueltos.length > 1 ? `Aplicación conjunta con ${lotesResueltos.length - 1} lote(s) más — ${haReales}ha de ${totalHaReales}ha reales totales (${(proporcion * 100).toFixed(0)}%)` : '',
     });
     textoLotes += `\n· ${nombreConCampo(data, lote)}: ${haReales}ha (${(proporcion * 100).toFixed(0)}%)`;
   });
   save(data);
+
+  if (!textoLotes) return `Nada nuevo para cargar:\n${lineasDuplicadas.join('\n')}`;
 
   let texto = `✅ Pulverización cargada${interpretado.metodo ? ` (${interpretado.metodo})` : ''}${lotesResueltos.length > 1 ? ` — repartida en ${lotesResueltos.length} lotes` : ''}:${textoLotes}`;
   resueltosInsumos.forEach(({ insumo, cantidad, unidad }) => {
@@ -431,6 +451,7 @@ function manejarPulverizacion(interpretado) {
   });
   texto += `\nTotal: ${totalHaReales}ha reales`;
   if (haFacturadasTotal !== totalHaReales) texto += ` / ${haFacturadasTotal}ha facturadas`;
+  if (lineasDuplicadas.length > 0) texto += `\n\n${lineasDuplicadas.join('\n')}`;
   return texto;
 }
 
