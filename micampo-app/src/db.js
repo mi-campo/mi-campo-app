@@ -91,7 +91,16 @@ function saveUsers(users) {
 }
 
 function buscarLotes(data, nombreBuscado, nombreCampo) {
-  if (!nombreBuscado) return [];
+  if (!nombreBuscado) {
+    // Sin nombre de lote: si el campo tiene un solo lote, no hace falta que lo aclaren, es ese.
+    if (!nombreCampo) return [];
+    const normalizarCampo = (s) => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+    const campoBuscado = normalizarCampo(nombreCampo);
+    const campo = data.campos.find(c => normalizarCampo(c.nombre) === campoBuscado || normalizarCampo(c.nombre).includes(campoBuscado) || campoBuscado.includes(normalizarCampo(c.nombre)));
+    if (!campo) return [];
+    const lotesDelCampo = data.lotes.filter(l => l.campoId === campo.id);
+    return lotesDelCampo.length === 1 ? lotesDelCampo : [];
+  }
   const normalizar = (s) => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[()]/g, ' ').replace(/\s+/g, ' ').trim();
   const buscado = normalizar(nombreBuscado);
 
