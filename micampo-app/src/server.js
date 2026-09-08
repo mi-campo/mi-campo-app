@@ -118,9 +118,18 @@ app.post('/webhook', async (req, res) => {
     console.log(`Mensaje de ${numeroRemitente}: ${textoRecibido}`);
 
     const pendiente = sacarPendiente(numeroRemitente);
+    const DIEZ_MINUTOS_MS = 10 * 60 * 1000;
+    const pendienteFresco = pendiente && (Date.now() - (pendiente.fecha || 0) < DIEZ_MINUTOS_MS) ? pendiente : null;
+
+    // Vía de escape: si hay algo pendiente y el mensaje es para cancelarlo, se descarta acá mismo
+    // (sacarPendiente ya lo sacó arriba, así que con no usarlo alcanza para que no vuelva a aparecer)
+    if (pendienteFresco && /^(cancelar|cancela|olvidalo|olvidate|dejalo|salir|reset)$/i.test(textoRecibido)) {
+      await enviarMensajeWA(numeroRemitente, '❌ Cancelado. Podés mandar un mensaje nuevo.');
+      return;
+    }
 
     // Si lo pendiente es una aclaración de muestras de un análisis (foto/PDF), va por un camino aparte
-    if (pendiente?.tipoPendiente === 'analisis_doc') {
+    if (pendienteFresco?.tipoPendiente === 'analisis_doc') {
       const textoNormalizado = textoRecibido.toLowerCase();
       if (['no', 'cancelar', 'borrar'].includes(textoNormalizado)) {
         await enviarMensajeWA(numeroRemitente, '❌ Descartado.');
@@ -142,7 +151,7 @@ app.post('/webhook', async (req, res) => {
     }
 
     // Si lo pendiente es una confirmación de borrado, se resuelve acá aparte (no pasa por el intérprete de nuevo)
-    if (pendiente?.tipoPendiente === 'confirmar_borrado') {
+    if (pendienteFresco?.tipoPendiente === 'confirmar_borrado') {
       const textoNormalizado = textoRecibido.toLowerCase();
       const esAfirmacion = ['si', 'sí', 'dale', 'ok', 'confirmo', 'borrar'].includes(textoNormalizado);
       if (esAfirmacion) {
@@ -155,13 +164,13 @@ app.post('/webhook', async (req, res) => {
     }
 
     let interpretado;
-    if (pendiente) {
+    if (pendienteFresco) {
       const textoNormalizado = textoRecibido.toLowerCase();
-      if (['no', 'cancelar', 'borrar'].includes(textoNormalizado)) {
+      if (['no', 'cancelar', 'borrar', 'dejalo', 'olvidalo', 'otra cosa', 'empezar de nuevo'].includes(textoNormalizado)) {
         await enviarMensajeWA(numeroRemitente, '❌ Descartado. Mandalo de nuevo.');
         return;
       }
-      interpretado = { ...pendiente.interpretado, [pendiente.campoFaltante]: parsearRespuesta(pendiente.campoFaltante, textoRecibido) };
+      interpretado = { ...pendienteFresco.interpretado, [pendienteFresco.campoFaltante]: parsearRespuesta(pendienteFresco.campoFaltante, textoRecibido) };
     } else {
       interpretado = await interpretarMensaje(textoRecibido);
     }
@@ -179,8 +188,12 @@ app.post('/webhook', async (req, res) => {
 
     const chequeo = validar(interpretado);
     if (!chequeo.ok) {
-      if (chequeo.campoFaltante) guardarPendiente(numeroRemitente, { interpretado, campoFaltante: chequeo.campoFaltante });
-      await enviarMensajeWA(numeroRemitente, chequeo.pregunta);
+      let pregunta = chequeo.pregunta;
+      if (chequeo.campoFaltante) {
+        guardarPendiente(numeroRemitente, { interpretado, campoFaltante: chequeo.campoFaltante });
+        pregunta += '\n\n(Si te confundiste o querés mandar otra cosa, escribí *cancelar*.)';
+      }
+      await enviarMensajeWA(numeroRemitente, pregunta);
       return;
     }
 
