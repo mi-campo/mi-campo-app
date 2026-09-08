@@ -56,19 +56,17 @@ function nombreConCampo(data, lote) {
 }
 
 function resolverLote(data, nombreBuscado, nombreCampo, obligatorio = true) {
-  if (!nombreBuscado) {
+  const candidatos = buscarLotes(data, nombreBuscado, nombreCampo);
+  if (candidatos.length === 1) return { ok: true, lote: candidatos[0] };
+  if (!nombreBuscado && candidatos.length === 0) {
     if (!obligatorio) return { ok: true, lote: null };
     return { ok: false, pregunta: '¿De qué lote es? Decime el campo y el nombre del lote.', campoFaltante: 'lote' };
   }
-  const candidatos = buscarLotes(data, nombreBuscado, nombreCampo);
   if (candidatos.length === 0) {
     return { ok: false, pregunta: `No encontré ningún lote parecido a "${nombreBuscado}"${nombreCampo ? ` en ${nombreCampo}` : ''}. ¿Cuál es el nombre correcto? (Decime también el campo, ej "C4 Efrain")`, campoFaltante: 'lote' };
   }
-  if (candidatos.length > 1) {
-    const nombres = candidatos.map(l => nombreConCampo(data, l)).join(' / ');
-    return { ok: false, pregunta: `Encontré más de un lote parecido: ${nombres}. ¿Cuál de esos es? (Escribime "Campo — Lote" tal cual aparece)`, campoFaltante: 'lote' };
-  }
-  return { ok: true, lote: candidatos[0] };
+  const nombres = candidatos.map(l => nombreConCampo(data, l)).join(' / ');
+  return { ok: false, pregunta: `Encontré más de un lote parecido: ${nombres}. ¿Cuál de esos es? (Escribime "Campo — Lote" tal cual aparece)`, campoFaltante: 'lote' };
 }
 
 function validar(interpretado) {
