@@ -109,15 +109,6 @@ function validar(interpretado) {
         lotesResueltosVal.push({ ...l, loteObj: r.lote });
       }
       if (!interpretado.items || interpretado.items.length === 0 || !interpretado.items[0].producto) return { ok: false, pregunta: '¿Qué producto(s) se aplicó y cuánto de cada uno? Mandá el mensaje de nuevo con esos datos.', campoFaltante: null };
-      // Red de seguridad: si hay más de un lote y ninguno especifica sus hectáreas una por una,
-      // no asumir que se aplicó el lote entero cuando el total real dado no coincide con la suma de los lotes completos.
-      if (lotesResueltosVal.length > 1 && lotesResueltosVal.every(l => l.haReales == null) && interpretado.haRealesTotal) {
-        const sumaLotesCompletos = lotesResueltosVal.reduce((s, l) => s + (Number(l.loteObj.hectareas) || 0), 0);
-        if (Math.abs(sumaLotesCompletos - Number(interpretado.haRealesTotal)) > 2) {
-          const nombres = lotesResueltosVal.map(l => nombreConCampo(data, l.loteObj)).join(', ');
-          return { ok: false, pregunta: `Esas ${interpretado.haRealesTotal}ha no coinciden con el tamaño completo de ${nombres} (suman ${sumaLotesCompletos}ha) — parece una aplicación parcial. ¿Cuántas hectáreas de cada lote se trataron? Mandá el mensaje de nuevo aclarando eso.`, campoFaltante: null };
-        }
-      }
       return { ok: true };
     }
     case 'siembra': {
@@ -346,7 +337,7 @@ function resolverInsumos(data, items) {
       insumo = { id: uid(), nombre: it.producto, categoria: 'Otro', especificar: '', unidad: it.unidad || 'L', stock: 0, stockMinimo: 0, costoUnitario: 0, clienteId: null };
       data.insumos.push(insumo);
     }
-    resueltos.push({ insumo, cantidad: Number(it.cantidadTotal) });
+    resueltos.push({ insumo, cantidad: Number(it.cantidadTotal), unidad: it.unidad || insumo.unidad });
   });
   return resueltos;
 }
@@ -356,11 +347,11 @@ function manejarAplicacion(interpretado, tipo) {
   const lote = buscarLotes(data, interpretado.lote, interpretado.campo)[0];
   const resueltos = resolverInsumos(data, interpretado.items);
   let costoInsumos = 0;
-  const items = resueltos.map(({ insumo, cantidad }) => {
+  const items = resueltos.map(({ insumo, cantidad, unidad }) => {
     const precio = precioPromedio(data, insumo.id);
     costoInsumos += cantidad * precio;
     insumo.stock = (Number(insumo.stock) || 0) - cantidad;
-    return { insumoId: insumo.id, cantidad };
+    return { insumoId: insumo.id, cantidad, unidad };
   });
   const haReales = Number(interpretado.haReales) || 0;
   const haFacturadas = Number(interpretado.haFacturadas) || haReales;
@@ -374,9 +365,9 @@ function manejarAplicacion(interpretado, tipo) {
   });
   save(data);
   let texto = `✅ ${tipo} cargada: ${nombreConCampo(data, lote)}${interpretado.metodo ? ` (${interpretado.metodo})` : ''}`;
-  resueltos.forEach(({ insumo, cantidad }) => {
+  resueltos.forEach(({ insumo, cantidad, unidad }) => {
     const dosis = haReales > 0 ? (cantidad / haReales).toFixed(2) : null;
-    texto += `\n· ${insumo.nombre}: ${cantidad}${insumo.unidad}${dosis ? ` (${dosis}${insumo.unidad}/ha)` : ''}`;
+    texto += `\n· ${insumo.nombre}: ${cantidad}${unidad}${dosis ? ` (${dosis}${unidad}/ha)` : ''}`;
   });
   if (haFacturadas && haFacturadas !== haReales) texto += `\n${haReales}ha reales / ${haFacturadas}ha facturadas al contratista`;
   else if (haReales) texto += `\n${haReales}ha`;
@@ -402,12 +393,12 @@ function manejarPulverizacion(interpretado) {
     const proporcion = totalHaReales > 0 ? haReales / totalHaReales : 1 / lotesResueltos.length;
     const haFacturadasLote = haFacturadasTotal * proporcion;
     let costoInsumosLote = 0;
-    const itemsLote = resueltosInsumos.map(({ insumo, cantidad }) => {
+    const itemsLote = resueltosInsumos.map(({ insumo, cantidad, unidad }) => {
       const cantidadLote = Math.round(cantidad * proporcion * 100) / 100;
       const precio = precioPromedio(data, insumo.id);
       costoInsumosLote += cantidadLote * precio;
       insumo.stock = (Number(insumo.stock) || 0) - cantidadLote;
-      return { insumoId: insumo.id, cantidad: cantidadLote };
+      return { insumoId: insumo.id, cantidad: cantidadLote, unidad };
     });
     const costoContratistaLote = tarifa ? tarifa * haFacturadasLote : 0;
     const costoTotalLote = costoInsumosLote + costoContratistaLote;
@@ -425,9 +416,9 @@ function manejarPulverizacion(interpretado) {
   save(data);
 
   let texto = `✅ Pulverización cargada${interpretado.metodo ? ` (${interpretado.metodo})` : ''}${lotesResueltos.length > 1 ? ` — repartida en ${lotesResueltos.length} lotes` : ''}:${textoLotes}`;
-  resueltosInsumos.forEach(({ insumo, cantidad }) => {
+  resueltosInsumos.forEach(({ insumo, cantidad, unidad }) => {
     const dosis = totalHaReales > 0 ? (cantidad / totalHaReales).toFixed(2) : null;
-    texto += `\n${insumo.nombre}: ${cantidad}${insumo.unidad} total${dosis ? ` (${dosis}${insumo.unidad}/ha)` : ''}`;
+    texto += `\n${insumo.nombre}: ${cantidad}${unidad} total${dosis ? ` (${dosis}${unidad}/ha)` : ''}`;
   });
   texto += `\nTotal: ${totalHaReales}ha reales`;
   if (haFacturadasTotal !== totalHaReales) texto += ` / ${haFacturadasTotal}ha facturadas`;
